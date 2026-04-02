@@ -57,7 +57,7 @@ Going above and beyond on major events
 
 ##As a volunteer, I can self-register an account, and an admin should be able to revoke my access if they need to.  Login will be email and password based. 
 
-##As a volunteer, I should be able to reset my own password without an admin's help. 
+##As a volunteer, when I forget my password, I can contact my pack administrator to reset it. The admin will provide me with a temporary password that I must change on my first login. 
 
 ##As a volunteer, I can self select one or more volunteer roles, or an admin can assign me. 
 

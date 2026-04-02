@@ -245,6 +245,69 @@ All volunteer endpoints require authentication. Tier restrictions noted per endp
 
 ---
 
+## GET `/api/admin/volunteers`
+
+**Description**: List all volunteers for admin management (includes search)
+
+**Authorization**: Bearer token (Tier 2+ - LEADER or ADMIN)
+
+**Query Parameters**:
+```typescript
+{
+  search?: string;         // Search by name or email
+}
+```
+
+**Success Response** (200 OK):
+```typescript
+{
+  volunteers: Array<{
+    id: string;
+    email: string;
+    name: string;
+    authTier: "PARENT" | "LEADER" | "ADMIN";
+    mustChangePassword: boolean;
+    createdAt: string; // ISO 8601
+  }>;
+}
+```
+
+---
+
+## POST `/api/admin/volunteers/:id/reset-password`
+
+**Description**: Reset a volunteer's password and generate a temporary password
+
+**Authorization**: Bearer token (Tier 2+ - LEADER or ADMIN)
+
+**Request Body**: None
+
+**Success Response** (200 OK):
+```typescript
+{
+  temporaryPassword: string;  // Format: word-word-1234 (readable temporary password)
+  message: "Password reset successfully. Share this temporary password with the volunteer."
+}
+```
+
+**Error Responses**:
+- `403 Forbidden`: Insufficient permissions
+- `404 Not Found`: Volunteer does not exist
+
+**Side Effects**:
+- Generates a readable temporary password (format: word-word-number)
+- Updates volunteer's passwordHash with hashed temporary password
+- Sets mustChangePassword to true
+- Invalidates all existing sessions for that user
+- Creates AuditLog entry
+
+**Notes**:
+- Temporary password format: Two random words from a word list + 4 random digits (e.g., "blue-tiger-4729")
+- User must change password on next login
+- Admin should share temporary password securely (in-person, phone, text)
+
+---
+
 ## Validation Schemas
 
 ```typescript
@@ -268,5 +331,9 @@ export const listVolunteersSchema = z.object({
   search: z.string().max(100).optional(),
   tier: z.enum(['PARENT', 'LEADER', 'ADMIN']).optional(),
   roleId: z.string().cuid().optional()
+});
+
+export const adminListVolunteersSchema = z.object({
+  search: z.string().max(100).optional()
 });
 ```

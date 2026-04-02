@@ -33,6 +33,7 @@ model Volunteer {
   name              String
   phone             String?
   passwordHash      String
+  mustChangePassword Boolean  @default(false)  // True when admin sets temporary password
   authTier          AuthTier  @default(PARENT)
   leaderboardOptIn  Boolean   @default(true)
   

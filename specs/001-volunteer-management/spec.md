@@ -9,19 +9,20 @@
 
 ### User Story 1 - Account Registration and Authentication (Priority: P1)
 
-As a volunteer, I can create an account using my email and password so that I can access the volunteer management system. I can log in securely, reset my password without admin help, and have my account managed by pack administrators.
+As a volunteer, I can create an account using my email and password so that I can access the volunteer management system. I can log in securely, and have my password reset by pack administrators when needed.
 
 **Why this priority**: Foundation for all other features - no volunteer activities can occur without user authentication and account management.
 
-**Independent Test**: Can be fully tested by creating an account, logging in, logging out, and resetting password. Delivers secure access to the platform.
+**Independent Test**: Can be fully tested by creating an account, logging in, logging out, and having an admin reset password. Delivers secure access to the platform.
 
 **Acceptance Scenarios**:
 
 1. **Given** I am a new volunteer, **When** I visit the registration page and enter my name, email, and password, **Then** my account is created and I can log in
-2. **Given** I have an account, **When** I forget my password and request a reset, **Then** I receive reset instructions and can set a new password without admin intervention
-3. **Given** I have an account, **When** I log in with valid credentials, **Then** I am authenticated and redirected to my profile
-4. **Given** I have an account, **When** a site admin revokes my access, **Then** I can no longer log in
-5. **Given** I am a volunteer, **When** I log in, **Then** I can only access features appropriate to my authorization tier (parent/guardian volunteer, den leader/committee, or site admin)
+2. **Given** I have an account, **When** I forget my password and contact an admin, **Then** the admin can generate a temporary password for me and I must change it on first login
+3. **Given** I have an account, **When** I log in with valid credentials, **Then** I am authenticated and redirected to my dashboard
+4. **Given** I have an account, **When** an admin resets my password, **Then** I receive a temporary password and am required to change it immediately after login
+5. **Given** I have an account, **When** a site admin revokes my access, **Then** I can no longer log in
+6. **Given** I am a volunteer, **When** I log in, **Then** I can only access features appropriate to my authorization tier (parent/guardian volunteer, den leader/committee, or site admin)
 
 ---
 

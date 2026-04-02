@@ -230,6 +230,7 @@ All authentication endpoints are public (no JWT required).
   name: string;
   phone: string | null;
   authTier: "PARENT" | "LEADER" | "ADMIN";
+  mustChangePassword: boolean;
   leaderboardOptIn: boolean;
   roles: Array<{
     id: string;
@@ -247,6 +248,44 @@ All authentication endpoints are public (no JWT required).
   };
 }
 ```
+
+---
+
+## POST `/api/auth/change-password`
+
+**Description**: Change current user's password (required for users with temporary passwords)
+
+**Authorization**: Bearer token required
+
+**Request Body**:
+```typescript
+{
+  currentPassword: string;
+  newPassword: string;   // Min 8 chars, strength requirements
+}
+```
+
+**Success Response** (200 OK):
+```typescript
+{
+  message: "Password changed successfully."
+}
+```
+
+**Error Responses**:
+- `400 Bad Request`: Invalid current password
+  ```typescript
+  { error: "Current password is incorrect" }
+  ```
+- `400 Bad Request`: New password doesn't meet requirements
+  ```typescript
+  { error: "Password must be at least 8 characters and include uppercase, lowercase, number, and special character" }
+  ```
+
+**Side Effects**:
+- Updates passwordHash
+- Sets mustChangePassword to false
+- Invalidates all existing sessions except current one
 
 **Error Responses**:
 - `401 Unauthorized`: Missing or invalid token
@@ -289,5 +328,15 @@ export const resetPasswordSchema = z.object({
     .regex(/[a-z]/)
     .regex(/[0-9]/)
     .regex(/[^A-Za-z0-9]/)
+});
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Password must include uppercase letter')
+    .regex(/[a-z]/, 'Password must include lowercase letter')
+    .regex(/[0-9]/, 'Password must include number')
+    .regex(/[^A-Za-z0-9]/, 'Password must include special character')
 });
 ```
