@@ -5,6 +5,7 @@
  * per plan.md and research.md
  */
 
+import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import helmet from 'helmet';

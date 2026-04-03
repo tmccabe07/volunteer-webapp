@@ -142,26 +142,26 @@
 
 ### Backend Implementation for User Story 3
 
-- [ ] T055 [P] [US3] Create Zod validation schemas in backend/src/utils/validation/points.schema.ts (revokePointsSchema, listPointsSchema, leaderboardSchema) from contracts/points-api.md
-- [ ] T056 [P] [US3] Enhance PointsService in backend/src/services/points.service.ts with point event creation, balance updates, badge tier calculation, revocation logic
-- [ ] T057 [P] [US3] Create BadgeTierService in backend/src/services/badge-tier.service.ts with tier threshold checking, tier upgrade/downgrade, history tracking
-- [ ] T058 [P] [US3] Create LeaderboardService in backend/src/services/leaderboard.service.ts with cache update logic, ranking calculation
-- [ ] T059 [US3] Implement GET /api/points/me endpoint in backend/src/api/points.routes.ts (fetch own point history with pagination, year filter)
-- [ ] T060 [US3] Implement GET /api/points/volunteers/:volunteerId endpoint in backend/src/api/points.routes.ts (fetch specific volunteer points) restricted to Tier 2+ or self
-- [ ] T061 [US3] Implement POST /api/points/revoke/:pointEventId endpoint in backend/src/api/points.routes.ts (revoke points with reason, audit trail) restricted to Tier 2+
-- [ ] T062 [US3] Implement GET /api/leaderboard endpoint in backend/src/api/points.routes.ts (fetch ranked volunteers with pagination, only leaderboardOptIn=true)
-- [ ] T063 [US3] Implement GET /api/badge-tiers endpoint in backend/src/api/points.routes.ts (fetch all badge tier definitions)
-- [ ] T064 [US3] Implement GET /api/badge-tiers/me/history endpoint in backend/src/api/points.routes.ts (fetch own badge tier progression history)
+- [X] T055 [P] [US3] Create Zod validation schemas in backend/src/utils/validation/points.schema.ts (revokePointsSchema, listPointsSchema, leaderboardSchema) from contracts/points-api.md
+- [X] T056 [P] [US3] Enhance PointsService in backend/src/services/points.service.ts with point event creation, balance updates, badge tier calculation, revocation logic
+- [X] T057 [P] [US3] Create BadgeTierService in backend/src/services/badge-tier.service.ts with tier threshold checking, tier upgrade/downgrade, history tracking
+- [X] T058 [P] [US3] Create LeaderboardService in backend/src/services/leaderboard.service.ts with cache update logic, ranking calculation
+- [X] T059 [US3] Implement GET /api/points/me endpoint in backend/src/api/points.controller.ts (fetch own point history with pagination, year filter)
+- [X] T060 [US3] Implement GET /api/points/volunteers/:volunteerId endpoint in backend/src/api/points.controller.ts (fetch specific volunteer points) restricted to Tier 2+ or self
+- [X] T061 [US3] Implement POST /api/points/revoke/:pointEventId endpoint in backend/src/api/points.controller.ts (revoke points with reason, audit trail) restricted to Tier 2+
+- [X] T062 [US3] Implement GET /api/leaderboard endpoint in backend/src/api/points.controller.ts (fetch ranked volunteers with pagination, only leaderboardOptIn=true)
+- [X] T063 [US3] Implement GET /api/badge-tiers endpoint in backend/src/api/points.controller.ts (fetch all badge tier definitions)
+- [X] T064 [US3] Implement GET /api/badge-tiers/me/history endpoint in backend/src/api/points.controller.ts (fetch own badge tier progression history)
 
 ### Frontend Implementation for User Story 3
 
-- [ ] T065 [P] [US3] Create points display components in frontend/src/components/shared/points/ (PointsBalance, BadgeTier, PointsHistory)
-- [ ] T066 [P] [US3] Create points API service in frontend/src/services/points.service.ts with Axios methods for all points endpoints
-- [ ] T067 [US3] Create points page in frontend/src/app/points/page.tsx displaying own points, badge tier, and history
-- [ ] T068 [US3] Create leaderboard page in frontend/src/app/leaderboard/page.tsx with ranked volunteers, current user position, opt-in toggle
-- [ ] T069 [US3] Create badge tier display component in frontend/src/components/shared/BadgeTierBadge.tsx with color coding and tier icons
-- [ ] T070 [US3] Add points badge to navigation header in frontend/src/components/layouts/header.tsx showing current points and badge tier
-- [ ] T071 [US3] Create point revocation dialog in frontend/src/components/shared/PointRevocationDialog.tsx (Tier 2+ only) with reason input
+- [X] T065 [P] [US3] Create points display components in frontend/src/components/shared/points/ (PointsBalance, BadgeTier, PointsHistory)
+- [X] T066 [P] [US3] Create points API service in frontend/src/services/points.service.ts with Axios methods for all points endpoints
+- [X] T067 [US3] Create points page in frontend/src/app/points/page.tsx displaying own points, badge tier, and history
+- [X] T068 [US3] Create leaderboard page in frontend/src/app/leaderboard/page.tsx with ranked volunteers, current user position, opt-in toggle
+- [X] T069 [US3] Create badge tier display component in frontend/src/components/shared/BadgeTierBadge.tsx with color coding and tier icons
+- [X] T070 [US3] Add points badge to navigation header in frontend/src/components/layouts/header.tsx showing current points and badge tier
+- [X] T071 [US3] Create point revocation dialog in frontend/src/components/shared/PointRevocationDialog.tsx (Tier 2+ only) with reason input
 
 **Checkpoint**: User Stories 1, 2, AND 3 complete - authentication, profiles, and gamification all functional
 
@@ -175,28 +175,28 @@
 
 ### Backend Implementation for User Story 4
 
-- [ ] T072 [P] [US4] Create Zod validation schemas in backend/src/utils/validation/event.schema.ts (createEventSchema, updateEventSchema, completeEventSchema, signupSchema) from contracts/events-api.md
-- [ ] T073 [P] [US4] Create EventService in backend/src/services/event.service.ts with event CRUD, recurring event year-end date logic, completion workflow
-- [ ] T074 [P] [US4] Create SignupService in backend/src/services/signup.service.ts with capacity checking, signup/withdrawal logic
-- [ ] T075 [US4] Implement GET /api/events endpoint in backend/src/api/events.routes.ts (list events filtered by rank/upcoming/mySignups with pagination)
-- [ ] T076 [US4] Implement GET /api/events/:id endpoint in backend/src/api/events.routes.ts (fetch event details with activity slots and signups)
-- [ ] T077 [US4] Implement POST /api/events endpoint in backend/src/api/events.routes.ts (create event, auto-set recurringEndDate if recurring) restricted to Tier 2+
-- [ ] T078 [US4] Implement PUT /api/events/:id endpoint in backend/src/api/events.routes.ts (update event, prevent modification if complete) restricted to Tier 2+
-- [ ] T079 [US4] Implement POST /api/events/:id/complete endpoint in backend/src/api/events.routes.ts (mark complete, award points to non-withdrawn signups, add manual volunteers) restricted to Tier 2+
-- [ ] T080 [US4] Implement POST /api/events/:eventId/slots/:slotId/signup endpoint in backend/src/api/events.routes.ts (signup for activity, check capacity)
-- [ ] T081 [US4] Implement DELETE /api/events/:eventId/slots/:slotId/signup endpoint in backend/src/api/events.routes.ts (withdraw from activity)
+- [X] T072 [P] [US4] Create Zod validation schemas in backend/src/utils/validation/event.schema.ts (createEventSchema, updateEventSchema, completeEventSchema, signupSchema) from contracts/events-api.md
+- [X] T073 [P] [US4] Create EventService in backend/src/services/event.service.ts with event CRUD, recurring event year-end date logic, completion workflow
+- [X] T074 [P] [US4] Create SignupService in backend/src/services/signup.service.ts with capacity checking, signup/withdrawal logic
+- [X] T075 [US4] Implement GET /api/events endpoint in backend/src/api/events.controller.ts (list events filtered by rank/upcoming/mySignups with pagination)
+- [X] T076 [US4] Implement GET /api/events/:id endpoint in backend/src/api/events.controller.ts (fetch event details with activity slots and signups)
+- [X] T077 [US4] Implement POST /api/events endpoint in backend/src/api/events.controller.ts (create event, auto-set recurringEndDate if recurring) restricted to Tier 2+
+- [X] T078 [US4] Implement PUT /api/events/:id endpoint in backend/src/api/events.controller.ts (update event, prevent modification if complete) restricted to Tier 2+
+- [X] T079 [US4] Implement POST /api/events/:id/complete endpoint in backend/src/api/events.controller.ts (mark complete, award points to non-withdrawn signups, add manual volunteers) restricted to Tier 2+
+- [X] T080 [US4] Implement POST /api/events/:eventId/slots/:slotId/signup endpoint in backend/src/api/events.controller.ts (signup for activity, check capacity)
+- [X] T081 [US4] Implement DELETE /api/events/:eventId/slots/:slotId/signup endpoint in backend/src/api/events.controller.ts (withdraw from activity)
 
 ### Frontend Implementation for User Story 4
 
-- [ ] T082 [P] [US4] Create event form components in frontend/src/components/forms/events/ (EventForm with activity slots, SignupButton, WithdrawButton)
-- [ ] T083 [P] [US4] Create event display components in frontend/src/components/shared/events/ (EventCard, EventDetails, ActivitySlotList)
-- [ ] T084 [P] [US4] Create events API service in frontend/src/services/events.service.ts with Axios methods for all event endpoints
-- [ ] T085 [US4] Create events list page in frontend/src/app/events/page.tsx with rank filters, upcoming toggle, mySignups filter
-- [ ] T086 [US4] Create event detail page in frontend/src/app/events/[id]/page.tsx with full event info, signup buttons, capacity indicators
-- [ ] T087 [US4] Create event creation page in frontend/src/app/events/create/page.tsx (Tier 2+ only) with EventForm component
-- [ ] T088 [US4] Create event edit page in frontend/src/app/events/[id]/edit/page.tsx (Tier 2+ only) with EventForm pre-populated
-- [ ] T089 [US4] Create event completion dialog in frontend/src/components/forms/events/CompleteEventDialog.tsx (Tier 2+ only) with manual volunteer addition
-- [ ] T090 [US4] Update navigation in frontend/src/components/layouts/nav.tsx to include Events link for all tiers
+- [X] T082 [P] [US4] Create event form components in frontend/src/components/forms/events/ (EventForm with activity slots, SignupButton, WithdrawButton)
+- [X] T083 [P] [US4] Create event display components in frontend/src/components/shared/events/ (EventCard, EventDetails, ActivitySlotList)
+- [X] T084 [P] [US4] Create events API service in frontend/src/services/events.service.ts with Axios methods for all event endpoints
+- [X] T085 [US4] Create events list page in frontend/src/app/events/page.tsx with rank filters, upcoming toggle, mySignups filter
+- [X] T086 [US4] Create event detail page in frontend/src/app/events/[id]/page.tsx with full event info, signup buttons, capacity indicators
+- [X] T087 [US4] Create event creation page in frontend/src/app/events/create/page.tsx (Tier 2+ only) with EventForm component
+- [X] T088 [US4] Create event edit page in frontend/src/app/events/[id]/edit/page.tsx (Tier 2+ only) with EventForm pre-populated
+- [X] T089 [US4] Create event completion dialog in frontend/src/components/forms/events/CompleteEventDialog.tsx (Tier 2+ only) with manual volunteer addition
+- [X] T090 [US4] Create navigation link for Events (already present in frontend/src/components/layouts/navigation.tsx for all tiers)
 
 **Checkpoint**: User Stories 1-4 complete - authentication, profiles, gamification, and event management all functional
 
