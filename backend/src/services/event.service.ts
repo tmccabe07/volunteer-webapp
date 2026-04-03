@@ -19,6 +19,11 @@ export class EventService {
   async createEvent(data: CreateEventInput, createdById: string) {
     const { activitySlots, ...eventData } = data;
 
+    // Validate activitySlots exist
+    if (!activitySlots || activitySlots.length === 0) {
+      throw new Error('At least one activity slot is required');
+    }
+
     // Validate event date is in the future
     const eventDate = new Date(data.eventDate);
     if (eventDate < new Date()) {

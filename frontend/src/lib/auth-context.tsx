@@ -115,7 +115,7 @@ export function useRequireAuth() {
 
 /**
  * Hook to require specific tier
- * Redirects to home if insufficient permissions
+ * Redirects to login if not authenticated, or dashboard if insufficient permissions
  */
 export function useRequireTier(minTier: 'PARENT' | 'LEADER' | 'ADMIN') {
   const { user, isLoading } = useAuth();
@@ -124,12 +124,20 @@ export function useRequireTier(minTier: 'PARENT' | 'LEADER' | 'ADMIN') {
   const tierLevels = { PARENT: 1, LEADER: 2, ADMIN: 3 };
 
   useEffect(() => {
-    if (!isLoading && user) {
+    if (!isLoading) {
+      // Not authenticated - redirect to login
+      if (!user) {
+        router.push('/auth/login');
+        return;
+      }
+
+      // Check tier level
       const userLevel = tierLevels[user.authTier];
       const requiredLevel = tierLevels[minTier];
 
+      // Insufficient permissions - redirect to dashboard
       if (userLevel < requiredLevel) {
-        router.push('/');
+        router.push('/dashboard');
       }
     }
   }, [user, isLoading, minTier, router]);

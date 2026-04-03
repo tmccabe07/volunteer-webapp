@@ -210,19 +210,19 @@
 
 ### Backend Implementation for User Story 5
 
-- [ ] T091 [P] [US5] Create Zod validation schemas in backend/src/utils/validation/activity.schema.ts (createActivitySchema, updateActivitySchema) from contracts/reports-config-api.md
-- [ ] T092 [P] [US5] Create ActivityTypeService in backend/src/services/activity-type.service.ts with CRUD operations, soft delete, category validation
-- [ ] T093 [US5] Implement GET /api/pack-config/activity-types endpoint in backend/src/api/config.routes.ts (list all active activity types)
-- [ ] T094 [US5] Implement POST /api/pack-config/activity-types endpoint in backend/src/api/config.routes.ts (create activity type) restricted to Tier 3
-- [ ] T095 [US5] Implement PUT /api/pack-config/activity-types/:id endpoint in backend/src/api/config.routes.ts (update activity type, preserve historical points) restricted to Tier 3
-- [ ] T096 [US5] Implement DELETE /api/pack-config/activity-types/:id endpoint in backend/src/api/config.routes.ts (soft delete, preserve historical records) restricted to Tier 3
+- [X] T091 [P] [US5] Create Zod validation schemas in backend/src/utils/validation/activity.schema.ts (createActivitySchema, updateActivitySchema) from contracts/reports-config-api.md
+- [X] T092 [P] [US5] Create ActivityTypeService in backend/src/services/activity-type.service.ts with CRUD operations, soft delete, category validation
+- [X] T093 [US5] Implement GET /api/pack-config/activity-types endpoint in backend/src/api/config.controller.ts (list all active activity types)
+- [X] T094 [US5] Implement POST /api/pack-config/activity-types endpoint in backend/src/api/config.controller.ts (create activity type) restricted to Tier 3
+- [X] T095 [US5] Implement PUT /api/pack-config/activity-types/:id endpoint in backend/src/api/config.controller.ts (update activity type, preserve historical points) restricted to Tier 3
+- [X] T096 [US5] Implement DELETE /api/pack-config/activity-types/:id endpoint in backend/src/api/config.controller.ts (soft delete, preserve historical records) restricted to Tier 3
 
 ### Frontend Implementation for User Story 5
 
-- [ ] T097 [P] [US5] Create activity type form components in frontend/src/components/forms/config/ActivityTypeForm.tsx with category dropdown and point value validation
-- [ ] T098 [P] [US5] Create activity type list component in frontend/src/components/shared/config/ActivityTypeList.tsx with edit/delete actions
-- [ ] T099 [US5] Create activity configuration page in frontend/src/app/admin/activities/page.tsx (Tier 3 only) with ActivityTypeList and creation dialog
-- [ ] T100 [US5] Update EventForm in frontend/src/components/forms/events/EventForm.tsx to fetch and display available activity types in activity slot selection
+- [X] T097 [P] [US5] Create activity type form components in frontend/src/components/forms/config/ActivityTypeForm.tsx with category dropdown and point value validation
+- [X] T098 [P] [US5] Create activity type list component in frontend/src/components/shared/config/ActivityTypeList.tsx with edit/delete actions
+- [X] T099 [US5] Create activity configuration page in frontend/src/app/admin/activities/page.tsx (Tier 3 only) with ActivityTypeList and creation dialog
+- [X] T100 [US5] Update EventForm in frontend/src/components/forms/events/EventForm.tsx to fetch and display available activity types in activity slot selection
 
 **Checkpoint**: User Stories 1-5 complete - can now customize point system
 

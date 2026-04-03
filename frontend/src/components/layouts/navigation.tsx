@@ -17,6 +17,7 @@ interface NavLink {
 }
 
 const navLinks: NavLink[] = [
+  { href: '/dashboard', label: 'Dashboard', minTier: 1 },
   { href: '/events', label: 'Events', minTier: 1 },
   { href: '/tasks', label: 'My Tasks', minTier: 1 },
   { href: '/leaderboard', label: 'Leaderboard', minTier: 1 },

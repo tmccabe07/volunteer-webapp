@@ -21,7 +21,8 @@ import {
   NotFoundException,
   ForbiddenException,
   ConflictException,
-  Req
+  Req,
+  Header
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { AuthGuard, TierGuard, RequireTier } from '../middleware/auth';
@@ -58,6 +59,9 @@ export class EventsController {
    * List events with filtering and pagination
    */
   @Get()
+  @Header('Cache-Control', 'no-store, no-cache, must-revalidate, private')
+  @Header('Pragma', 'no-cache')
+  @Header('Expires', '0')
   async listEvents(
     @Query() query: ListEventsQuery,
     @Req() req: AuthenticatedRequest
@@ -109,6 +113,9 @@ export class EventsController {
 
   /**
    * GET /api/events/:id
+  @Header('Cache-Control', 'no-store, no-cache, must-revalidate, private')
+  @Header('Pragma', 'no-cache')
+  @Header('Expires', '0')
    * Get single event details
    */
   @Get(':id')
@@ -138,25 +145,28 @@ export class EventsController {
     @Req() req: AuthenticatedRequest
   ) {
     try {
+      console.log('Received event creation request:', JSON.stringify(body, null, 2));
       const validatedData = createEventSchema.parse(body);
+      console.log('Validated data:', JSON.stringify(validatedData, null, 2));
       const createdById = req.user!.userId;
 
       const event = await this.eventService.createEvent(validatedData, createdById);
 
       return event;
     } catch (error: any) {
-      if (error.name === 'ZodError') {
+      if (error.name === 'ZodError' && error.errors) {
         throw new BadRequestException({
           error: 'Invalid input',
           details: error.errors.map((e: any) => e.message)
         });
       }
-      if (error.message.includes('future')) {
+      if (error.message?.includes('future')) {
         throw new BadRequestException(error.message);
       }
-      if (error.message.includes('do not exist')) {
+      if (error.message?.includes('do not exist')) {
         throw new BadRequestException(error.message);
       }
+      console.error('Event creation error:', error);
       throw error;
     }
   }

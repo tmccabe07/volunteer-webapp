@@ -9,6 +9,14 @@ import { z } from 'zod';
 import { RankLevel } from '@prisma/client';
 
 /**
+ * Custom boolean coercion that handles string 'true'/'false'
+ */
+const booleanString = z
+  .string()
+  .transform(val => val === 'true')
+  .or(z.boolean());
+
+/**
  * Schema for creating a new event
  * POST /api/events
  */
@@ -18,7 +26,7 @@ export const createEventSchema = z.object({
   eventDate: z.string().datetime(), // ISO 8601
   eventTime: z.string().optional(),
   location: z.string().optional(),
-  rankLevel: z.nativeEnum(RankLevel).optional(), // null = PACK_WIDE
+  rankLevel: z.nativeEnum(RankLevel).nullable().optional(), // null = PACK_WIDE
   isRecurring: z.boolean().optional().default(false),
   activitySlots: z.array(z.object({
     activityTypeId: z.string(),
@@ -70,8 +78,8 @@ export const listEventsSchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().positive().max(100).optional().default(20),
   rankLevel: z.nativeEnum(RankLevel).optional(),
-  upcoming: z.coerce.boolean().optional().default(true),
-  mySignups: z.coerce.boolean().optional().default(false),
+  upcoming: booleanString.optional().default(true),
+  mySignups: booleanString.optional().default(false),
 });
 
 export type ListEventsQuery = z.infer<typeof listEventsSchema>;

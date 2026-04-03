@@ -283,3 +283,168 @@ Prisma's `in` operator doesn't handle null values in the array. When you need to
 
 **Files Modified**:
 - `backend/src/services/event.service.ts`
+
+---
+
+## 2026-04-03: Events API Browser Caching - 304 Not Modified Returning Stale Data
+
+**Error**: Events list page (`/events`) displayed no events even though events existed in the database and the dashboard showed them correctly. Browser console showed `Status Code 304 Not Modified` for repeated API calls.
+
+**Symptoms**:
+- Dashboard (`/dashboard`) fetched events with `limit: 5` and displayed them correctly
+- Events page (`/events`) fetched events with `limit: 20` but received empty array
+- Backend logs showed only `limit: 5` requests, never `limit: 20`
+- Frontend logs showed axios receiving `{events: [], pagination: {total: 0}}` with 200 OK status
+- Network tab showed `Status Code: 304 Not Modified` for `GET /api/events` requests
+- Frontend was sending correct parameters (`limit: 20`) but getting cached response from previous request
+
+**Root Cause**: 
+The browser was caching GET requests to `/api/events` and returning HTTP 304 (Not Modified) responses with stale data. When the Events page made a request with different parameters than the Dashboard's previous request:
+
+1. Dashboard made: `GET /api/events?limit=5&upcoming=true` → Backend returned 2 events
+2. Browser cached this response
+3. Events page made: `GET /api/events?limit=20&upcoming=true` 
+4. Browser returned cached response with empty events array (from a different earlier request)
+5. Backend never processed the new request (304 tells client "use your cache")
+
+**Why This Happened**:
+- NestJS controllers by default don't set cache-control headers
+- Browsers cache GET requests by default for performance
+- Different query parameters should invalidate cache, but browser was returning stale data
+- Dynamic data (event listings) should never be cached
+
+**Solution**: 
+Added no-cache headers to all events GET endpoints in `backend/src/api/events.controller.ts`:
+
+```typescript
+import { Header } from '@nestjs/common';
+
+@Get()
+@Header('Cache-Control', 'no-store, no-cache, must-revalidate, private')
+@Header('Pragma', 'no-cache')
+@Header('Expires', '0')
+async listEvents(...) { ... }
+
+@Get(':id')
+@Header('Cache-Control', 'no-store, no-cache, must-revalidate, private')
+@Header('Pragma', 'no-cache')
+@Header('Expires', '0')
+async getEvent(...) { ... }
+```
+
+**Header Meanings**:
+- `Cache-Control: no-store` - Don't store response in cache at all
+- `Cache-Control: no-cache` - Revalidate with server before using cached response
+- `Cache-Control: must-revalidate` - Once stale, must check with server
+- `Cache-Control: private` - Only browser cache, not CDN/proxy caches
+- `Pragma: no-cache` - HTTP/1.0 backward compatibility
+- `Expires: 0` - Response is already expired, don't cache
+
+**Prevention**:
+- Always set appropriate cache headers for dynamic content (events, points, user data)
+- Use `@Header()` decorators on GET endpoints that return real-time data
+- Static/reference data (activity types, rank levels) can be cached with TTL
+- Consider creating a custom `@NoCache()` decorator for reusability
+- Test with browser DevTools Network tab to verify cache behavior
+
+**Key Learning**: 
+Browsers aggressively cache GET requests. For dynamic data that changes frequently or is user-specific, explicitly prevent caching with appropriate headers. The 304 Not Modified status is useful for static assets but dangerous for dynamic API responses.
+
+**Files Modified**:
+- `backend/src/api/events.controller.ts`
+
+---
+
+## 2026-04-03: Query Parameter Boolean Parsing - String 'false' Coerced to Boolean true
+
+**Error**: Events list page showed zero events when `mySignups` filter was off, even though user had not signed up for any events and ALL events should have been shown.
+
+**Symptoms**:
+- Frontend sent: `GET /api/events?mySignups=false`
+- Backend logged: `Raw query: { mySignups: 'false' }` (string)
+- Backend logged: `List events query: { mySignups: true }` (boolean)
+- The string `'false'` was being incorrectly parsed as boolean `true`
+- Query filtered to show only events with user signups, resulting in empty list
+
+**Root Cause**: 
+The Zod schema used `z.coerce.boolean()` to parse query parameters:
+
+```typescript
+export const listEventsSchema = z.object({
+  // ...
+  upcoming: z.coerce.boolean().optional().default(true),
+  mySignups: z.coerce.boolean().optional().default(false),
+});
+```
+
+**Why This Failed**:
+- Query parameters are always strings in HTTP: `?mySignups=false` → `{ mySignups: 'false' }`
+- Zod's `z.coerce.boolean()` uses JavaScript's Boolean() constructor
+- `Boolean('false')` returns `true` because any non-empty string is truthy
+- Only `Boolean('')` returns `false`, but empty strings aren't sent in query params
+
+**Incorrect Behavior**:
+```javascript
+Boolean('false') // → true  ❌
+Boolean('true')  // → true  ✓
+Boolean('0')     // → true  ❌
+Boolean('1')     // → true  ✓
+Boolean('')      // → false ✓ (but not sent as query param)
+```
+
+**Solution**: 
+Created a custom Zod transform that properly parses string boolean values:
+
+```typescript
+/**
+ * Custom boolean coercion that handles string 'true'/'false'
+ */
+const booleanString = z
+  .string()
+  .transform(val => val === 'true')
+  .or(z.boolean());
+
+export const listEventsSchema = z.object({
+  page: z.coerce.number().int().positive().optional().default(1),
+  limit: z.coerce.number().int().positive().max(100).optional().default(20),
+  rankLevel: z.nativeEnum(RankLevel).optional(),
+  upcoming: booleanString.optional().default(true),
+  mySignups: booleanString.optional().default(false),
+});
+```
+
+**How It Works**:
+- `z.string().transform(val => val === 'true')` handles string inputs ('true' → true, 'false' → false, anything else → false)
+- `.or(z.boolean())` allows actual boolean values to pass through (for programmatic usage)
+- Works correctly for both query params and JSON body requests
+
+**Correct Behavior**:
+```javascript
+booleanString.parse('true')  // → true  ✓
+booleanString.parse('false') // → false ✓
+booleanString.parse('0')     // → false ✓
+booleanString.parse('1')     // → false ❓ (debatable, could enhance)
+booleanString.parse(true)    // → true  ✓
+booleanString.parse(false)   // → false ✓
+```
+
+**Prevention**:
+- Never use `z.coerce.boolean()` for query parameter validation
+- Create reusable `booleanString` schema for all query param booleans
+- Consider enhancing to also accept '1'/'0' or 'yes'/'no' if needed
+- Document this pattern in project conventions
+- Add unit tests for query parameter parsing edge cases
+
+**Alternative Solutions Considered**:
+1. **Client-side conversion**: Convert `false` → `undefined` and omit param entirely
+   - ❌ Breaks API contract, makes debugging harder
+2. **Accept '1' and '0' instead**: `?mySignups=0`
+   - ❌ Inconsistent with REST conventions, less readable
+3. **Use POST with JSON body**: Send filters in request body
+   - ❌ Violates REST semantics (GET should not have body), breaks caching
+
+**Key Learning**: 
+HTTP query parameters are always strings. When using Zod to validate them, you must explicitly handle string-to-boolean conversion. JavaScript's built-in Boolean() coercion is NOT suitable for parsing string literals 'true' and 'false'. Always use explicit string comparison (`val === 'true'`) for query param boolean validation.
+
+**Files Modified**:
+- `backend/src/utils/validation/event.schema.ts`

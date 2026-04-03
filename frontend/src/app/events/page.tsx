@@ -69,6 +69,7 @@ export default function EventsPage() {
       setEvents(result.events);
       setPagination(result.pagination);
     } catch (err: any) {
+      console.error('Error loading events:', err);
       setError(err.message || 'Failed to load events');
     } finally {
       setLoading(false);

@@ -11,6 +11,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { pointsService } from '@/services/points.service';
 import { BadgeTier } from '@/components/shared/points/BadgeTier';
+import { Button } from '@/components/ui/button';
+import { LogOut } from 'lucide-react';
 
 interface PackConfig {
   packNumber: string;
@@ -27,7 +29,7 @@ const badgeTierColors: Record<string, string> = {
 };
 
 export function Header() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, logout } = useAuth();
   const [packConfig, setPackConfig] = useState<PackConfig>({
     packNumber: '123',
     packName: 'Pack 123',
@@ -60,7 +62,7 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center">
-        <Link href="/" className="flex items-center space-x-2">
+        <Link href={user ? "/dashboard" : "/"} className="flex items-center space-x-2">
           <span className="text-xl font-bold text-primary">
             🦁 {packConfig.packName}
           </span>
@@ -73,21 +75,41 @@ export function Header() {
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Points Badge */}
-        {user && points && (
-          <Link href="/points" className="flex items-center gap-3 hover:bg-accent rounded-lg p-2 transition-colors">
-            <div className="text-right">
-              <p className="text-xs text-muted-foreground">Points</p>
-              <p className="text-sm font-bold">{points.totalPoints}</p>
-            </div>
-            {points.badgeTier && (
-              <BadgeTier
-                tierName={points.badgeTier}
-                badgeColor={badgeTierColors[points.badgeTier] || '#999999'}
-                size="sm"
-              />
+        {/* User info and actions */}
+        {user && (
+          <div className="flex items-center gap-4">
+            {/* Points Badge */}
+            {points && (
+              <Link href="/points" className="flex items-center gap-3 hover:bg-accent rounded-lg p-2 transition-colors">
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">Points</p>
+                  <p className="text-sm font-bold">{points.totalPoints}</p>
+                </div>
+                {points.badgeTier && (
+                  <BadgeTier
+                    tierName={points.badgeTier}
+                    badgeColor={badgeTierColors[points.badgeTier] || '#999999'}
+                    size="sm"
+                  />
+                )}
+              </Link>
             )}
-          </Link>
+
+            {/* User name */}
+            <div className="text-sm text-muted-foreground">
+              {user.name}
+            </div>
+
+            {/* Logout button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => logout()}
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
+          </div>
         )}
       </div>
     </header>
