@@ -106,18 +106,59 @@ export function ProfileEditForm({ initialData, onSubmit, onCancel }: ProfileEdit
           />
         </div>
 
-        <div className="flex items-center">
-          <input
-            id="leaderboardOptIn"
-            type="checkbox"
-            checked={formData.leaderboardOptIn}
-            onChange={e => handleChange('leaderboardOptIn', e.target.checked)}
-            disabled={isLoading}
-            className="mr-2"
-          />
-          <label htmlFor="leaderboardOptIn" className="text-sm">
-            Show me on the leaderboard
+        {/* Leaderboard Opt-In Toggle with Visual Indicator */}
+        <div className="pt-2">
+          <label className="block text-sm font-medium mb-2">
+            Leaderboard Visibility
           </label>
+          <div 
+            className={`p-4 rounded-lg border-2 transition-colors ${
+              formData.leaderboardOptIn 
+                ? 'bg-green-50 border-green-200' 
+                : 'bg-gray-50 border-gray-200'
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex items-center h-5">
+                <input
+                  id="leaderboardOptIn"
+                  type="checkbox"
+                  checked={formData.leaderboardOptIn}
+                  onChange={e => handleChange('leaderboardOptIn', e.target.checked)}
+                  disabled={isLoading}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+              </div>
+              <div className="flex-1">
+                <label 
+                  htmlFor="leaderboardOptIn" 
+                  className="font-medium text-sm cursor-pointer"
+                >
+                  Show me on the public leaderboard
+                </label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {formData.leaderboardOptIn ? (
+                    <span className="text-green-700">
+                      ✓ Your profile and points will be <strong>visible</strong> to all volunteers on the leaderboard
+                    </span>
+                  ) : (
+                    <span className="text-gray-600">
+                      Your profile will be <strong>hidden</strong> from the leaderboard (you can still earn points)
+                    </span>
+                  )}
+                </p>
+              </div>
+              <div 
+                className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                  formData.leaderboardOptIn
+                    ? 'bg-green-200 text-green-800'
+                    : 'bg-gray-200 text-gray-700'
+                }`}
+              >
+                {formData.leaderboardOptIn ? 'PUBLIC' : 'PRIVATE'}
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="flex gap-3 pt-4">

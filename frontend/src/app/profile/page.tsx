@@ -7,6 +7,17 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { volunteerApi, type VolunteerProfile } from '@/services/volunteer.service';
 import { useAuth } from '@/lib/auth-context';
+import { AchievementHistory } from '@/components/shared/achievements/AchievementHistory';
+import { BadgeTier } from '@/components/shared/points/BadgeTier';
+
+// Default badge colors (from BadgeTierService)
+const DEFAULT_BADGE_COLORS: Record<string, string> = {
+  'Bronze': '#CD7F32',
+  'Silver': '#C0C0C0',
+  'Gold': '#FFD700',
+  'Platinum': '#E5E4E2',
+  'Diamond': '#B9F2FF'
+};
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -99,43 +110,69 @@ export default function ProfilePage() {
           </div>
         </Card>
 
-        {/* Points & Gamification */}
-        <Card className="p-6">
-          <h2 className="text-xl font-semibold mb-4">Points & Achievements</h2>
-          <div className="space-y-3">
-            <div>
-              <span className="text-sm text-gray-600">Total Points:</span>
-              <p className="font-medium text-2xl">{profile.pointBalance.totalPoints}</p>
+        {/* Points Summary */}
+        <Card className="p-6 bg-gradient-to-r from-blue-50 to-purple-50">
+          <h2 className="text-xl font-semibold mb-4">Points Summary</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Total Points */}
+            <div className="text-center">
+              <p className="text-sm text-gray-600 mb-1">Total Points</p>
+              <p className="font-bold text-4xl text-blue-600">{profile.pointBalance.totalPoints}</p>
             </div>
-            <div>
-              <span className="text-sm text-gray-600">Current Year Points:</span>
-              <p className="font-medium">{profile.pointBalance.currentYearPoints}</p>
+
+            {/* Current Badge Tier */}
+            <div className="text-center">
+              <p className="text-sm text-gray-600 mb-2">Current Badge Tier</p>
+              {profile.pointBalance.badgeTier ? (
+                <div className="flex justify-center">
+                  <BadgeTier
+                    tierName={profile.pointBalance.badgeTier}
+                    badgeColor={DEFAULT_BADGE_COLORS[profile.pointBalance.badgeTier] || '#6B7280'}
+                    size="lg"
+                  />
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No badge yet<br />(earn 20 points)</p>
+              )}
             </div>
-            <div>
-              <span className="text-sm text-gray-600">Badge Tier:</span>
-              <p className="font-medium text-lg">
-                {profile.pointBalance.badgeTier ? (
-                  <span className={getBadgeTierColor(profile.pointBalance.badgeTier)}>
-                    {profile.pointBalance.badgeTier}
-                  </span>
-                ) : (
-                  'No badge yet (earn 20 points)'
-                )}
-              </p>
-            </div>
-            {profile.pointBalance.rank && (
-              <div>
-                <span className="text-sm text-gray-600">Leaderboard Rank:</span>
-                <p className="font-medium">#{profile.pointBalance.rank}</p>
-              </div>
-            )}
-            <div>
-              <span className="text-sm text-gray-600">Leaderboard Visibility:</span>
-              <p className="font-medium">
-                {profile.leaderboardOptIn ? 'Visible' : 'Hidden'}
-              </p>
+
+            {/* Leaderboard Rank */}
+            <div className="text-center">
+              <p className="text-sm text-gray-600 mb-1">Leaderboard Rank</p>
+              {profile.pointBalance.rank ? (
+                <p className="font-bold text-4xl text-purple-600">#{profile.pointBalance.rank}</p>
+              ) : (
+                <p className="text-sm text-muted-foreground mt-3">
+                  {profile.leaderboardOptIn ? 'Not ranked yet' : 'Opted out'}
+                </p>
+              )}
             </div>
           </div>
+
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="flex justify-between items-center">
+              <div>
+                <span className="text-sm text-gray-600">Current Year Points:</span>
+                <span className="ml-2 font-medium">{profile.pointBalance.currentYearPoints}</span>
+              </div>
+              <div>
+                <span className="text-sm text-gray-600">Leaderboard:</span>
+                <span className="ml-2 font-medium">
+                  {profile.leaderboardOptIn ? (
+                    <span className="text-green-600">Visible ✓</span>
+                  ) : (
+                    <span className="text-gray-500">Hidden</span>
+                  )}
+                </span>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Achievements & Badge History */}
+        <Card className="p-6">
+          <h2 className="text-xl font-semibold mb-4">Achievements & Badge History</h2>
+          <AchievementHistory />
         </Card>
 
         {/* Volunteer Roles */}
@@ -178,17 +215,6 @@ export default function ProfilePage() {
       </div>
     </div>
   );
-}
-
-function getBadgeTierColor(tier: string): string {
-  const colors: Record<string, string> = {
-    Bronze: 'text-orange-700',
-    Silver: 'text-gray-500',
-    Gold: 'text-yellow-600',
-    Platinum: 'text-blue-400',
-    Diamond: 'text-purple-600',
-  };
-  return colors[tier] || 'text-gray-800';
 }
 
 function formatRankLevel(rank: string): string {

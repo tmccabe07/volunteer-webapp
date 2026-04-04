@@ -238,11 +238,11 @@
 
 *(Backend endpoints already implemented in Phase 5)*
 
-- [ ] T101 [P] [US6] Create achievement display components in frontend/src/components/shared/achievements/ (AchievementBadge, AchievementHistory)
-- [ ] T102 [US6] Enhance profile page in frontend/src/app/profile/page.tsx to display badges, current tier, historical achievements from badge tier history
-- [ ] T103 [US6] Add leaderboard opt-in toggle in frontend/src/app/profile/edit/page.tsx with visual indicator of public/private status
-- [ ] T104 [US6] Enhance leaderboard page in frontend/src/app/leaderboard/page.tsx to show badge tier icons, volunteer ranks with visual distinction for top 3
-- [ ] T105 [US6] Create badge tier legend component in frontend/src/components/shared/BadgeTierLegend.tsx showing all tiers with point thresholds
+- [X] T101 [P] [US6] Create achievement display components in frontend/src/components/shared/achievements/ (AchievementBadge, AchievementHistory)
+- [X] T102 [US6] Enhance profile page in frontend/src/app/profile/page.tsx to display badges, current tier, historical achievements from badge tier history
+- [X] T103 [US6] Add leaderboard opt-in toggle in frontend/src/app/profile/edit/page.tsx with visual indicator of public/private status
+- [X] T104 [US6] Enhance leaderboard page in frontend/src/app/leaderboard/page.tsx to show badge tier icons, volunteer ranks with visual distinction for top 3
+- [X] T105 [US6] Create badge tier legend component in frontend/src/components/shared/BadgeTierLegend.tsx showing all tiers with point thresholds
 
 **Checkpoint**: User Stories 1-6 complete - full gamification experience with leaderboards
 
