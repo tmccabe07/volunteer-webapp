@@ -448,3 +448,391 @@ HTTP query parameters are always strings. When using Zod to validate them, you m
 
 **Files Modified**:
 - `backend/src/utils/validation/event.schema.ts`
+
+---
+
+## 2026-04-05: Test Database Failures - Stale Database Schema and Data
+
+**Errors**: Multiple test failures when running `npm test -- auth.service.spec.ts`:
+```
+● AuthService › registerVolunteer › should create a new volunteer with hashed password
+  Email already in use
+
+● AuthService › loginVolunteer › should return volunteer and tokens for valid credentials
+  expect(received).not.toBeNull()
+  Received: null
+
+● AuthService › changePassword › should update password and clear mustChangePassword flag
+  Volunteer not found
+
+● AuthService › getCurrentUser › should return volunteer with roles and point balance
+  Volunteer not found
+```
+
+After deleting test.db and rerunning, different errors appeared:
+```
+DriverAdapterError: SQLITE_ERROR: no such table: main.PasswordReset
+```
+
+**Root Causes**: 
+1. **Stale test data**: The test database (`backend/test.db`) contained volunteers from previous test runs that weren't properly cleaned up
+2. **Incomplete schema**: The test database schema was out of sync with the Prisma schema - missing tables added in recent migrations
+3. **Test isolation issues**: Tests were potentially running in parallel and interfering with each other
+4. **Inadequate cleanup**: The `afterEach` hook only deleted volunteers, not related data (point balances, child ranks, etc.), causing foreign key constraint issues
+
+**Investigation Steps**:
+1. Found existing `backend/test.db` file with stale data
+2. Discovered `afterEach` was only calling `prisma.volunteer.deleteMany()`, not clearing related tables
+3. After deleting test.db, found migrations had never been run on test database
+4. Identified that tests may run in parallel by default in Jest
+
+**Solution**: 
+1. **Forced sequential test execution** - Added `"maxWorkers": 1` to Jest config in `backend/package.json`:
+   ```json
+   "jest": {
+     // ... other config
+     "testEnvironment": "node",
+     "maxWorkers": 1
+   }
+   ```
+
+2. **Improved test cleanup** - Enhanced `afterEach` in `backend/src/services/auth.service.spec.ts` to delete all related data in proper order:
+   ```typescript
+   afterEach(async () => {
+     // Clean up volunteers and related data created during tests
+     // Delete in order to respect foreign key constraints
+     await prisma.passwordReset.deleteMany();
+     await prisma.notification.deleteMany();
+     await prisma.signup.deleteMany();
+     await prisma.pointEvent.deleteMany();
+     await prisma.badgeTierHistory.deleteMany();
+     await prisma.volunteerToRole.deleteMany();
+     await prisma.childRank.deleteMany();
+     await prisma.volunteerPointBalance.deleteMany();
+     await prisma.volunteer.deleteMany();
+   });
+   ```
+
+3. **Applied database migrations** - Ran migrations on test database:
+   ```powershell
+   $env:DATABASE_URL = "file:./test.db"
+   npx prisma migrate deploy
+   ```
+
+**Result**: All 25 tests passed successfully after implementing these fixes.
+
+**Prevention**:
+- Run `DATABASE_URL=file:./test.db npx prisma migrate deploy` after any schema changes
+- Consider adding a `test:setup` script to package.json that runs migrations automatically
+- Always clean up ALL related data in test teardown, not just the primary entity
+- Use `maxWorkers: 1` for tests that share a database to prevent race conditions
+- Consider using transactions with rollback for test isolation instead of manual cleanup
+- Add test database initialization to CI/CD pipeline setup steps
+- Document test database setup requirements in TESTING.md
+
+**Alternative Solutions Considered**:
+1. **Separate database per test suite**: More isolation but slower and more complex
+2. **In-memory SQLite database**: Faster but doesn't catch disk-based issues
+3. **Database transactions with rollback**: Cleaner but requires wrapping all tests in transactions
+
+**Key Learning**: 
+Test databases require the same migration discipline as development/production databases. Deleting test data is not enough - you must also ensure the schema is up-to-date and that cleanup respects foreign key constraints. When tests share a database, parallel execution can cause race conditions that lead to misleading failures.
+
+**Files Modified**:
+- `backend/package.json` - Added `maxWorkers: 1` to Jest config
+- `backend/src/services/auth.service.spec.ts` - Enhanced `afterEach` cleanup to delete all related data
+
+---
+
+## 2026-04-05: Test Failure - Prisma Instance Mismatch Between Tests and Services
+
+**Error**: Tests creating data that services couldn't find, causing "Volunteer not found" errors even though the volunteer was successfully created in the test.
+
+**Symptom**: 
+```typescript
+const volunteer = await createTestVolunteer({ name: 'Test User' });
+const profile = await service.getProfile(volunteer.id); // Error: Volunteer not found
+```
+
+**Root Cause**: The test utilities (`backend/src/test/test-utils.ts`) were creating their own separate Prisma client instance instead of using the singleton from `backend/src/utils/prisma.ts`:
+
+```typescript
+// WRONG: Creates a new Prisma instance
+const adapter = new PrismaLibSql({ url: process.env.DATABASE_URL });
+export const prisma = new PrismaClient({ adapter });
+```
+
+This meant:
+- Tests were writing to one database connection
+- Services were reading from a different database connection (the singleton)
+- Both could technically point to the same file, but different client instances could have different caching behavior
+- The singleton wasn't aware of data created by the test's separate instance
+
+**Solution**: 
+Changed `backend/src/test/test-utils.ts` to import and re-export the singleton Prisma instance:
+
+```typescript
+// CORRECT: Use the singleton instance
+import prisma from '../utils/prisma';
+
+// Set test environment variables BEFORE importing
+process.env.DATABASE_URL = process.env.DATABASE_URL || 'file:./test.db';
+process.env.NODE_ENV = 'test';
+
+// Re-export the singleton for tests to use
+export { prisma };
+```
+
+**Prevention**:
+- Always use a single Prisma client instance per application (singleton pattern)
+- Test utilities should import the application's Prisma instance, not create their own
+- Set environment variables (DATABASE_URL, NODE_ENV) before the Prisma singleton is created
+- In test setup files, set env vars at the top before any imports
+- Consider using a test setup file that runs before all tests to configure the environment
+
+**Key Learning**: 
+Prisma clients maintain internal state and connection pools. Creating multiple instances that point to the same database can lead to data visibility issues where one instance can't see data created by another. This is especially problematic in tests where you create data with one instance and query it with another.
+
+**Files Modified**:
+- `backend/src/test/test-utils.ts` - Changed to import/export singleton instead of creating new instance
+
+---
+
+## 2026-04-05: Prisma Query Error - Using findUnique with Non-Unique Fields
+
+**Error**: Prisma validation errors when querying with `deletedAt` filter:
+```
+Invalid `prisma.volunteer.findUnique()` invocation
+Argument `where` of type VolunteerWhereUniqueInput needs exactly one of `id` or `email` arguments.
+Multiple arguments were provided, including non-unique fields.
+```
+
+**Root Cause**: Using `findUnique()` with additional non-unique filter fields like `deletedAt`:
+
+```typescript
+// WRONG: findUnique only accepts unique constraint fields
+const volunteer = await prisma.volunteer.findUnique({
+  where: { id: volunteerId, deletedAt: null }, // deletedAt is not unique!
+});
+```
+
+Prisma's `findUnique()` method only accepts fields that are part of a unique constraint (like `@id` or `@unique` fields). You cannot add additional filter conditions in the where clause.
+
+**Solution**: 
+Use `findFirst()` instead when you need to filter by both unique and non-unique fields:
+
+```typescript
+// CORRECT: findFirst accepts any filter conditions
+const volunteer = await prisma.volunteer.findFirst({
+  where: { id: volunteerId, deletedAt: null },
+});
+```
+
+Changed in these methods:
+- `VolunteerService.getProfile()`
+- `VolunteerService.updateProfile()`
+- `VolunteerService.getVolunteerById()`
+- `VolunteerService.deleteVolunteer()`
+
+**Why This Matters**:
+- `findUnique()` - Optimized for single-record lookup by unique constraint, returns null if not found
+- `findFirst()` - Flexible filtering but returns the first matching record, returns null if not found
+- Both methods are similar for single-record lookups, but `findFirst()` supports complex where clauses
+
+**Prevention**:
+- Use `findUnique({ where: { id } })` or `findUnique({ where: { email } })` only
+- Use `findFirst({ where: { ...complexFilters } })` when combining conditions
+- When implementing soft deletes (deletedAt pattern), always use `findFirst()` or `findMany()` with `where: { deletedAt: null }`
+- Consider creating database views for commonly filtered queries if performance is a concern
+
+**Key Learning**: 
+Prisma enforces type safety at the query level. The `where` clause of `findUnique()` is typed to only accept unique constraint fields, while `findFirst()` accepts any filter conditions. This prevents inefficient queries but requires using the right method for your use case.
+
+**Files Modified**:
+- `backend/src/services/volunteer.service.ts` - Changed 4 instances of `findUnique` to `findFirst`
+
+---
+
+## 2026-04-05: SQLite Incompatibility - Case-Insensitive Text Search
+
+**Error**: Prisma query error when using case-insensitive search mode:
+```
+Invalid `prisma.volunteer.count()` invocation
+Unknown argument `mode`. Did you mean `lte`? Available options are marked with ?.
+```
+
+**Root Cause**: Using Prisma's `mode: 'insensitive'` option for case-insensitive text search, which is only supported by PostgreSQL, MySQL, and MongoDB, but not SQLite:
+
+```typescript
+// WRONG: mode is not supported by SQLite
+where.OR = [
+  { name: { contains: search, mode: 'insensitive' } },
+  { email: { contains: search, mode: 'insensitive' } },
+];
+```
+
+SQLite's string comparison is case-sensitive by default and doesn't support Prisma's `mode` parameter.
+
+**Solution**: 
+Remove the `mode` parameter and add a comment documenting the limitation:
+
+```typescript
+// CORRECT for SQLite: Case-sensitive search
+where.OR = [
+  { name: { contains: search } },
+  { email: { contains: search } },
+];
+// Note: SQLite doesn't support mode: 'insensitive'
+// For case-insensitive search, use PostgreSQL or add COLLATE NOCASE to schema
+```
+
+**Workarounds for Case-Insensitive Search in SQLite**:
+1. **Add COLLATE NOCASE to schema** (SQLite-specific):
+   ```prisma
+   model Volunteer {
+     name String @db.Text // Add: COLLATE NOCASE in raw SQL
+   }
+   ```
+2. **Use raw SQL queries** with COLLATE NOCASE:
+   ```typescript
+   await prisma.$queryRaw`SELECT * FROM Volunteer WHERE name COLLATE NOCASE LIKE ${search}`
+   ```
+3. **Convert to lowercase at application level**:
+   ```typescript
+   where.OR = [
+     { nameLower: { contains: search.toLowerCase() } }, // Requires separate column
+   ]
+   ```
+4. **Use PostgreSQL for production** (recommended solution)
+
+**Production Consideration**:
+The comment added notes: "For case-insensitive search in production, use PostgreSQL". This is important because:
+- SQLite is great for development/testing but has feature limitations
+- PostgreSQL supports `mode: 'insensitive'` out of the box
+- Migration to PostgreSQL requires no code changes if you avoid SQLite-specific workarounds
+
+**Prevention**:
+- Check Prisma documentation for database-specific feature support
+- Use PostgreSQL in development if you're using it in production
+- Test with production database engine before deploying features that use database-specific features
+- Document database limitations in code comments
+- Use feature flags or environment-based configuration for database-specific queries
+
+**Key Learning**: 
+Not all Prisma features are available across all database providers. The `mode: 'insensitive'` parameter for case-insensitive string matching is only supported by PostgreSQL, MySQL, and MongoDB. SQLite requires alternative approaches like COLLATE NOCASE in raw SQL or migrating to a database that supports the feature.
+
+**Files Modified**:
+- `backend/src/services/volunteer.service.ts` - Removed `mode: 'insensitive'` and added documentation comment
+- `backend/src/services/volunteer.service.spec.ts` - Updated test to use exact case match ('Alice' instead of 'alice')
+
+---
+
+## 2026-04-05: E2E Test Failures - Zod Error Handling Accessing Wrong Property
+
+**Errors**: Multiple e2e test failures with server crashes:
+```
+[Nest] 43456 - ERROR [ExceptionsHandler] TypeError: Cannot read properties of undefined (reading 'map')
+    at AuthController.register (auth.controller.ts:87:33)
+```
+
+**Symptoms**:
+- Tests for `/api/auth/register`, `/api/auth/refresh`, and `/api/auth/reset-password` were failing with 500 errors
+- Backend was crashing when trying to handle Zod validation errors
+- Error message showed `error.errors.map()` failing because `error.errors` was undefined
+- Tests that should return 400 Bad Request were returning 500 Internal Server Error
+
+**Root Cause**: 
+Zod error handling code in `backend/src/api/auth.controller.ts` was accessing the wrong property name. Zod error objects have an `issues` property, not an `errors` property:
+
+```typescript
+// WRONG: Zod errors don't have an 'errors' property
+catch (error: any) {
+  if (error.name === 'ZodError') {
+    throw new BadRequestException({
+      error: 'Invalid input',
+      details: error.errors.map((e: any) => e.message)  // ❌ error.errors is undefined
+    });
+  }
+}
+```
+
+**Zod Error Object Structure**:
+```typescript
+{
+  name: 'ZodError',
+  issues: [                    // ✓ Correct property name
+    { message: '...', path: [...], code: '...' },
+    { message: '...', path: [...], code: '...' }
+  ]
+}
+```
+
+**Solution**: 
+Changed all Zod error handlers to access `error.issues` with optional chaining for safety:
+
+```typescript
+// CORRECT: Access error.issues with fallback
+catch (error: any) {
+  if (error.name === 'ZodError') {
+    throw new BadRequestException({
+      error: 'Invalid input',
+      details: error.issues?.map((e: any) => e.message) || []  // ✓ Correct
+    });
+  }
+}
+```
+
+**Affected Locations**:
+All error handlers in `backend/src/api/auth.controller.ts`:
+1. Line 87 - POST `/api/auth/register`
+2. Line 154 - POST `/api/auth/login`
+3. Line 260 - POST `/api/auth/request-reset`
+4. Line 301 - POST `/api/auth/reset-password`
+5. Line 366 - POST `/api/auth/change-password` (slightly different format but same issue)
+
+**Additional E2E Test Issues Fixed**:
+While investigating, discovered and fixed multiple e2e test issues:
+
+1. **Missing cookieParser middleware** - Tests weren't able to read/send cookies:
+   ```typescript
+   import cookieParser from 'cookie-parser';
+   app.use(cookieParser());
+   ```
+
+2. **Incorrect status code expectations** - Tests expected wrong HTTP status codes:
+   - Validation errors: Changed from 500 to 400 (Bad Request)
+   - Refresh token errors: Changed from 500 to 401 (Unauthorized)
+   - Password reset: Changed from 200 to 201 (Created)
+
+3. **AuthGuard token location** - Tests sent JWT in Authorization header, but AuthGuard expects cookies:
+   ```typescript
+   // WRONG:
+   .set('Authorization', `Bearer ${token}`)
+   
+   // CORRECT:
+   .set('Cookie', cookies)
+   ```
+
+4. **Refresh token endpoint** - Test sent token in body, but endpoint reads from cookies
+
+5. **Password reset token hashing** - `createPasswordResetToken()` helper in `test-utils.ts` was storing unhashed tokens, but the service expects SHA-256 hashed tokens:
+   ```typescript
+   const token = crypto.randomBytes(32).toString('hex');
+   const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+   ```
+
+**Prevention**:
+- Always check Zod documentation for the correct property names when handling errors
+- Use optional chaining (`?.`) when accessing properties that might not exist
+- Provide fallback values (`|| []`) to prevent undefined errors
+- Add type definitions for error objects to catch these issues at compile time
+- Run e2e tests regularly to catch integration issues early
+- Consider creating a reusable Zod error handler utility function
+
+**Key Learning**: 
+Third-party library error objects may not follow expected naming conventions. Zod uses `issues` not `errors` for validation failures. Always consult the library documentation and use defensive coding (optional chaining + fallbacks) when accessing error properties. Additionally, e2e tests require matching the exact implementation details (cookies vs headers, status codes) of the production code.
+
+**Files Modified**:
+- `backend/src/api/auth.controller.ts` - Changed `error.errors` to `error.issues?.` with fallback in 5 locations
+- `backend/src/test/test-utils.ts` - Fixed `createPasswordResetToken()` to hash tokens
+- `backend/test/auth.e2e-spec.ts` - Added cookieParser, fixed token sending, updated status codes

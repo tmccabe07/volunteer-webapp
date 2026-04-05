@@ -12,7 +12,7 @@ export class VolunteerService {
    * Get volunteer profile with roles, ranks, and point balance
    */
   async getProfile(volunteerId: string) {
-    const volunteer = await prisma.volunteer.findUnique({
+    const volunteer = await prisma.volunteer.findFirst({
       where: { id: volunteerId, deletedAt: null },
       include: {
         volunteerRoles: {
@@ -94,7 +94,7 @@ export class VolunteerService {
       childrenRanks?: string[];
     }
   ) {
-    const volunteer = await prisma.volunteer.findUnique({
+    const volunteer = await prisma.volunteer.findFirst({
       where: { id: volunteerId, deletedAt: null },
     });
 
@@ -285,9 +285,11 @@ export class VolunteerService {
     };
 
     if (search) {
+      // Note: SQLite doesn't support mode: 'insensitive'
+      // For case-insensitive search in production, use PostgreSQL or add COLLATE NOCASE to schema
       where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
+        { name: { contains: search } },
+        { email: { contains: search } },
       ];
     }
 
@@ -359,7 +361,7 @@ export class VolunteerService {
    * Get specific volunteer details (Tier 2+ or self)
    */
   async getVolunteerById(volunteerId: string) {
-    const volunteer = await prisma.volunteer.findUnique({
+    const volunteer = await prisma.volunteer.findFirst({
       where: { id: volunteerId, deletedAt: null },
       include: {
         volunteerRoles: {
@@ -446,7 +448,7 @@ export class VolunteerService {
    * Soft delete a volunteer (Tier 3 only)
    */
   async deleteVolunteer(volunteerId: string) {
-    const volunteer = await prisma.volunteer.findUnique({
+    const volunteer = await prisma.volunteer.findFirst({
       where: { id: volunteerId, deletedAt: null },
     });
 

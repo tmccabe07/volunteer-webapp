@@ -84,7 +84,7 @@ export class AuthController {
       if (error.name === 'ZodError') {
         throw new BadRequestException({
           error: 'Invalid input',
-          details: error.errors.map((e: any) => e.message)
+          details: error.issues?.map((e: any) => e.message) || []
         });
       }
 
@@ -152,7 +152,7 @@ export class AuthController {
       if (error.name === 'ZodError') {
         throw new BadRequestException({
           error: 'Invalid input',
-          details: error.errors.map((e: any) => e.message)
+          details: error.issues?.map((e: any) => e.message) || []
         });
       }
 
@@ -260,7 +260,7 @@ export class AuthController {
       if (error.name === 'ZodError') {
         throw new BadRequestException({
           error: 'Invalid input',
-          details: error.errors.map((e: any) => e.message)
+          details: error.issues?.map((e: any) => e.message) || []
         });
       }
 
@@ -298,7 +298,7 @@ export class AuthController {
       if (error.name === 'ZodError') {
         throw new BadRequestException({
           error: 'Invalid input',
-          details: error.errors.map((e: any) => e.message)
+          details: error.issues?.map((e: any) => e.message) || []
         });
       }
 
@@ -364,7 +364,7 @@ export class AuthController {
       if (error.name === 'ZodError') {
         throw new BadRequestException({
           message: 'Validation failed',
-          errors: error.errors
+          errors: error.issues || []
         });
       }
 
