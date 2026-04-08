@@ -22,7 +22,7 @@ import {
   Req
 } from '@nestjs/common';
 import type { Request } from 'express';
-import { AuthGuard, RequireTier, type JWTPayload } from '../middleware/auth';
+import { AuthGuard, TierGuard, RequireTier, type JWTPayload } from '../middleware/auth';
 import { ActivityTypeService } from '../services/activity-type.service';
 import {
   createActivitySchema,
@@ -61,6 +61,7 @@ export class ActivityTypesController {
    * Authorization: Tier 3 (Admin) only
    */
   @Post()
+  @UseGuards(TierGuard)
   @RequireTier(AuthTier.ADMIN)
   @HttpCode(HttpStatus.CREATED)
   async createActivityType(
@@ -92,6 +93,7 @@ export class ActivityTypesController {
    * Authorization: Tier 3 (Admin) only
    */
   @Put(':id')
+  @UseGuards(TierGuard)
   @RequireTier(AuthTier.ADMIN)
   async updateActivityType(
     @Param('id') id: string,
@@ -123,6 +125,7 @@ export class ActivityTypesController {
    * Authorization: Tier 3 (Admin) only
    */
   @Delete(':id')
+  @UseGuards(TierGuard)
   @RequireTier(AuthTier.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteActivityType(
