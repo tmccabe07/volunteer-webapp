@@ -1,0 +1,314 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PlusCircle, Trash2 } from 'lucide-react';
+
+interface ActivitySlot {
+  activityTypeId: string;
+  capacity?: number | null;
+}
+
+interface EventFormData {
+  title: string;
+  description?: string;
+  eventDate: string;
+  eventTime?: string;
+  location?: string;
+  rankLevel?: string | null;
+  isRecurring?: boolean;
+  activitySlots: ActivitySlot[];
+}
+
+interface ActivityType {
+  id: string;
+  name: string;
+  pointValue: number;
+  category: string;
+}
+
+interface EventFormProps {
+  initialData?: Partial<EventFormData>;
+  activityTypes: ActivityType[];
+  onSubmit: (data: EventFormData) => Promise<void>;
+  submitLabel?: string;
+}
+
+const RANK_LEVELS = [
+  { value: 'LION', label: 'Lion' },
+  { value: 'TIGER', label: 'Tiger' },
+  { value: 'WOLF', label: 'Wolf' },
+  { value: 'BEAR', label: 'Bear' },
+  { value: 'WEBELOS', label: 'Webelos' },
+  { value: 'AOL', label: 'Arrow of Light' },
+  { value: 'PACK_WIDE', label: 'Pack-Wide' },
+];
+
+export default function EventForm({ initialData, activityTypes, onSubmit, submitLabel = 'Create Event' }: EventFormProps) {
+  const router = useRouter();
+  const [formData, setFormData] = useState<EventFormData>({
+    title: initialData?.title || '',
+    description: initialData?.description || '',
+    eventDate: initialData?.eventDate || '',
+    eventTime: initialData?.eventTime || '',
+    location: initialData?.location || '',
+    rankLevel: initialData?.rankLevel || null,
+    isRecurring: initialData?.isRecurring || false,
+    activitySlots: initialData?.activitySlots || [{ activityTypeId: '', capacity: null }],
+  });
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleChange = (field: keyof EventFormData, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleActivitySlotChange = (index: number, field: keyof ActivitySlot, value: any) => {
+    const newSlots = [...formData.activitySlots];
+    newSlots[index] = { ...newSlots[index], [field]: value };
+    setFormData(prev => ({ ...prev, activitySlots: newSlots }));
+  };
+
+  const addActivitySlot = () => {
+    setFormData(prev => ({
+      ...prev,
+      activitySlots: [...prev.activitySlots, { activityTypeId: '', capacity: null }],
+    }));
+  };
+
+  const removeActivitySlot = (index: number) => {
+    if (formData.activitySlots.length === 1) {
+      setError('At least one activity slot is required');
+      return;
+    }
+    setFormData(prev => ({
+      ...prev,
+      activitySlots: prev.activitySlots.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      // Validate activity slots
+      for (const slot of formData.activitySlots) {
+        if (!slot.activityTypeId) {
+          throw new Error('All activity slots must have an activity type selected');
+        }
+      }
+
+      // Convert eventDate to ISO 8601
+      const eventDateTime = new Date(formData.eventDate);
+      if (isNaN(eventDateTime.getTime())) {
+        throw new Error('Invalid event date');
+      }
+
+      const submissionData: EventFormData = {
+        ...formData,
+        eventDate: eventDateTime.toISOString(),
+        rankLevel: formData.rankLevel === '' ? null : formData.rankLevel,
+      };
+
+      await onSubmit(submissionData);
+      router.push('/events');
+    } catch (err: any) {
+      setError(err.message || 'Failed to save event');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Event Details</CardTitle>
+          <CardDescription>Basic information about the volunteer event</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="title">Event Title *</Label>
+            <Input
+              id="title"
+              value={formData.title}
+              onChange={(e) => handleChange('title', e.target.value)}
+              required
+              minLength={3}
+              maxLength={200}
+              placeholder="Pack Meeting Cleanup"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => handleChange('description', e.target.value)}
+              placeholder="Help clean up after the monthly pack meeting"
+              rows={3}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="eventDate">Event Date *</Label>
+              <Input
+                id="eventDate"
+                type="date"
+                value={formData.eventDate}
+                onChange={(e) => handleChange('eventDate', e.target.value)}
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="eventTime">Event Time</Label>
+              <Input
+                id="eventTime"
+                type="time"
+                value={formData.eventTime}
+                onChange={(e) => handleChange('eventTime', e.target.value)}
+                placeholder="6:00 PM"
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="location">Location</Label>
+            <Input
+              id="location"
+              value={formData.location}
+              onChange={(e) => handleChange('location', e.target.value)}
+              placeholder="Church Fellowship Hall"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="rankLevel">Rank Level</Label>
+            <Select
+              value={formData.rankLevel || 'PACK_WIDE'}
+              onValueChange={(value) => handleChange('rankLevel', value === 'PACK_WIDE' ? null : value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select rank level" />
+              </SelectTrigger>
+              <SelectContent>
+                {RANK_LEVELS.map(rank => (
+                  <SelectItem key={rank.value} value={rank.value}>
+                    {rank.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="isRecurring"
+              checked={formData.isRecurring}
+              onChange={(e) => handleChange('isRecurring', e.target.checked)}
+              className="rounded"
+            />
+            <Label htmlFor="isRecurring" className="font-normal">
+              Recurring event (repeats until end of scouting year)
+            </Label>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Activity Slots</CardTitle>
+          <CardDescription>
+            Define volunteer activities for this event. Each activity can have a capacity limit.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {formData.activitySlots.map((slot, index) => (
+            <div key={index} className="flex gap-4 items-end p-4 border rounded-lg">
+              <div className="flex-1">
+                <Label>Activity Type *</Label>
+                <Select
+                  value={slot.activityTypeId}
+                  onValueChange={(value) => handleActivitySlotChange(index, 'activityTypeId', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select activity" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activityTypes.map(type => (
+                      <SelectItem key={type.id} value={type.id}>
+                        {type.name} ({type.pointValue} points)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="w-32">
+                <Label>Capacity</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={slot.capacity || ''}
+                  onChange={(e) =>
+                    handleActivitySlotChange(index, 'capacity', e.target.value ? parseInt(e.target.value) : null)
+                  }
+                  placeholder="Unlimited"
+                />
+              </div>
+
+              <Button
+                type="button"
+                variant="destructive"
+                size="icon"
+                onClick={() => removeActivitySlot(index)}
+                disabled={formData.activitySlots.length === 1}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+
+          <Button type="button" variant="outline" onClick={addActivitySlot} className="w-full">
+            <PlusCircle className="h-4 w-4 mr-2" />
+            Add Activity Slot
+          </Button>
+        </CardContent>
+      </Card>
+
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-800">
+          {error}
+        </div>
+      )}
+
+      <div className="flex gap-4">
+        <Button type="submit" disabled={loading}>
+          {loading ? 'Saving...' : submitLabel}
+        </Button>
+        <Button type="button" variant="outline" onClick={() => router.back()}>
+          Cancel
+        </Button>
+      </div>
+    </form>
+  );
+}
