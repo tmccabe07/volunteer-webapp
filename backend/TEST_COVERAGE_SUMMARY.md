@@ -376,7 +376,7 @@ npm run test:watch
 9. ✅ Add API contract tests for points endpoints (completed)
 10. ✅ Add API contract tests for config endpoints (completed)
 11. ✅ Add API contract tests for admin endpoints (completed)
-12. ⬜ Set up frontend testing infrastructure
+12. ✅ Set up frontend testing infrastructure
 
 ### Path to 80% Coverage
 To reach the 80%+ coverage goal:
