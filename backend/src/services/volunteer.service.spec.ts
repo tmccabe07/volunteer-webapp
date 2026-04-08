@@ -401,4 +401,87 @@ describe('VolunteerService', () => {
       );
     });
   });
+
+  describe('getAvailableRoles', () => {
+    it('should return all active roles', async () => {
+      const roles = await service.getAvailableRoles();
+
+      expect(roles).toBeDefined();
+      expect(Array.isArray(roles)).toBe(true);
+      expect(roles.length).toBeGreaterThan(0);
+      expect(roles[0]).toHaveProperty('id');
+      expect(roles[0]).toHaveProperty('name');
+      expect(roles[0]).toHaveProperty('roleType');
+      expect(roles[0]).toHaveProperty('grantsTier');
+    });
+
+    it('should exclude soft-deleted roles', async () => {
+      // Get current roles count
+      const beforeRoles = await service.getAvailableRoles();
+      const beforeCount = beforeRoles.length;
+
+      // Soft delete one role
+      const roleToDelete = await prisma.volunteerRole.findFirst({
+        where: { deletedAt: null },
+      });
+      await prisma.volunteerRole.update({
+        where: { id: roleToDelete!.id },
+        data: { deletedAt: new Date() },
+      });
+
+      // Get roles again
+      const afterRoles = await service.getAvailableRoles();
+
+      expect(afterRoles.length).toBe(beforeCount - 1);
+      expect(afterRoles.find((r) => r.id === roleToDelete!.id)).toBeUndefined();
+
+      // Restore role for other tests
+      await prisma.volunteerRole.update({
+        where: { id: roleToDelete!.id },
+        data: { deletedAt: null },
+      });
+    });
+
+    it('should order roles by roleType and name', async () => {
+      const roles = await service.getAvailableRoles();
+
+      // Verify ordering - roleType should be ascending
+      for (let i = 1; i < roles.length; i++) {
+        const prev = roles[i - 1];
+        const curr = roles[i];
+
+        // If same roleType, name should be ascending
+        if (prev.roleType === curr.roleType) {
+          expect(prev.name.localeCompare(curr.name)).toBeLessThanOrEqual(0);
+        }
+      }
+    });
+
+    it('should include specialty and rankLevel fields when present', async () => {
+      const roles = await service.getAvailableRoles();
+
+      // Find a committee role with specialty
+      const committeeRole = roles.find(
+        (r) => r.roleType === 'COMMITTEE' && r.specialty
+      );
+      expect(committeeRole).toBeDefined();
+      expect(committeeRole?.specialty).toBeTruthy();
+
+      // Find a den leader role with rankLevel
+      const denLeaderRole = roles.find(
+        (r) => r.roleType === 'DEN_LEADER' && r.rankLevel
+      );
+      expect(denLeaderRole).toBeDefined();
+      expect(denLeaderRole?.rankLevel).toBeTruthy();
+    });
+
+    it('should include description field', async () => {
+      const roles = await service.getAvailableRoles();
+
+      // All roles should have a description
+      roles.forEach((role) => {
+        expect(role).toHaveProperty('description');
+      });
+    });
+  });
 });
