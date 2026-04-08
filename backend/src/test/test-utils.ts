@@ -165,7 +165,12 @@ export async function createTestVolunteerWithRole(
  * Factory: Create test event
  */
 export async function createTestEvent(creatorId: string, data: Partial<Event> = {}): Promise<Event> {
-  const activityType = await prisma.activityType.findFirst();
+  // Ensure we have an activity type
+  let activityType = await prisma.activityType.findFirst();
+  
+  if (!activityType) {
+    activityType = await createTestActivityType();
+  }
   
   const event = await prisma.event.create({
     data: {
@@ -181,15 +186,13 @@ export async function createTestEvent(creatorId: string, data: Partial<Event> = 
   });
 
   // Create one activity slot
-  if (activityType) {
-    await prisma.activitySlot.create({
-      data: {
-        eventId: event.id,
-        activityTypeId: activityType.id,
-        capacity: 5,
-      },
-    });
-  }
+  await prisma.activitySlot.create({
+    data: {
+      eventId: event.id,
+      activityTypeId: activityType.id,
+      capacity: 5,
+    },
+  });
 
   return event;
 }

@@ -104,7 +104,7 @@ export class EventsController {
       if (error.name === 'ZodError') {
         throw new BadRequestException({
           error: 'Invalid query parameters',
-          details: error.errors.map((e: any) => e.message)
+          details: error.issues?.map((e: any) => e.message) || []
         });
       }
       throw error;
@@ -145,19 +145,17 @@ export class EventsController {
     @Req() req: AuthenticatedRequest
   ) {
     try {
-      console.log('Received event creation request:', JSON.stringify(body, null, 2));
       const validatedData = createEventSchema.parse(body);
-      console.log('Validated data:', JSON.stringify(validatedData, null, 2));
       const createdById = req.user!.userId;
 
       const event = await this.eventService.createEvent(validatedData, createdById);
 
       return event;
     } catch (error: any) {
-      if (error.name === 'ZodError' && error.errors) {
+      if (error.name === 'ZodError') {
         throw new BadRequestException({
           error: 'Invalid input',
-          details: error.errors.map((e: any) => e.message)
+          details: error.issues?.map((e: any) => e.message) || []
         });
       }
       if (error.message?.includes('future')) {
@@ -166,7 +164,6 @@ export class EventsController {
       if (error.message?.includes('do not exist')) {
         throw new BadRequestException(error.message);
       }
-      console.error('Event creation error:', error);
       throw error;
     }
   }
@@ -193,7 +190,7 @@ export class EventsController {
       if (error.name === 'ZodError') {
         throw new BadRequestException({
           error: 'Invalid input',
-          details: error.errors.map((e: any) => e.message)
+          details: error.issues?.map((e: any) => e.message) || []
         });
       }
       if (error.message === 'Event not found') {
@@ -232,7 +229,7 @@ export class EventsController {
       if (error.name === 'ZodError') {
         throw new BadRequestException({
           error: 'Invalid input',
-          details: error.errors.map((e: any) => e.message)
+          details: error.issues?.map((e: any) => e.message) || []
         });
       }
       if (error.message === 'Event not found') {

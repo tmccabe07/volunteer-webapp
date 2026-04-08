@@ -109,10 +109,11 @@ export class VolunteerService {
         where: { volunteerId },
       });
 
-      // Create new ranks
+      // Create new ranks (deduplicate to prevent unique constraint violations)
       if (data.childrenRanks.length > 0) {
+        const uniqueRanks = [...new Set(data.childrenRanks)];
         await prisma.childRank.createMany({
-          data: data.childrenRanks.map((rankLevel) => ({
+          data: uniqueRanks.map((rankLevel) => ({
             volunteerId,
             rankLevel: rankLevel as any,
           })),

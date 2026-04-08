@@ -76,7 +76,7 @@ export class ActivityTypesController {
       if (error.name === 'ZodError') {
         throw new BadRequestException({
           error: 'Invalid input',
-          details: error.errors.map((e: any) => e.message)
+          details: error.issues?.map((e: any) => e.message) || []
         });
       }
       if (error instanceof ConflictException) {
@@ -107,7 +107,7 @@ export class ActivityTypesController {
       if (error.name === 'ZodError') {
         throw new BadRequestException({
           error: 'Invalid input',
-          details: error.errors.map((e: any) => e.message)
+          details: error.issues?.map((e: any) => e.message) || []
         });
       }
       if (error instanceof NotFoundException || error instanceof ConflictException) {

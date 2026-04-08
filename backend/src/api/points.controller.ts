@@ -68,7 +68,7 @@ export class PointsController {
       if (error.name === 'ZodError') {
         throw new BadRequestException({
           error: 'Invalid query parameters',
-          details: error.errors.map((e: any) => e.message)
+          details: error.issues?.map((e: any) => e.message) || []
         });
       }
       throw error;
@@ -109,7 +109,7 @@ export class PointsController {
       if (error.name === 'ZodError') {
         throw new BadRequestException({
           error: 'Invalid query parameters',
-          details: error.errors.map((e: any) => e.message)
+          details: error.issues?.map((e: any) => e.message) || []
         });
       }
       throw error;
@@ -273,7 +273,7 @@ export class PointsController {
       if (error.name === 'ZodError') {
         throw new BadRequestException({
           error: 'Invalid input',
-          details: error.errors.map((e: any) => e.message)
+          details: error.issues?.map((e: any) => e.message) || []
         });
       }
       throw error;
@@ -315,7 +315,7 @@ export class LeaderboardController {
       if (error.name === 'ZodError') {
         throw new BadRequestException({
           error: 'Invalid query parameters',
-          details: error.errors.map((e: any) => e.message)
+          details: error.issues?.map((e: any) => e.message) || []
         });
       }
       throw error;

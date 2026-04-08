@@ -598,6 +598,109 @@ Prisma clients maintain internal state and connection pools. Creating multiple i
 
 ---
 
+## 2026-04-08: ZodError Handling - Using error.errors Instead of error.issues
+
+**Error**: `TypeError: Cannot read properties of undefined (reading 'map')` when Zod validation failed in API controllers.
+
+```
+[Nest] ERROR [ExceptionsHandler] TypeError: Cannot read properties of undefined (reading 'map')
+    at PointsController.getMyPoints (C:\...\backend\src\api\points.controller.ts:71:33)
+    at VolunteersController.updateMyProfile (C:\...\backend\src\api\volunteers.controller.ts:90:33)
+    at EventsController.listEvents (C:\...\backend\src\api\events.controller.ts:107:33)
+```
+
+**Symptoms**:
+- API endpoints crashed with 500 errors when receiving invalid input that failed Zod validation
+- Tests passed but console showed TypeError exceptions
+- Error occurred before the BadRequestException could be thrown
+- Issue appeared in all controllers that validated request data with Zod schemas
+
+**Root Cause**: 
+Controllers were using `error.errors.map()` to extract validation error messages, but Zod's error object has an `issues` property, not `errors`:
+
+```typescript
+// WRONG: ZodError doesn't have 'errors' property
+catch (error: any) {
+  if (error.name === 'ZodError') {
+    throw new BadRequestException({
+      error: 'Invalid input',
+      details: error.errors.map((e: any) => e.message)  // ❌ error.errors is undefined
+    });
+  }
+}
+```
+
+**Why This Happened**:
+- Zod's error object structure: `{ name: 'ZodError', issues: [...] }`
+- Initial implementation incorrectly assumed property was called `errors`
+- TypeScript didn't catch this because `error` was typed as `any`
+- Tests passed because they sent valid data and never triggered validation failures
+- Only discovered when running e2e tests with invalid query parameters
+
+**Solution**: 
+Changed all error handlers to use `error.issues` with optional chaining and fallback:
+
+```typescript
+// CORRECT: Use error.issues with safe access
+catch (error: any) {
+  if (error.name === 'ZodError') {
+    throw new BadRequestException({
+      error: 'Invalid input',
+      details: error.issues?.map((e: any) => e.message) || []  // ✓ Safe access with fallback
+    });
+  }
+}
+```
+
+**Affected Controllers**:
+- `backend/src/api/points.controller.ts` - 4 instances
+- `backend/src/api/volunteers.controller.ts` - 3 instances
+- `backend/src/api/events.controller.ts` - 4 instances
+- `backend/src/api/config.controller.ts` - 2 instances
+- `backend/src/api/auth.controller.ts` - Already correct
+
+**Prevention**:
+- Always use `error.issues` for Zod validation errors, never `error.errors`
+- Include optional chaining (`?.`) and fallback (`|| []`) for safety
+- Type Zod errors properly instead of using `any`: `import { ZodError } from 'zod'`
+- Add negative test cases that intentionally trigger validation errors
+- Create reusable error handler utility to ensure consistency:
+  ```typescript
+  function handleZodError(error: any) {
+    if (error.name === 'ZodError') {
+      return {
+        error: 'Validation failed',
+        details: error.issues?.map((e: any) => e.message) || []
+      };
+    }
+    return null;
+  }
+  ```
+
+**Correct Zod Error Structure**:
+```typescript
+interface ZodError {
+  name: 'ZodError';
+  issues: Array<{
+    code: string;
+    path: (string | number)[];
+    message: string;
+    // ... other properties
+  }>;
+}
+```
+
+**Key Learning**: 
+When working with third-party validation libraries, always reference the official documentation for error object structure. Don't assume property names. TypeScript's `any` type bypasses type checking and can hide these errors until runtime. Use proper typing or at least verify the property exists before accessing it.
+
+**Files Modified**:
+- `backend/src/api/points.controller.ts` - Fixed 4 ZodError handlers
+- `backend/src/api/volunteers.controller.ts` - Fixed 3 ZodError handlers
+- `backend/src/api/events.controller.ts` - Fixed 4 ZodError handlers
+- `backend/src/api/config.controller.ts` - Fixed 2 ZodError handlers
+
+---
+
 ## 2026-04-05: Prisma Query Error - Using findUnique with Non-Unique Fields
 
 **Error**: Prisma validation errors when querying with `deletedAt` filter:
@@ -836,3 +939,101 @@ Third-party library error objects may not follow expected naming conventions. Zo
 - `backend/src/api/auth.controller.ts` - Changed `error.errors` to `error.issues?.` with fallback in 5 locations
 - `backend/src/test/test-utils.ts` - Fixed `createPasswordResetToken()` to hash tokens
 - `backend/test/auth.e2e-spec.ts` - Added cookieParser, fixed token sending, updated status codes
+
+---
+
+## 2026-04-08: E2E Test Failures - Foreign Key Constraint Violation in Test Cleanup
+
+**Error**: 
+```
+Foreign key constraint failed on the constraint: `<constraint_name>`
+Error occurred in afterEach() hook at line 40:
+  await prisma.volunteer.deleteMany()
+```
+
+**Symptoms**:
+- Volunteers e2e tests were failing with foreign key constraint violations during cleanup
+- Tests that created volunteers and related data (roles, point events) would fail when deleting volunteers
+- Error occurred in the `afterEach()` cleanup hook, not in the test itself
+- Subsequent tests failed due to dirty database state from previous test failures
+
+**Root Cause**: 
+The test cleanup in `afterEach()` was deleting records in the wrong order, violating foreign key constraints. The initial cleanup code was:
+
+```typescript
+afterEach(async () => {
+  await prisma.volunteerToRole.deleteMany();
+  await prisma.childRank.deleteMany();
+  await prisma.volunteer.deleteMany();  // ❌ FAILS: Other tables still reference volunteers
+});
+```
+
+**Why This Fails**:
+- The `volunteer` table has foreign key relationships with many other tables
+- `pointEvent` table has a `volunteerId` foreign key that references `volunteer.id`
+- When role assignments are created, the `PointsService.awardRoleAssignmentPoints()` method creates point events
+- Attempting to delete volunteers before deleting point events violates the foreign key constraint
+- SQLite (and most databases) enforce referential integrity by default
+
+**Foreign Key Cascade Behavior**:
+Some relationships use `onDelete: Cascade` in the Prisma schema, which automatically deletes child records. However:
+- Not all relationships use cascade delete (some use `Restrict` or `SetNull`)
+- Test cleanup should be explicit and not rely solely on cascade behavior
+- Cascade deletes can mask issues in test data cleanup strategies
+
+**Solution**: 
+Updated the cleanup order to delete child records before parent records:
+
+```typescript
+afterEach(async () => {
+  // Delete in order to respect foreign key constraints
+  await prisma.pointEvent.deleteMany();       // ✓ Delete child records first
+  await prisma.volunteerToRole.deleteMany();
+  await prisma.childRank.deleteMany();
+  await prisma.volunteer.deleteMany();        // ✓ Delete parent records last
+});
+```
+
+**Complete Cleanup Order** (for reference):
+When cleaning up all test data, the full order should be:
+1. Leaf tables (no foreign keys to other tables)
+2. Junction tables / relationship tables
+3. Tables with foreign keys to core entities
+4. Core entity tables (volunteers, events, roles, etc.)
+
+Example from `test-utils.ts`:
+```typescript
+async function cleanupDatabase() {
+  await prisma.passwordReset.deleteMany();
+  await prisma.notification.deleteMany();
+  await prisma.auditLog.deleteMany();
+  await prisma.taskCompletion.deleteMany();
+  await prisma.adminTask.deleteMany();
+  await prisma.signup.deleteMany();
+  await prisma.activitySlot.deleteMany();
+  await prisma.event.deleteMany();
+  await prisma.pointEvent.deleteMany();           // Before volunteer
+  await prisma.badgeTierHistory.deleteMany();
+  await prisma.volunteerToRole.deleteMany();
+  await prisma.childRank.deleteMany();
+  await prisma.volunteer.deleteMany();            // After all child tables
+  await prisma.volunteerRole.deleteMany();
+  await prisma.activityType.deleteMany();
+  await prisma.badgeTier.deleteMany();
+  await prisma.packConfig.deleteMany();
+}
+```
+
+**Prevention**:
+- Always delete child records before parent records in test cleanup
+- Review Prisma schema to understand foreign key relationships and cascade behavior
+- Use a consistent cleanup order across all test files
+- Consider creating a shared cleanup utility function
+- Run tests with `--verbose` to see which cleanup operations fail
+- Document the required cleanup order in test-utils.ts
+
+**Key Learning**: 
+Database foreign key constraints must be respected during test cleanup. Delete child records (tables with foreign keys) before parent records (tables being referenced). The cleanup order should mirror the reverse of the creation order. While Prisma cascade deletes can help, explicit cleanup in the correct order is more reliable and makes dependencies visible.
+
+**Files Modified**:
+- `backend/test/volunteers.e2e-spec.ts` - Added `prisma.pointEvent.deleteMany()` before deleting volunteers
