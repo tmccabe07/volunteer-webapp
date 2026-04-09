@@ -170,7 +170,7 @@ Based on the technical plan requirements:
 
 ## Remaining Test Coverage Needed
 
-### Unit Tests (To Be Created)
+### Unit Tests 
 - [X] EventService tests
 - [X] SignupService tests
 - [X] BadgeTierService tests
@@ -179,7 +179,7 @@ Based on the technical plan requirements:
 - [X] AdminService tests
 - [X] PasswordResetService tests
 
-### API Contract Tests (To Be Created)
+### API Contract Tests 
 - [X] Volunteers API (`/api/volunteers/*`)
 - [X] Events API (`/api/events/*`)
 - [X] Points API (`/api/points/*`)
@@ -191,10 +191,10 @@ Based on the technical plan requirements:
 - [X] Setup Vitest + React Testing Library
 - [X] Component tests for auth forms
 - [X] Component tests for profile forms
-- [ ] Component tests for event forms
-- [ ] Service layer tests
-- [ ] Hook tests (auth-context)
-- [ ] Page component tests
+- [X] Component tests for event forms
+- [X] Service layer tests
+- [X] Hook tests (auth-context)
+- [X] Page component tests
 
 ### E2E Tests (To Be Created)
 - [ ] Setup Playwright
