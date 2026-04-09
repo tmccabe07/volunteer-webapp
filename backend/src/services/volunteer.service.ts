@@ -208,11 +208,13 @@ export class VolunteerService {
       throw new Error('Volunteer not found');
     }
 
+    let tierUpgraded = false;
     if (role.grantsTier === AuthTier.LEADER && volunteer.authTier === AuthTier.PARENT) {
       await prisma.volunteer.update({
         where: { id: volunteerId },
         data: { authTier: AuthTier.LEADER },
       });
+      tierUpgraded = true;
     }
 
     return {
@@ -220,6 +222,7 @@ export class VolunteerService {
       roleId: assignment.roleId,
       roleName: assignment.role.name,
       assignedAt: assignment.assignedAt.toISOString(),
+      tierUpgraded,
     };
   }
 

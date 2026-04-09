@@ -36,6 +36,17 @@ describe('Volunteers API (e2e)', () => {
 
   afterEach(async () => {
     // Delete in order to respect foreign key constraints
+    await prisma.taskCompletion.deleteMany();
+    await prisma.adminTaskToRole.deleteMany();
+    await prisma.adminTask.deleteMany();
+    await prisma.signup.deleteMany();
+    await prisma.activitySlot.deleteMany();
+    await prisma.event.deleteMany();
+    await prisma.notification.deleteMany();
+    await prisma.leaderboardSnapshot.deleteMany();
+    await prisma.badgeTierHistory.deleteMany();
+    await prisma.leaderboardCache.deleteMany();
+    await prisma.volunteerPointBalance.deleteMany();
     await prisma.pointEvent.deleteMany();
     await prisma.volunteerToRole.deleteMany();
     await prisma.childRank.deleteMany();

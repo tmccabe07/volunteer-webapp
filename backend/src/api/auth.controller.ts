@@ -99,10 +99,15 @@ export class AuthController {
   /**
    * POST /api/auth/login
    * Authenticate existing volunteer
-   * Rate limited: 5 requests per 15 minutes
+   * Rate limited: 5 requests per 15 minutes (production), 100 (development)
    */
   @Post('login')
-  @Throttle({ default: { limit: 5, ttl: 15 * 60 * 1000 } })
+  @Throttle({ 
+    default: { 
+      limit: process.env.NODE_ENV === 'development' ? 100 : 5, 
+      ttl: 15 * 60 * 1000 
+    } 
+  })
   async login(
     @Body() body: LoginInput,
     @Res({ passthrough: true }) res: Response
@@ -233,10 +238,15 @@ export class AuthController {
   /**
    * POST /api/auth/request-reset
    * Request password reset email
-   * Rate limited: 3 requests per hour
+   * Rate limited: 3 requests per hour (production), 50 (development)
    */
   @Post('request-reset')
-  @Throttle({ default: { limit: 3, ttl: 60 * 60 * 1000 } })
+  @Throttle({ 
+    default: { 
+      limit: process.env.NODE_ENV === 'development' ? 50 : 3, 
+      ttl: 60 * 60 * 1000 
+    } 
+  })
   async requestReset(@Body() body: RequestResetInput) {
     try {
       // Validate request body

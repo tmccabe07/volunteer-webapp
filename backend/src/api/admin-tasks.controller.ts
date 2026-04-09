@@ -246,6 +246,31 @@ export class AdminTasksController {
   }
 
   /**
+   * DELETE /api/admin-tasks/:id/complete
+   * Undo task completion for current user
+   */
+  @Delete(':id/complete')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async uncompleteTask(
+    @Param('id') taskId: string,
+    @Req() req: AuthenticatedRequest
+  ) {
+    try {
+      const volunteerId = req.user!.userId;
+
+      await this.adminTaskService.uncompleteTask(taskId, volunteerId);
+    } catch (error: any) {
+      if (error.message === 'Task not found') {
+        throw new NotFoundException(error.message);
+      }
+      if (error.message === 'Task completion not found') {
+        throw new NotFoundException(error.message);
+      }
+      throw error;
+    }
+  }
+
+  /**
    * DELETE /api/admin-tasks/:id
    * Delete a task (soft delete, Tier 2+ only)
    */

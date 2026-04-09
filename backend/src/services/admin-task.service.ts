@@ -380,6 +380,7 @@ export class AdminTaskService {
               where: { volunteerId },
               select: {
                 id: true,
+                volunteerId: true,  // Need this to find currentUserCompletion
                 completedAt: true,
                 isComplete: true,
               },
@@ -500,6 +501,44 @@ export class AdminTaskService {
       completedAt: completion.completedAt.toISOString(),
       isComplete: completion.isComplete,
     };
+  }
+
+  /**
+   * Undo task completion for current user
+   */
+  async uncompleteTask(taskId: string, volunteerId: string) {
+    // Check if task exists
+    const task = await prisma.adminTask.findUnique({
+      where: { id: taskId, deletedAt: null },
+    });
+
+    if (!task) {
+      throw new Error('Task not found');
+    }
+
+    // Check if completion exists
+    const completion = await prisma.taskCompletion.findUnique({
+      where: {
+        taskId_volunteerId: {
+          taskId,
+          volunteerId,
+        },
+      },
+    });
+
+    if (!completion) {
+      throw new Error('Task completion not found');
+    }
+
+    // Delete the completion record
+    await prisma.taskCompletion.delete({
+      where: {
+        taskId_volunteerId: {
+          taskId,
+          volunteerId,
+        },
+      },
+    });
   }
 
   /**

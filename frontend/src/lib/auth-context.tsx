@@ -26,9 +26,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  // Load user on mount
+  // Load user on mount (skip on public auth pages to avoid 401 errors)
   useEffect(() => {
-    loadUser();
+    if (typeof window !== 'undefined') {
+      const publicAuthPaths = ['/auth/login', '/auth/register', '/auth/reset-password'];
+      const isOnPublicPage = publicAuthPaths.some(path => window.location.pathname.startsWith(path));
+      
+      if (!isOnPublicPage) {
+        loadUser();
+      } else {
+        setIsLoading(false);
+      }
+    } else {
+      loadUser();
+    }
   }, []);
 
   const loadUser = async () => {

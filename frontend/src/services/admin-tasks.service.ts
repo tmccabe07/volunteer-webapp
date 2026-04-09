@@ -81,6 +81,13 @@ const adminTasksService = {
   },
 
   /**
+   * Undo task completion for current user
+   */
+  async uncompleteTask(taskId: string) {
+    await axios.delete(`/admin-tasks/${taskId}/complete`);
+  },
+
+  /**
    * Delete a task (soft delete, Tier 2+ only)
    */
   async deleteTask(taskId: string) {
@@ -99,7 +106,7 @@ const adminTasksService = {
    * Get available volunteer roles (for task assignment)
    */
   async getVolunteerRoles() {
-    const response = await axios.get('/volunteer-roles');
+    const response = await axios.get('/volunteers/roles/available');
     return response.data;
   },
 };
