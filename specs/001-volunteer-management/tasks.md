@@ -256,27 +256,27 @@
 
 ### Backend Implementation for User Story 7
 
-- [ ] T106 [P] [US7] Create Zod validation schemas in backend/src/utils/validation/admin-task.schema.ts (createTaskSchema, updateTaskSchema, completeTaskSchema) from contracts/admin-tasks-api.md
-- [ ] T107 [P] [US7] Create AdminTaskService in backend/src/services/admin-task.service.ts with CRUD operations, role assignment logic, completion tracking, recurring task year-end logic
-- [ ] T108 [US7] Implement GET /api/admin-tasks endpoint in backend/src/api/admin-tasks.routes.ts (list tasks with assignedToMe/status/taskId filters, calculate isOverdue)
-- [ ] T109 [US7] Implement GET /api/admin-tasks/:id endpoint in backend/src/api/admin-tasks.routes.ts (fetch task details, show completions array for Tier 2+)
-- [ ] T110 [US7] Implement POST /api/admin-tasks endpoint in backend/src/api/admin-tasks.routes.ts (create task, validate role assignments, set recurringEndDate) restricted to Tier 2+
-- [ ] T111 [US7] Implement PUT /api/admin-tasks/:id endpoint in backend/src/api/admin-tasks.routes.ts (update task) restricted to Tier 2+
-- [ ] T112 [US7] Implement POST /api/admin-tasks/:id/complete endpoint in backend/src/api/admin-tasks.routes.ts (mark complete for current user, create notification)
-- [ ] T113 [US7] Implement DELETE /api/admin-tasks/:id endpoint in backend/src/api/admin-tasks.routes.ts (soft delete) restricted to Tier 2+
-- [ ] T114 [US7] Implement GET /api/admin-tasks/:id/completions endpoint in backend/src/api/admin-tasks.routes.ts (view completion status across volunteers) restricted to Tier 2+
+- [X] T106 [P] [US7] Create Zod validation schemas in backend/src/utils/validation/admin-task.schema.ts (createTaskSchema, updateTaskSchema, completeTaskSchema) from contracts/admin-tasks-api.md
+- [X] T107 [P] [US7] Create AdminTaskService in backend/src/services/admin-task.service.ts with CRUD operations, role assignment logic, completion tracking, recurring task year-end logic
+- [X] T108 [US7] Implement GET /api/admin-tasks endpoint in backend/src/api/admin-tasks.controller.ts (list tasks with assignedToMe/status/taskId filters, calculate isOverdue)
+- [X] T109 [US7] Implement GET /api/admin-tasks/:id endpoint in backend/src/api/admin-tasks.controller.ts (fetch task details, show completions array for Tier 2+)
+- [X] T110 [US7] Implement POST /api/admin-tasks endpoint in backend/src/api/admin-tasks.controller.ts (create task, validate role assignments, set recurringEndDate) restricted to Tier 2+
+- [X] T111 [US7] Implement PUT /api/admin-tasks/:id endpoint in backend/src/api/admin-tasks.controller.ts (update task) restricted to Tier 2+
+- [X] T112 [US7] Implement POST /api/admin-tasks/:id/complete endpoint in backend/src/api/admin-tasks.controller.ts (mark complete for current user, create notification)
+- [X] T113 [US7] Implement DELETE /api/admin-tasks/:id endpoint in backend/src/api/admin-tasks.controller.ts (soft delete) restricted to Tier 2+
+- [X] T114 [US7] Implement GET /api/admin-tasks/:id/completions endpoint in backend/src/api/admin-tasks.controller.ts (view completion status across volunteers) restricted to Tier 2+
 
 ### Frontend Implementation for User Story 7
 
-- [ ] T115 [P] [US7] Create admin task form components in frontend/src/components/forms/tasks/ (AdminTaskForm with completion steps editor, role selector)
-- [ ] T116 [P] [US7] Create admin task display components in frontend/src/components/shared/tasks/ (TaskCard, TaskDetails, CompletionSteps with URLs)
-- [ ] T117 [P] [US7] Create admin tasks API service in frontend/src/services/admin-tasks.service.ts with Axios methods for all admin task endpoints
-- [ ] T118 [US7] Create admin tasks list page in frontend/src/app/tasks/page.tsx with status filters (complete/incomplete/overdue), overdue highlighting
-- [ ] T119 [US7] Create admin task detail page in frontend/src/app/tasks/[id]/page.tsx with completion button and completion steps
-- [ ] T120 [US7] Create admin task creation page in frontend/src/app/tasks/create/page.tsx (Tier 2+ only) with AdminTaskForm
-- [ ] T121 [US7] Create admin task edit page in frontend/src/app/tasks/[id]/edit/page.tsx (Tier 2+ only) with AdminTaskForm pre-populated
-- [ ] T122 [US7] Create task completion tracking page in frontend/src/app/tasks/[id]/completions/page.tsx (Tier 2+ only) showing volunteer completion status
-- [ ] T123 [US7] Update navigation in frontend/src/components/layouts/nav.tsx to include Tasks link for all tiers
+- [X] T115 [P] [US7] Create admin task form components in frontend/src/components/forms/tasks/ (AdminTaskForm with completion steps editor, role selector)
+- [X] T116 [P] [US7] Create admin task display components in frontend/src/components/shared/tasks/ (TaskCard, TaskDetails, CompletionSteps with URLs)
+- [X] T117 [P] [US7] Create admin tasks API service in frontend/src/services/admin-tasks.service.ts with Axios methods for all admin task endpoints
+- [X] T118 [US7] Create admin tasks list page in frontend/src/app/tasks/page.tsx with status filters (complete/incomplete/overdue), overdue highlighting
+- [X] T119 [US7] Create admin task detail page in frontend/src/app/tasks/[id]/page.tsx with completion button and completion steps
+- [X] T120 [US7] Create admin task creation page in frontend/src/app/tasks/create/page.tsx (Tier 2+ only) with AdminTaskForm
+- [X] T121 [US7] Create admin task edit page in frontend/src/app/tasks/[id]/edit/page.tsx (Tier 2+ only) with AdminTaskForm pre-populated
+- [X] T122 [US7] Create task completion tracking page in frontend/src/app/tasks/[id]/completions/page.tsx (Tier 2+ only) showing volunteer completion status
+- [X] T123 [US7] Update navigation in frontend/src/components/layouts/navigation.tsx to include Tasks link for all tiers
 
 **Checkpoint**: User Stories 1-7 complete - administrative task tracking functional
 
