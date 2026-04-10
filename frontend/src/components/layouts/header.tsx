@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { pointsService } from '@/services/points.service';
+import configService from '@/services/config.service';
 import { BadgeTier } from '@/components/shared/points/BadgeTier';
 import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react';
@@ -39,12 +40,41 @@ export function Header() {
     badgeTier: string | null;
   } | null>(null);
 
+  // Fetch pack configuration when component mounts
+  useEffect(() => {
+    fetchPackConfig();
+    
+    // Listen for pack config updates from other components
+    const handleConfigUpdate = () => {
+      fetchPackConfig();
+    };
+    
+    window.addEventListener('packConfigUpdated', handleConfigUpdate);
+    
+    return () => {
+      window.removeEventListener('packConfigUpdated', handleConfigUpdate);
+    };
+  }, []);
+
   // Fetch points data when user is authenticated
   useEffect(() => {
     if (user && !isLoading) {
       fetchPoints();
     }
   }, [user, isLoading]);
+
+  const fetchPackConfig = async () => {
+    try {
+      const config = await configService.getPackConfig();
+      setPackConfig({
+        packNumber: config.packNumber,
+        packName: config.packName,
+      });
+    } catch (error) {
+      console.error('Failed to load pack configuration:', error);
+      // Keep default values on error
+    }
+  };
 
   const fetchPoints = async () => {
     try {

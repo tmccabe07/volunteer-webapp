@@ -24,7 +24,9 @@ const navLinks: NavLink[] = [
   { href: '/profile', label: 'Profile', minTier: 1 },
   { href: '/volunteers', label: 'Volunteers', minTier: 2 },
   { href: '/reports', label: 'Reports', minTier: 2 },
-  { href: '/admin', label: 'Admin', minTier: 3 },
+  { href: '/admin/config', label: 'Pack Config', minTier: 3 },
+  { href: '/admin/roles', label: 'Roles', minTier: 3 },
+  { href: '/admin/activities', label: 'Activities', minTier: 3 },
 ];
 
 interface NavigationProps {

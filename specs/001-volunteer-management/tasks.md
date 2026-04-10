@@ -290,25 +290,25 @@
 
 ### Backend Implementation for User Story 8
 
-- [ ] T124 [P] [US8] Create Zod validation schemas in backend/src/utils/validation/config.schema.ts (updatePackConfigSchema, createRoleSchema, updateRoleSchema) from contracts/reports-config-api.md
-- [ ] T125 [P] [US8] Create PackConfigService in backend/src/services/pack-config.service.ts with config CRUD, year-end date updates to recurring events/tasks
-- [ ] T126 [P] [US8] Create VolunteerRoleService in backend/src/services/volunteer-role.service.ts with role CRUD, soft delete with historical preservation, deletion prevention if role in use
-- [ ] T127 [US8] Implement GET /api/pack-config endpoint in backend/src/api/config.routes.ts (fetch pack configuration)
-- [ ] T128 [US8] Implement PUT /api/pack-config endpoint in backend/src/api/config.routes.ts (update pack config, cascade year-end date changes) restricted to Tier 3
-- [ ] T129 [US8] Implement GET /api/volunteer-roles endpoint in backend/src/api/config.routes.ts (list all active volunteer roles)
-- [ ] T130 [US8] Implement POST /api/volunteer-roles endpoint in backend/src/api/config.routes.ts (create new role) restricted to Tier 3
-- [ ] T131 [US8] Implement PUT /api/volunteer-roles/:id endpoint in backend/src/api/config.routes.ts (update role description) restricted to Tier 3
-- [ ] T132 [US8] Implement DELETE /api/volunteer-roles/:id endpoint in backend/src/api/config.routes.ts (soft delete, check for usage in future events) restricted to Tier 3
+- [X] T124 [P] [US8] Create Zod validation schemas in backend/src/utils/validation/config.schema.ts (updatePackConfigSchema, createRoleSchema, updateRoleSchema) from contracts/reports-config-api.md
+- [X] T125 [P] [US8] Create PackConfigService in backend/src/services/pack-config.service.ts with config CRUD, year-end date updates to recurring events/tasks
+- [X] T126 [P] [US8] Create VolunteerRoleService in backend/src/services/volunteer-role.service.ts with role CRUD, soft delete with historical preservation, deletion prevention if role in use
+- [X] T127 [US8] Implement GET /api/pack-config endpoint in backend/src/api/config.routes.ts (fetch pack configuration)
+- [X] T128 [US8] Implement PUT /api/pack-config endpoint in backend/src/api/config.routes.ts (update pack config, cascade year-end date changes) restricted to Tier 3
+- [X] T129 [US8] Implement GET /api/volunteer-roles endpoint in backend/src/api/config.routes.ts (list all active volunteer roles)
+- [X] T130 [US8] Implement POST /api/volunteer-roles endpoint in backend/src/api/config.routes.ts (create new role) restricted to Tier 3
+- [X] T131 [US8] Implement PUT /api/volunteer-roles/:id endpoint in backend/src/api/config.routes.ts (update role description) restricted to Tier 3
+- [X] T132 [US8] Implement DELETE /api/volunteer-roles/:id endpoint in backend/src/api/config.routes.ts (soft delete, check for usage in future events) restricted to Tier 3
 
 ### Frontend Implementation for User Story 8
 
-- [ ] T133 [P] [US8] Create pack config form component in frontend/src/components/forms/config/PackConfigForm.tsx with year date pickers and active ranks checkboxes
-- [ ] T134 [P] [US8] Create volunteer role form component in frontend/src/components/forms/config/VolunteerRoleForm.tsx with role type selector, specialty/rank fields
-- [ ] T135 [P] [US8] Create config API service in frontend/src/services/config.service.ts with Axios methods for pack config and role endpoints
-- [ ] T136 [US8] Create pack configuration page in frontend/src/app/admin/config/page.tsx (Tier 3 only) with PackConfigForm
-- [ ] T137 [US8] Create volunteer roles management page in frontend/src/app/admin/roles/page.tsx (Tier 3 only) with role list, create/edit/delete actions
-- [ ] T138 [US8] Update application header in frontend/src/app/layout.tsx to display pack name and number from pack config
-- [ ] T139 [US8] Update navigation in frontend/src/components/layouts/nav.tsx to include Admin section with Config and Roles links (Tier 3 only)
+- [X] T133 [P] [US8] Create pack config form component in frontend/src/components/forms/config/PackConfigForm.tsx with year date pickers and active ranks checkboxes
+- [X] T134 [P] [US8] Create volunteer role form component in frontend/src/components/forms/config/VolunteerRoleForm.tsx with role type selector, specialty/rank fields
+- [X] T135 [P] [US8] Create config API service in frontend/src/services/config.service.ts with Axios methods for pack config and role endpoints
+- [X] T136 [US8] Create pack configuration page in frontend/src/app/admin/config/page.tsx (Tier 3 only) with PackConfigForm
+- [X] T137 [US8] Create volunteer roles management page in frontend/src/app/admin/roles/page.tsx (Tier 3 only) with role list, create/edit/delete actions
+- [X] T138 [US8] Update application header in frontend/src/app/layout.tsx to display pack name and number from pack config
+- [X] T139 [US8] Update navigation in frontend/src/components/layouts/nav.tsx to include Admin section with Config and Roles links (Tier 3 only)
 
 **Checkpoint**: User Stories 1-8 complete - pack configuration and role management functional
 

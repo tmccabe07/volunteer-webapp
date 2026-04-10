@@ -405,20 +405,29 @@ Reporting and pack configuration endpoints.
 
 ### PUT `/api/pack-config/volunteer-roles/:id`
 
-**Description**: Update volunteer role description
+**Description**: Update volunteer role configuration
 
 **Authorization**: Bearer token (Tier 3 only)
 
 **Request Body**:
 ```typescript
 {
-  name?: string;
-  description?: string;
-  // Other fields immutable after creation
+  name?: string;              // Role display name (1-100 chars)
+  description?: string;       // Optional role description
+  roleType?: 'PARENT_GUARDIAN' | 'COMMITTEE' | 'DEN_LEADER' | 'ASSISTANT_DEN_LEADER' | 'ASSISTANT_CUB_MASTER' | 'LION_GUIDE' | 'SCOUTER_RESERVE';
+  specialty?: string;         // Required if roleType is COMMITTEE (e.g., "Treasurer")
+  rankLevel?: 'LION' | 'TIGER' | 'WOLF' | 'BEAR' | 'WEBELOS' | 'AOL';  // Required if roleType is DEN_LEADER
+  grantsTier?: 'PARENT' | 'LEADER' | 'ADMIN';  // Override default tier assignment
 }
 ```
 
-**Success Response** (200 OK): Same as POST response
+**Important Notes**:
+- All fields are optional in the update request
+- Changing `grantsTier` immediately affects authorization for all volunteers with this role
+- Changing `roleType` may require corresponding changes to `specialty` or `rankLevel`
+- The response includes `assignmentCount` showing how many volunteers currently have this role
+
+**Success Response** (200 OK): Same as POST response with additional `assignmentCount` field
 
 **Error Responses**:
 - `400 Bad Request`: Invalid input

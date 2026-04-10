@@ -49,6 +49,15 @@ export const paginationSchema = z.object({
   limit: z.coerce.number().int().positive().max(100).default(20),
 });
 
+// Export all schema modules
+export * from './activity.schema';
+export * from './admin-task.schema';
+export * from './auth.schema';
+export * from './config.schema';
+export * from './event.schema';
+export * from './points.schema';
+export * from './volunteer.schema';
+
 /**
  * Enum helpers
  */
