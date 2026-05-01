@@ -82,7 +82,7 @@ export default function TasksPage() {
         </div>
         {canCreateTasks && (
           <Link href="/tasks/create">
-            <Button>
+            <Button variant="outline">
               <PlusCircle className="h-4 w-4 mr-2" />
               Create Task
             </Button>
@@ -119,12 +119,6 @@ export default function TasksPage() {
               />
               <span className="text-sm">Assigned to me</span>
             </label>
-          </div>
-
-          <div className="flex items-end">
-            <Button onClick={loadTasks} variant="outline" className="w-full">
-              Apply Filters
-            </Button>
           </div>
         </div>
       </Card>

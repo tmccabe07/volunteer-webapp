@@ -227,7 +227,11 @@ export class VolunteerRoleService {
         deletedAt: null
       },
       include: {
-        volunteers: true,
+        volunteers: {
+          where: {
+            removedAt: null, // Only check active assignments
+          },
+        },
       },
     });
 
@@ -235,7 +239,7 @@ export class VolunteerRoleService {
       throw new NotFoundException('Volunteer role not found');
     }
 
-    // Check if role is assigned to any volunteers
+    // Check if role is assigned to any volunteers (active assignments only)
     if (existing.volunteers.length > 0) {
       throw new ConflictException(
         'Cannot delete role currently assigned to volunteers. Remove role assignments first.'

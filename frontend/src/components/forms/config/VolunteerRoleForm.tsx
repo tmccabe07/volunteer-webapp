@@ -296,7 +296,7 @@ export function VolunteerRoleForm({ initialData, onSubmit, onCancel, isEdit = fa
         )}
 
         <div className="flex gap-3 pt-4">
-          <Button type="submit" disabled={isLoading}>
+          <Button type="submit" variant="outline" disabled={isLoading}>
             {isLoading ? 'Saving...' : isEdit ? 'Update Role' : 'Create Role'}
           </Button>
           {onCancel && (

@@ -89,7 +89,7 @@ export default function EventsPage() {
         </div>
         {canCreateEvents && (
           <Link href="/events/create">
-            <Button>
+            <Button variant="outline">
               <PlusCircle className="h-4 w-4 mr-2" />
               Create Event
             </Button>
@@ -138,12 +138,6 @@ export default function EventsPage() {
               />
               <span className="text-sm">My signups</span>
             </label>
-          </div>
-
-          <div className="flex items-end">
-            <Button onClick={loadEvents} variant="outline" className="w-full">
-              Apply Filters
-            </Button>
           </div>
         </div>
       </Card>

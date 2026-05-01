@@ -156,7 +156,7 @@ export default function AdminRolesPage() {
         
         {!showForm && !editingRole && (
           <div className="mb-6">
-            <Button onClick={() => setShowForm(true)}>
+            <Button variant="outline" onClick={() => setShowForm(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Create Volunteer Role
             </Button>
@@ -228,7 +228,6 @@ export default function AdminRolesPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex justify-end gap-2">
                             <Button
-                              variant="outline"
                               size="sm"
                               onClick={() => handleEdit(role)}
                               disabled={deletingRoleId === role.id}
@@ -236,7 +235,6 @@ export default function AdminRolesPage() {
                               <Pencil className="h-4 w-4" />
                             </Button>
                             <Button
-                              variant="outline"
                               size="sm"
                               onClick={() => handleDelete(role.id)}
                               disabled={deletingRoleId === role.id}

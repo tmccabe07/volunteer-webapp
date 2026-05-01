@@ -31,6 +31,11 @@
 $ npm install
 ```
 
+## Populate dev database
+```bash
+$ npx ts-node prisma/seed.ts
+```
+
 ## Compile and run the project
 
 ```bash

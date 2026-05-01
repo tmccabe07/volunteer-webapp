@@ -282,5 +282,28 @@ describe('VolunteerRoleService', () => {
         ConflictException
       );
     });
+
+    it('should allow deletion when role only has removed assignments', async () => {
+      // Create a volunteer and assign the role
+      const volunteer = await createTestVolunteer({ authTier: 'PARENT' });
+      await prisma.volunteerToRole.create({
+        data: {
+          volunteerId: volunteer.id,
+          roleId: testRole.id,
+          removedAt: new Date(), // Role assignment was removed
+        },
+      });
+
+      // Should not throw - role can be deleted since assignment is inactive
+      await expect(service.deleteVolunteerRole(testRole.id, testVolunteer.id)).resolves.not.toThrow();
+
+      // Verify role was soft deleted
+      const deletedRole = await prisma.volunteerRole.findUnique({
+        where: { id: testRole.id },
+      });
+
+      expect(deletedRole?.deletedAt).toBeDefined();
+      expect(deletedRole?.deletedAt).not.toBeNull();
+    });
   });
 });
