@@ -18,8 +18,10 @@ import { ReportsService } from '../services/reports.service';
 import {
   participationReportSchema,
   adminTaskReportSchema,
+  upcomingEventsReportSchema,
   type ParticipationReportQuery,
   type AdminTaskReportQuery,
+  type UpcomingEventsReportQuery,
 } from '../utils/validation/reports.schema';
 
 @Controller('reports')
@@ -63,6 +65,30 @@ export class ReportsController {
     try {
       const validatedQuery = adminTaskReportSchema.parse(query);
       return await this.reportsService.generateAdminTaskReport(validatedQuery);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        throw new BadRequestException({
+          error: 'Invalid query parameters',
+          details: error.issues?.map((e: any) => ({
+            path: e.path.join('.'),
+            message: e.message,
+          })) || [],
+        });
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * GET /api/reports/upcoming-events
+   * Generate upcoming events report with volunteer signups
+   */
+  @Get('upcoming-events')
+  @RequireTier('LEADER')
+  async getUpcomingEventsReport(@Query() query: UpcomingEventsReportQuery) {
+    try {
+      const validatedQuery = upcomingEventsReportSchema.parse(query);
+      return await this.reportsService.generateUpcomingEventsReport(validatedQuery);
     } catch (error: any) {
       if (error.name === 'ZodError') {
         throw new BadRequestException({

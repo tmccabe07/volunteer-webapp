@@ -130,7 +130,7 @@ export function ResetPasswordForm({ token, onSuccess }: ResetPasswordFormProps) 
             )}
           </div>
 
-          <Button type="submit" disabled={isLoading || !!successMessage} className="w-full">
+          <Button type="submit" variant="outline"disabled={isLoading || !!successMessage} className="w-full">
             {isLoading ? 'Resetting...' : 'Reset Password'}
           </Button>
         </form>

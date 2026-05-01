@@ -286,7 +286,7 @@ export default function AdminTaskForm({
       )}
 
       <div className="flex gap-4">
-        <Button type="submit" disabled={loading}>
+        <Button variant="outline" type="submit" disabled={loading}>
           {loading ? 'Saving...' : submitLabel}
         </Button>
         <Button

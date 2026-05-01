@@ -22,6 +22,12 @@ export interface AdminTaskReportQuery {
   format?: 'summary' | 'detailed';
 }
 
+export interface UpcomingEventsReportQuery {
+  startDate?: string;
+  endDate?: string;
+  rankLevel?: string;
+}
+
 /**
  * Fetch participation report
  * @param query Query parameters for filtering the report
@@ -58,13 +64,29 @@ export async function getAdminTaskReport(query: AdminTaskReportQuery) {
 }
 
 /**
+ * Fetch upcoming events report
+ * @param query Query parameters for filtering the report
+ * @returns Upcoming events report data with signups
+ */
+export async function getUpcomingEventsReport(query: UpcomingEventsReportQuery) {
+  const params = new URLSearchParams();
+
+  if (query.startDate) params.append('startDate', query.startDate);
+  if (query.endDate) params.append('endDate', query.endDate);
+  if (query.rankLevel) params.append('rankLevel', query.rankLevel);
+
+  const response = await api.get(`/reports/upcoming-events?${params.toString()}`);
+  return response.data;
+}
+
+/**
  * Export report data as CSV
- * @param reportType Type of report to export ('participation' or 'adminTask')
+ * @param reportType Type of report to export ('participation' or 'adminTask' or 'upcomingEvents')
  * @param data Report data to convert to CSV
  * @param filename Name for the downloaded file
  */
 export function exportReportAsCSV(
-  reportType: 'participation' | 'adminTask',
+  reportType: 'participation' | 'adminTask' | 'upcomingEvents',
   data: any,
   filename: string
 ) {
@@ -107,6 +129,23 @@ export function exportReportAsCSV(
         csvContent += `"${task.task.name}","${new Date(task.task.dueDate).toLocaleDateString()}",${task.assignedCount},${task.completedCount},${task.completionRate.toFixed(1)}%,"${status}"\n`;
       });
     }
+  } else if (reportType === 'upcomingEvents') {
+    // Upcoming events format - list events with signups
+    csvContent = 'Event Title,Event Date,Rank Level,Activity Type,Capacity,Signups,Spots Remaining,Volunteer Name,Volunteer Email,Volunteer Roles\n';
+    data.events.forEach((event: any) => {
+      event.activitySlots.forEach((slot: any) => {
+        const spotsRemaining = slot.spotsRemaining !== null ? slot.spotsRemaining : 'Unlimited';
+        if (slot.signups.length === 0) {
+          // Show event even if no signups
+          csvContent += `"${event.title}","${new Date(event.eventDate).toLocaleDateString()}","${event.rankLevel}","${slot.activityType}",${slot.capacity || 'Unlimited'},0,${spotsRemaining},"","",""\n`;
+        } else {
+          slot.signups.forEach((signup: any) => {
+            const roles = signup.volunteer.roles.map((r: any) => r.name).join('; ');
+            csvContent += `"${event.title}","${new Date(event.eventDate).toLocaleDateString()}","${event.rankLevel}","${slot.activityType}",${slot.capacity || 'Unlimited'},${slot.signupsCount},${spotsRemaining},"${signup.volunteer.name}","${signup.volunteer.email}","${roles}"\n`;
+          });
+        }
+      });
+    });
   }
 
   // Create blob and download

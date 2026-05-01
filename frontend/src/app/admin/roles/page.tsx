@@ -229,6 +229,7 @@ export default function AdminRolesPage() {
                           <div className="flex justify-end gap-2">
                             <Button
                               size="sm"
+                              variant="plainoutline"
                               onClick={() => handleEdit(role)}
                               disabled={deletingRoleId === role.id}
                             >
@@ -236,6 +237,7 @@ export default function AdminRolesPage() {
                             </Button>
                             <Button
                               size="sm"
+                              variant="plainoutline"
                               onClick={() => handleDelete(role.id)}
                               disabled={deletingRoleId === role.id}
                               className="text-red-600 hover:text-red-700 hover:bg-red-50"

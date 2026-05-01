@@ -178,6 +178,74 @@ Reporting and pack configuration endpoints.
 
 ---
 
+### GET `/api/reports/upcoming-events`
+
+**Description**: Generate upcoming events report with volunteer signups
+
+**Authorization**: Bearer token (Tier 2+)
+
+**Query Parameters**:
+```typescript
+{
+  startDate?: string;               // ISO 8601, default: today
+  endDate?: string;                 // ISO 8601, default: current year end
+  rankLevel?: "LION" | "TIGER" | "WOLF" | "BEAR" | "WEBELOS" | "AOL" | "PACK_WIDE";
+}
+```
+
+**Success Response** (200 OK):
+
+```typescript
+{
+  period: {
+    startDate: string;
+    endDate: string;
+  };
+  summary: {
+    totalEvents: number;
+    totalSignups: number;
+    uniqueVolunteers: number;
+    averageSignupsPerEvent: number;
+  };
+  events: Array<{
+    id: string;
+    title: string;
+    description: string | null;
+    eventDate: string;              // ISO 8601
+    location: string | null;
+    rankLevel: string;              // e.g., "WOLF" or "PACK_WIDE"
+    totalSignups: number;
+    activitySlots: Array<{
+      id: string;
+      activityType: string;
+      capacity: number | null;      // null = unlimited
+      signupsCount: number;
+      spotsRemaining: number | null; // null = unlimited
+      signups: Array<{
+        volunteer: {
+          id: string;
+          name: string;
+          email: string;
+          roles: Array<{ name: string }>;
+        };
+        signupDate: string;         // ISO 8601
+      }>;
+    }>;
+  }>;
+}
+```
+
+**Error Responses**:
+- `400 Bad Request`: Invalid date range
+- `403 Forbidden`: Insufficient permissions
+
+**Notes**:
+- Only returns events where `isComplete = false` (upcoming/incomplete events)
+- Events are ordered by `eventDate` ascending
+- Signups are filtered to exclude withdrawn signups
+
+---
+
 ## PACK CONFIGURATION
 
 ### GET `/api/pack-config`

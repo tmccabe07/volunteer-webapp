@@ -174,13 +174,16 @@ As a den leader or committee member (tier 2 authorization), I can generate repor
 
 **Acceptance Scenarios**:
 
-1. **Given** I am den leader/committee tier, **When** I generate a participation report, **Then** I see volunteer names, activities, points earned, and time periods
+1. **Given** I am den leader/committee tier, **When** I generate a participation report, **Then** I see volunteer names, activities, points earned, and time periods for completed events
 2. **Given** I am generating a report, **When** I apply rank filters, **Then** the report shows only volunteers associated with that rank
 3. **Given** I am generating a report, **When** I select pack-level filter, **Then** the report includes all pack volunteers regardless of rank
 4. **Given** I need aggregated data, **When** I generate a summary report, **Then** I see total volunteer hours, points distributed, and participation rates
 5. **Given** I am den leader/committee tier, **When** I generate an administrative task report, **Then** I see task names, assigned volunteers, due dates, completion status, and completion rates
 6. **Given** I am generating an administrative task report, **When** I filter by overdue tasks, **Then** I see only tasks past their due date with incomplete status
 7. **Given** I am generating an administrative task report, **When** I filter by specific task type, **Then** the report shows completion status for that task across all assigned volunteers
+8. **Given** I am den leader/committee tier, **When** I generate an upcoming events report, **Then** I see future event details, signup counts, and volunteer contact information
+9. **Given** I am generating an upcoming events report, **When** I apply rank filters, **Then** the report shows only events for that rank level or pack-wide events
+10. **Given** I am viewing an upcoming events report, **When** I examine an event, **Then** I see activity slots with capacity, spots remaining, and volunteers signed up with their roles and email addresses
 
 ---
 
@@ -302,19 +305,23 @@ As a volunteer, I receive in-app notifications when I achieve new badge levels o
 - **FR-056**: System MUST preserve deleted volunteer roles in historical records and reporting for past activities
 
 **Reporting**
-- **FR-057**: System MUST allow den leader/committee tier to generate volunteer participation reports
+- **FR-057**: System MUST allow den leader/committee tier to generate volunteer participation reports for completed events
 - **FR-058**: System MUST allow den leader/committee tier to generate administrative task completion reports
-- **FR-059**: System MUST support both aggregated and detailed report formats for all report types
-- **FR-060**: System MUST allow filtering reports by rank level or pack-wide
-- **FR-061**: System MUST allow filtering administrative task reports by completion status (complete, incomplete, overdue)
-- **FR-062**: System MUST allow filtering administrative task reports by specific task type
+- **FR-059**: System MUST allow den leader/committee tier to generate upcoming events reports showing future events and volunteer signups
+- **FR-060**: System MUST support both aggregated and detailed report formats for participation and administrative task reports
+- **FR-061**: System MUST allow filtering reports by rank level or pack-wide
+- **FR-062**: System MUST allow filtering administrative task reports by completion status (complete, incomplete, overdue)
+- **FR-063**: System MUST allow filtering administrative task reports by specific task type
+- **FR-064**: System MUST show volunteer contact information and signup status in upcoming events reports
+- **FR-065**: System MUST display capacity, spots remaining, and signup counts for each activity in upcoming events reports
+- **FR-066**: System MUST allow exporting all report types to CSV format
 
 **Notifications**
-- **FR-063**: System MUST provide in-app notifications for badge level achievements
-- **FR-064**: System MUST provide in-app notifications for administrative task completion
+- **FR-067**: System MUST provide in-app notifications for badge level achievements
+- **FR-068**: System MUST provide in-app notifications for administrative task completion
 
 **General Requirements**
-- **FR-065**: System MUST be mobile-friendly and responsive across devices
+- **FR-069**: System MUST be mobile-friendly and responsive across devices
 - **FR-066**: System MUST maintain audit trails for all point awards, revocations, and administrative actions
 - **FR-067**: System MUST persist all data reliably
 

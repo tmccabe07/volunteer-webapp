@@ -156,7 +156,7 @@ export function ReportFilters({
 
       {/* Action Buttons */}
       <div className="flex gap-2">
-        <Button onClick={handleApplyFilters}>Apply Filters</Button>
+        <Button variant="outline" onClick={handleApplyFilters}>Apply Filters</Button>
         <Button variant="outline" onClick={handleReset}>
           Reset
         </Button>

@@ -4,6 +4,7 @@ import prisma from '../utils/prisma';
 import {
   ParticipationReportQuery,
   AdminTaskReportQuery,
+  UpcomingEventsReportQuery,
 } from '../utils/validation/reports.schema';
 
 /**
@@ -506,6 +507,133 @@ export class ReportsService {
         endDate: endDate.toISOString(),
       },
       tasks: taskDetails,
+    };
+  }
+
+  /**
+   * Generate upcoming events report showing future events and volunteer signups
+   * @param query Report filter parameters (date range, rank level)
+   * @returns Upcoming events report with signups
+   */
+  async generateUpcomingEventsReport(query: UpcomingEventsReportQuery) {
+    const now = new Date();
+    
+    // Default to today through end of current year if dates not provided
+    const packConfig = await this.prisma.packConfig.findFirst();
+    const startDate = query.startDate
+      ? new Date(query.startDate)
+      : now;
+    const endDate = query.endDate
+      ? new Date(query.endDate)
+      : packConfig
+      ? new Date(packConfig.yearEndDate)
+      : new Date(new Date().getFullYear(), 11, 31);
+
+    // Build event filter
+    const eventFilter: any = {
+      eventDate: { gte: startDate, lte: endDate },
+      isComplete: false, // Only upcoming/incomplete events
+      deletedAt: null,
+    };
+
+    if (query.rankLevel && query.rankLevel !== 'PACK_WIDE') {
+      eventFilter.rankLevel = query.rankLevel;
+    }
+
+    // Fetch upcoming events
+    const events = await this.prisma.event.findMany({
+      where: eventFilter,
+      orderBy: { eventDate: 'asc' },
+      include: {
+        activitySlots: {
+          include: {
+            activityType: true,
+            signups: {
+              where: { withdrawn: false, deletedAt: null },
+              include: {
+                volunteer: {
+                  include: {
+                    volunteerRoles: {
+                      where: { removedAt: null },
+                      include: { role: true },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Format the report
+    const eventsWithSignups = events.map((event) => {
+      const activitySlots = event.activitySlots.map((slot: any) => {
+        const signups = slot.signups.map((signup: any) => ({
+          volunteer: {
+            id: signup.volunteer.id,
+            name: signup.volunteer.name,
+            email: signup.volunteer.email,
+            roles: signup.volunteer.volunteerRoles.map((vtr: any) => ({
+              name: vtr.role.name,
+            })),
+          },
+          signupDate: signup.createdAt.toISOString(),
+        }));
+
+        return {
+          id: slot.id,
+          activityType: slot.activityType.name,
+          capacity: slot.capacity,
+          signupsCount: signups.length,
+          spotsRemaining: slot.capacity ? slot.capacity - signups.length : null,
+          signups,
+        };
+      });
+
+      const totalSignups = activitySlots.reduce(
+        (sum: number, slot: any) => sum + slot.signupsCount,
+        0
+      );
+
+      return {
+        id: event.id,
+        title: event.title,
+        description: event.description,
+        eventDate: event.eventDate.toISOString(),
+        location: event.location,
+        rankLevel: event.rankLevel || 'PACK_WIDE',
+        activitySlots,
+        totalSignups,
+      };
+    });
+
+    // Summary statistics
+    const totalEvents = events.length;
+    const totalSignups = eventsWithSignups.reduce(
+      (sum, event) => sum + event.totalSignups,
+      0
+    );
+    const uniqueVolunteers = new Set(
+      events.flatMap((e) =>
+        e.activitySlots.flatMap((slot: any) =>
+          slot.signups.map((s: any) => s.volunteerId)
+        )
+      )
+    );
+
+    return {
+      period: {
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+      },
+      summary: {
+        totalEvents,
+        totalSignups,
+        uniqueVolunteers: uniqueVolunteers.size,
+        averageSignupsPerEvent: totalEvents > 0 ? totalSignups / totalEvents : 0,
+      },
+      events: eventsWithSignups,
     };
   }
 }

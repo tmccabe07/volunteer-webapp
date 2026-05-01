@@ -101,7 +101,7 @@ export function ActivityTypeList({
             <div className="flex gap-2 ml-4">
               {onEdit && (
                 <Button
-                  variant="outline"
+                  variant="plainoutline"
                   size="sm"
                   onClick={() => onEdit(activityType)}
                   disabled={deletingId === activityType.id}
@@ -112,7 +112,7 @@ export function ActivityTypeList({
               )}
               {onDelete && (
                 <Button
-                  variant="outline"
+                  variant="plainoutline"
                   size="sm"
                   onClick={() => handleDelete(activityType)}
                   disabled={deletingId === activityType.id}

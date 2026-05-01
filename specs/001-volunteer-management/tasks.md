@@ -337,6 +337,13 @@
 - [X] T149 [US9] Create admin task report page in frontend/src/app/reports/administrative-tasks/page.tsx (Tier 2+ only) with filters and summary/detailed toggle
 - [X] T150 [US9] Add export functionality in frontend/src/services/reports.service.ts to download reports as CSV
 - [X] T151 [US9] Update navigation in frontend/src/components/layouts/navigation.tsx to include Reports link (Tier 2+ only)
+- [X] T152 [US9] Add upcomingEventsReportSchema validation in backend/src/utils/validation/reports.schema.ts for upcoming events report query parameters
+- [X] T153 [US9] Implement generateUpcomingEventsReport method in backend/src/services/reports.service.ts (fetch incomplete events with signup details)
+- [X] T154 [US9] Add GET /api/reports/upcoming-events endpoint in backend/src/api/reports.controller.ts (Tier 2+ only)
+- [X] T155 [US9] Add getUpcomingEventsReport method to frontend/src/services/reports.service.ts with support for date range and rank filters
+- [X] T156 [US9] Create upcoming events report page in frontend/src/app/reports/upcoming-events/page.tsx showing event details, signups, and capacity
+- [X] T157 [US9] Update reports dashboard page to include Upcoming Events & Signups report card
+- [X] T158 [US9] Update CSV export function to support upcoming events report format with volunteer contact info
 
 **Checkpoint**: User Stories 1-9 complete - reporting capabilities functional
 

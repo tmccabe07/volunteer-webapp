@@ -46,6 +46,26 @@ export const adminTaskReportSchema = z.object({
   { message: 'endDate must be after startDate' }
 );
 
+/**
+ * Validation schema for upcoming events report query parameters
+ * Endpoint: GET /api/reports/upcoming-events
+ */
+export const upcomingEventsReportSchema = z.object({
+  startDate: z.string().datetime().optional(),
+  endDate: z.string().datetime().optional(),
+  rankLevel: z.enum(['LION', 'TIGER', 'WOLF', 'BEAR', 'WEBELOS', 'AOL', 'PACK_WIDE']).optional(),
+}).refine(
+  (data) => {
+    // Validate that endDate is after startDate if both are provided
+    if (data.startDate && data.endDate) {
+      return new Date(data.startDate) < new Date(data.endDate);
+    }
+    return true;
+  },
+  { message: 'endDate must be after startDate' }
+);
+
 // Type exports for use in controllers and services
 export type ParticipationReportQuery = z.infer<typeof participationReportSchema>;
 export type AdminTaskReportQuery = z.infer<typeof adminTaskReportSchema>;
+export type UpcomingEventsReportQuery = z.infer<typeof upcomingEventsReportSchema>;

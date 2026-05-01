@@ -228,7 +228,7 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
           )}
         </div>
 
-        <Button type="submit" disabled={isLoading} className="w-full">
+        <Button variant="outline" type="submit" disabled={isLoading} className="w-full">
           {isLoading ? 'Creating Account...' : 'Create Account'}
         </Button>
       </form>
