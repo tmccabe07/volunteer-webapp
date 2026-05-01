@@ -130,6 +130,7 @@ export class VolunteersController {
         await this.pointsService.awardRoleAssignmentPoints(
           userId,
           result.id,
+          validatedData.roleId, // Pass roleId to prevent duplicate awards
           userId // Self-assigned
         );
       } catch (pointError) {

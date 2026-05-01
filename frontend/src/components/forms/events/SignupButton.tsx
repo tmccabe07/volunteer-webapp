@@ -58,7 +58,7 @@ export default function SignupButton({
 
   return (
     <div>
-      <Button onClick={handleSignup} disabled={loading} size="sm">
+      <Button onClick={handleSignup} disabled={loading} variant="outline" size="sm">
         {loading ? 'Signing up...' : 'Sign Up'}
         {capacity && ` (${signedUpCount}/${capacity})`}
       </Button>

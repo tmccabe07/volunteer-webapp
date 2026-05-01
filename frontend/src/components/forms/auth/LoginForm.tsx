@@ -133,7 +133,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           </a>
         </div>
 
-        <Button type="submit" disabled={isLoading} className="w-full">
+        <Button type="submit" variant="outline" disabled={isLoading} className="w-full">
           {isLoading ? 'Logging in...' : 'Log In'}
         </Button>
       </form>

@@ -170,31 +170,31 @@ Based on the technical plan requirements:
 
 ## Remaining Test Coverage Needed
 
-### Unit Tests (To Be Created)
-- [ ] EventService tests
-- [ ] SignupService tests
-- [ ] BadgeTierService tests
-- [ ] LeaderboardService tests
-- [ ] ActivityTypeService tests
-- [ ] AdminService tests
-- [ ] PasswordResetService tests
+### Unit Tests 
+- [X] EventService tests
+- [X] SignupService tests
+- [X] BadgeTierService tests
+- [X] LeaderboardService tests
+- [X] ActivityTypeService tests
+- [X] AdminService tests
+- [X] PasswordResetService tests
 
-### API Contract Tests (To Be Created)
-- [ ] Volunteers API (`/api/volunteers/*`)
-- [ ] Events API (`/api/events/*`)
-- [ ] Points API (`/api/points/*`)
-- [ ] Leaderboard API (`/api/leaderboard`)
-- [ ] Pack Config API (`/api/pack-config/*`)
-- [ ] Admin API (`/api/admin/*`)
+### API Contract Tests 
+- [X] Volunteers API (`/api/volunteers/*`)
+- [X] Events API (`/api/events/*`)
+- [X] Points API (`/api/points/*`)
+- [X] Leaderboard API (`/api/leaderboard`)
+- [X] Pack Config API (`/api/pack-config/*`)
+- [X] Admin API (`/api/admin/*`)
 
 ### Frontend Tests (To Be Created)
-- [ ] Setup Vitest + React Testing Library
-- [ ] Component tests for auth forms
-- [ ] Component tests for profile forms
-- [ ] Component tests for event forms
-- [ ] Service layer tests
-- [ ] Hook tests (auth-context)
-- [ ] Page component tests
+- [X] Setup Vitest + React Testing Library
+- [X] Component tests for auth forms
+- [X] Component tests for profile forms
+- [X] Component tests for event forms
+- [X] Service layer tests
+- [X] Hook tests (auth-context)
+- [X] Page component tests
 
 ### E2E Tests (To Be Created)
 - [ ] Setup Playwright

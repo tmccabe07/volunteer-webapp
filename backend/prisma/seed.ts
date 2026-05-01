@@ -29,12 +29,12 @@ async function main() {
 
   // 2. Create Badge Tiers
   const badgeTiers = [
-    { tierName: 'Lion', minPoints: 0, maxPoints: 19, displayOrder: 1, badgeColor: '#FFD700' },
-    { tierName: 'Tiger', minPoints: 20, maxPoints: 39, displayOrder: 2, badgeColor: '#FF8C00' },
-    { tierName: 'Wolf', minPoints: 40, maxPoints: 59, displayOrder: 3, badgeColor: '#DC143C' },
-    { tierName: 'Bear', minPoints: 60, maxPoints: 79, displayOrder: 4, badgeColor: '#8B4513' },
-    { tierName: 'Webelos', minPoints: 80, maxPoints: 99, displayOrder: 5, badgeColor: '#4169E1' },
-    { tierName: 'Arrow of Light', minPoints: 100, maxPoints: null, displayOrder: 6, badgeColor: '#DAA520' }
+    { tierName: 'Bronze', minPoints: 0, maxPoints: 49, displayOrder: 1, badgeColor: '#FFD700' },
+    { tierName: 'Silver', minPoints: 50, maxPoints: 79, displayOrder: 2, badgeColor: '#C0C0C0' },
+    { tierName: 'Gold', minPoints: 80, maxPoints: 99, displayOrder: 3, badgeColor: '#FFD700' },
+    { tierName: 'Platinum', minPoints: 100, maxPoints: 129, displayOrder: 4, badgeColor: '#E5E4E2' },
+    { tierName: 'Diamond', minPoints: 130, maxPoints: 169, displayOrder: 5, badgeColor: '#B9F2FF' },
+    { tierName: 'Titanium', minPoints: 170, maxPoints: null, displayOrder: 6, badgeColor: '#FF4500' }
   ];
 
   for (const tier of badgeTiers) {

@@ -1037,3 +1037,479 @@ Database foreign key constraints must be respected during test cleanup. Delete c
 
 **Files Modified**:
 - `backend/test/volunteers.e2e-spec.ts` - Added `prisma.pointEvent.deleteMany()` before deleting volunteers
+
+---
+
+## 2026-04-09: Vitest Mock Hoisting - Cannot Access Variable Before Initialization
+
+**Error**:
+```
+ReferenceError: Cannot access 'mockResetPassword' before initialization
+    at vi.mock factory function (ResetPasswordForm.test.tsx:15)
+```
+
+**Symptoms**:
+- ResetPasswordForm.test.tsx failing to run
+- Tests crash immediately on load, before any test execution
+- Error occurs in the vi.mock() factory function
+- Mock variable declared with `const mockResetPassword = vi.fn()` is undefined inside factory
+
+**Root Cause**: 
+Vitest hoists `vi.mock()` calls to the top of the file during module transformation, but variables declared below the mock cannot be accessed in the factory function:
+
+```typescript
+// WRONG: mockResetPassword is not available in hoisted factory
+const mockResetPassword = vi.fn().mockResolvedValue({ success: true });
+
+vi.mock('@/services/authService', () => ({
+  authService: {
+    resetPassword: mockResetPassword,  // ❌ ReferenceError: not initialized
+  },
+}));
+```
+
+**Why This Happens**:
+- Vitest hoists `vi.mock()` calls before any other code runs (similar to import hoisting)
+- Variables declared with `const` or `let` are not hoisted, only their declarations
+- The factory function executes during hoisting, before `mockResetPassword` is initialized
+- This is a JavaScript temporal dead zone (TDZ) issue with hoisted code
+
+**Solution 1: Declare Mock Before vi.mock()**
+Move the mock variable declaration before the `vi.mock()` call:
+
+```typescript
+// CORRECT: Declare mock at the very top of the file
+const mockResetPassword = vi.fn().mockResolvedValue({ success: true });
+
+vi.mock('@/services/authService', () => ({
+  authService: {
+    resetPassword: mockResetPassword,  // ✓ Now accessible
+  },
+}));
+```
+
+**Solution 2: Use Getter Pattern (Preferred)**
+Use a getter function in the mock factory to access the variable lazily:
+
+```typescript
+// CORRECT: Getter accesses variable at runtime, not during hoisting
+const mockResetPassword = vi.fn().mockResolvedValue({ success: true });
+
+vi.mock('@/services/authService', () => ({
+  authService: {
+    get resetPassword() {  // ✓ Getter evaluated at runtime
+      return mockResetPassword;
+    },
+  },
+}));
+```
+
+**Why Getter Pattern is Better**:
+- Accessing the mock variable happens at test runtime, not during module initialization
+- More flexible - allows reassigning the mock between tests
+- Clearer intent - shows this is a dynamic reference
+- Avoids hoisting issues entirely
+
+**Solution 3: Factory Function Pattern**
+For complex mocks, return a factory function that creates the mock object:
+
+```typescript
+const createMockAuthService = () => ({
+  resetPassword: vi.fn().mockResolvedValue({ success: true }),
+});
+
+vi.mock('@/services/authService', () => ({
+  authService: createMockAuthService(),
+}));
+```
+
+**Prevention**:
+- Always declare mock functions before `vi.mock()` calls
+- Use getter pattern (`get property() { return mock; }`) when mocks need to be reassigned
+- Group all mock declarations at the top of test files
+- Consider creating test utilities that encapsulate common mocking patterns
+- Review Vitest hoisting documentation when writing new mocks
+
+**Key Learning**: 
+Vitest hoists `vi.mock()` calls before executing any other code in the file. Variables declared after the mock call are not accessible in the factory function due to JavaScript's temporal dead zone. Use the getter pattern to access mock variables lazily at runtime instead of during module initialization.
+
+**Files Modified**:
+- `frontend/src/components/forms/auth/ResetPasswordForm.test.tsx` - Changed mock factory to use getter pattern
+
+---
+
+## 2026-04-09: React Testing Library - Form Validation Errors Not in DOM
+
+**Symptoms**:
+- RegisterForm component validates input correctly and prevents submission
+- Tests expecting validation error messages to appear in DOM were failing
+- `expect(screen.queryByText('Password must be...')).toBeInTheDocument()` returns null
+- Form blocks submission when invalid, but no visible error messages rendered
+
+**Investigation**:
+Initial test approach tried to verify error message display:
+
+```typescript
+// WRONG: Assumes form shows inline error messages
+await user.type(passwordInput, 'weak');
+await user.click(submitButton);
+
+// Looking for error text in DOM
+expect(screen.queryByText(/password must be at least 8 characters/i)).toBeInTheDocument();
+// ❌ FAILS: Error message not found
+```
+
+**Root Cause**: 
+The RegisterForm component uses HTML5 validation attributes (`required`, `pattern`, `minLength`) rather than displaying custom error messages in the DOM:
+
+```typescript
+<input
+  required
+  minLength={8}
+  pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+"
+  {...}
+/>
+```
+
+When validation fails:
+- The browser's built-in validation prevents form submission
+- Error messages appear as browser tooltips (not in DOM)
+- React Testing Library's jsdom environment doesn't render browser tooltips
+- No custom React error messages are rendered to the DOM
+
+**Solution**: 
+Test the observable behavior (form submission blocking) rather than implementation details (error message text):
+
+```typescript
+// CORRECT: Test that form blocks submission when invalid
+const passwordInput = screen.getByLabelText(/password/i);
+const submitButton = screen.getByRole('button', { name: /register/i });
+
+// Enter invalid password
+await user.type(passwordInput, 'weak');
+await user.click(submitButton);
+
+// Verify form did NOT submit (register was not called)
+expect(mockRegister).not.toHaveBeenCalled();
+
+// Enter valid password
+await user.clear(passwordInput);
+await user.type(passwordInput, 'ValidPass123!');
+await user.click(submitButton);
+
+// Verify form DID submit
+expect(mockRegister).toHaveBeenCalledWith({
+  password: 'ValidPass123!',
+  ...
+});
+```
+
+**Why This is Better Testing**:
+- Tests actual user experience: "Can I submit with invalid data?"
+- More resilient to implementation changes (HTML5 vs React validation)
+- Tests behavior, not implementation details
+- Validates the business requirement: prevent invalid submissions
+
+**Alternative Approaches**:
+
+1. **If using a UI library with custom validation**:
+   ```typescript
+   // Some UI libraries render errors to DOM
+   expect(screen.getByText('Password too weak')).toBeInTheDocument();
+   ```
+
+2. **If adding custom validation messages**:
+   ```typescript
+   const [errors, setErrors] = useState({});
+   
+   // Render errors below inputs
+   {errors.password && <span role="alert">{errors.password}</span>}
+   
+   // Test can then find by role
+   expect(screen.getByRole('alert')).toHaveTextContent('Password too weak');
+   ```
+
+3. **Testing HTML5 validity**:
+   ```typescript
+   const passwordInput = screen.getByLabelText(/password/i);
+   expect(passwordInput.validity.valid).toBe(false);
+   ```
+
+**Prevention**:
+- Understand component's validation strategy before writing tests
+- Test observable behavior over implementation details
+- Check if error messages are actually rendered to DOM
+- Consider using a UI library that renders validation feedback to DOM
+- Document validation approach in component comments
+
+**Key Learning**: 
+HTML5 form validation triggers browser-native error messages (tooltips) that are not rendered to the DOM and cannot be queried with React Testing Library. Test the actual behavior (submission blocking) rather than assuming error messages will appear in the DOM. This makes tests more resilient and focused on user experience.
+
+**Files Modified**:
+- `frontend/src/components/forms/auth/RegisterForm.test.tsx` - Changed validation tests to check submission blocking rather than error message text
+
+---
+
+## 2026-04-09: Vitest Mock Cleanup - Test Timeouts After mockReset()
+
+**Error**:
+```
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+
+  ❯ Timeout._onTimeout node_modules/vitest/dist/chunks/utils.UcoRDj0Z.js:2152:18
+```
+
+**Symptoms**:
+- ResetPasswordForm.test.tsx had 7 tests timing out after 5 seconds
+- Tests were hanging on `waitFor()` assertions
+- Problem appeared after adding `mockResetPassword.mockReset()` in `afterEach()`
+- First test in each block passed, but subsequent tests timed out
+- Timeout occurred when waiting for success/error state changes
+
+**Root Cause**: 
+Using `mockReset()` in `afterEach()` removed all mock implementations, including the default return value. Subsequent tests called the mock which returned `undefined`, creating unhandled promise rejections:
+
+```typescript
+// WRONG: mockReset() removes all behavior
+beforeEach(() => {
+  mockResetPassword.mockResolvedValue({ success: true });
+});
+
+afterEach(() => {
+  mockResetPassword.mockReset();  // ❌ Removes the default implementation
+});
+
+it('test 2', async () => {
+  await user.click(submitButton);
+  // mockResetPassword returns undefined (no longer mocked)
+  // Promise never resolves, test times out
+  await waitFor(() => {
+    expect(screen.getByText(/success/i)).toBeInTheDocument();
+  });
+});
+```
+
+**Mock Lifecycle Methods**:
+
+1. **mockReset()**: 
+   - Clears call history and arguments
+   - **Removes all mock implementations** (mockResolvedValue, mockImplementation)
+   - Returns mock to unimplemented state (returns undefined)
+   - Use when you need a completely clean slate
+
+2. **mockClear()**: 
+   - Clears call history and arguments
+   - **Keeps mock implementations** (mockResolvedValue, mockImplementation)
+   - Use for most test cleanup between tests
+
+3. **mockRestore()**: 
+   - Removes the mock entirely, restoring original implementation
+   - Only works with `vi.spyOn()`
+   - Use when testing real implementation after mocking
+
+**Solution**: 
+Use `mockClear()` instead of `mockReset()`, and set default mock behavior in setup:
+
+```typescript
+// CORRECT: Clear history but keep implementation
+const mockResetPassword = vi.fn();
+
+beforeEach(() => {
+  // Set default behavior for all tests
+  mockResetPassword.mockResolvedValue({ success: true });
+});
+
+afterEach(() => {
+  // Clear call history but keep mockResolvedValue
+  mockResetPassword.mockClear();  // ✓ Keeps implementation
+  cleanup();
+});
+
+it('test 1', async () => {
+  await user.click(submitButton);
+  expect(mockResetPassword).toHaveBeenCalledWith({...});
+});
+
+it('test 2 - custom error', async () => {
+  // Override for this specific test
+  mockResetPassword.mockResolvedValueOnce({ 
+    success: false, 
+    error: 'Invalid token' 
+  });
+  
+  await user.click(submitButton);
+  await waitFor(() => {
+    expect(screen.getByText(/invalid token/i)).toBeInTheDocument();
+  });
+});
+```
+
+**Alternative Pattern - Reset in beforeEach**:
+If you must use `mockReset()`, re-establish behavior immediately after:
+
+```typescript
+beforeEach(() => {
+  mockResetPassword.mockReset();  // Clear everything
+  mockResetPassword.mockResolvedValue({ success: true });  // Re-establish default
+});
+```
+
+**When to Use Each**:
+
+| Method | Call History | Arguments | Implementation | Use When |
+|--------|-------------|-----------|----------------|----------|
+| `mockClear()` | ✓ Clears | ✓ Clears | ✗ Keeps | Standard cleanup between tests |
+| `mockReset()` | ✓ Clears | ✓ Clears | ✓ Removes | Need completely fresh mock |
+| `mockRestore()` | ✓ Clears | ✓ Clears | ✓ Restores original | Testing real implementation |
+
+**Prevention**:
+- Use `mockClear()` for standard cleanup between tests
+- Set default mock behavior in `beforeEach()`
+- Override with `mockResolvedValueOnce()` for test-specific behavior
+- Only use `mockReset()` when you need to remove implementations
+- Always ensure mocks return valid values (avoid undefined promises)
+- Check mock configuration if tests timeout on promise assertions
+
+**Key Learning**: 
+`mockReset()` completely removes mock implementations, causing subsequent tests to call functions that return `undefined`. This creates unhandled promises that never resolve, leading to test timeouts. Use `mockClear()` to clean call history between tests while preserving mock behavior, and establish default mock implementations in `beforeEach()`.
+
+**Files Modified**:
+- `frontend/src/components/forms/auth/ResetPasswordForm.test.tsx` - Changed `mockReset()` to `mockClear()` and moved default mock setup to `beforeEach()`
+
+---
+
+## 2026-04-09: Vitest Fake Timers - Conflicts with Async User Interactions
+
+**Error**:
+```
+Error: Test timed out in 5000ms.
+
+  ❯ src/components/forms/auth/ResetPasswordForm.test.tsx:389:5
+    387|   });
+    388| 
+    389|   it('should show "Request a new reset link" after timeout', async () => {
+```
+
+**Symptoms**:
+- Test for password reset timeout expiration was hanging
+- Used `vi.useFakeTimers()` to speed up 15-minute timer test
+- `await user.type()` calls never completed
+- Test timeout occurred before timer could be advanced
+- Code flow: user interaction → start timer → advance time → verify UI update
+
+**Root Cause**: 
+`vi.useFakeTimers()` interferes with async operations in `@testing-library/user-event`. The `user.type()` and `user.click()` methods use internal timers for realistic interaction delays, and fake timers prevent these from resolving:
+
+```typescript
+// WRONG: Fake timers block user-event operations
+it('should show message after timeout', async () => {
+  vi.useFakeTimers();
+  
+  await user.type(emailInput, 'test@example.com');  // ❌ Hangs - internal delays frozen
+  await user.click(sendCodeButton);  // Never reached
+  
+  vi.advanceTimersByTime(15 * 60 * 1000);  // Advance 15 minutes
+  
+  await waitFor(() => {
+    expect(screen.getByText(/request a new reset link/i)).toBeInTheDocument();
+  });
+});
+```
+
+**Why This Happens**:
+- `user-event` uses `setTimeout` internally to simulate realistic typing/clicking delays
+- `vi.useFakeTimers()` mocks all timer functions (setTimeout, setInterval, Date)
+- `user.type()` calls setTimeout but fake timers freeze it
+- `await` never resolves because the frozen timer never fires
+- Test times out waiting for user interaction to complete
+
+**Solutions**:
+
+**1. Disable user-event Delays (Quick Fix)**:
+```typescript
+it('should show message after timeout', async () => {
+  vi.useFakeTimers();
+  const user = userEvent.setup({ delay: null });  // ✓ Disable interaction delays
+  
+  await user.type(emailInput, 'test@example.com');  // Works instantly
+  await user.click(sendCodeButton);
+  
+  vi.advanceTimersByTime(15 * 60 * 1000);
+  
+  await vi.runOnlyPendingTimersAsync();  // Process component timers
+  
+  await waitFor(() => {
+    expect(screen.getByText(/request a new reset link/i)).toBeInTheDocument();
+  });
+  
+  vi.useRealTimers();
+});
+```
+
+**2. Use Real Timers with Extended Timeout (Simpler)**:
+```typescript
+// BETTER: No fake timers, just wait longer
+it('should show message after timeout', async () => {
+  const user = userEvent.setup();
+  
+  await user.type(emailInput, 'test@example.com');
+  await user.click(sendCodeButton);
+  
+  // Wait for actual timer (15 min in production, could mock shorter in code)
+  await waitFor(
+    () => {
+      expect(screen.getByText(/request a new reset link/i)).toBeInTheDocument();
+    },
+    { timeout: 3000 }  // ✓ Extended timeout for real timer
+  );
+}, 10000);  // Set test timeout to 10 seconds
+```
+
+**3. Mock Timer Duration in Component (Best)**:
+Change the component to use a configurable timeout:
+
+```typescript
+// In component:
+export function ResetPasswordForm({ timeoutDuration = 15 * 60 * 1000 }: Props) {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setTimedOut(true);
+    }, timeoutDuration);  // ✓ Configurable
+    
+    return () => clearTimeout(timer);
+  }, [timeoutDuration]);
+}
+
+// In test:
+render(<ResetPasswordForm timeoutDuration={100} />);  // 100ms for testing
+
+await waitFor(() => {
+  expect(screen.getByText(/request a new reset link/i)).toBeInTheDocument();
+}, { timeout: 1000 });
+```
+
+**When to Use Fake Timers**:
+- Simple setTimeout/setInterval without user interaction
+- Testing debounce/throttle functions
+- Discrete time-based state changes
+- No complex async operations involved
+
+**When to Avoid Fake Timers**:
+- Tests with user-event interactions (typing, clicking)
+- Complex async flows (API calls + timers)
+- Multiple interleaved timers
+- When real timer waits are acceptable
+
+**Prevention**:
+- Prefer real timers with extended `waitFor` timeouts for simple cases
+- Use `{ delay: null }` with userEvent.setup() when using fake timers
+- Make timer durations configurable props for easier testing
+- Call `vi.useRealTimers()` in afterEach to prevent leaking into other tests
+- Document timer behavior in component comments
+
+**Key Learning**: 
+Vitest fake timers (`vi.useFakeTimers()`) freeze all timer APIs including internal delays in `@testing-library/user-event`, causing user interactions to hang. For tests involving both timers and user interactions, either disable user-event delays with `{ delay: null }` or avoid fake timers entirely by using real timers with extended waitFor timeouts. Making timer durations configurable props is the cleanest solution.
+
+**Files Modified**:
+- `frontend/src/components/forms/auth/ResetPasswordForm.test.tsx` - Replaced fake timer test with real timer and extended waitFor timeout

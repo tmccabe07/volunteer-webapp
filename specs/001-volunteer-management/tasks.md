@@ -256,27 +256,27 @@
 
 ### Backend Implementation for User Story 7
 
-- [ ] T106 [P] [US7] Create Zod validation schemas in backend/src/utils/validation/admin-task.schema.ts (createTaskSchema, updateTaskSchema, completeTaskSchema) from contracts/admin-tasks-api.md
-- [ ] T107 [P] [US7] Create AdminTaskService in backend/src/services/admin-task.service.ts with CRUD operations, role assignment logic, completion tracking, recurring task year-end logic
-- [ ] T108 [US7] Implement GET /api/admin-tasks endpoint in backend/src/api/admin-tasks.routes.ts (list tasks with assignedToMe/status/taskId filters, calculate isOverdue)
-- [ ] T109 [US7] Implement GET /api/admin-tasks/:id endpoint in backend/src/api/admin-tasks.routes.ts (fetch task details, show completions array for Tier 2+)
-- [ ] T110 [US7] Implement POST /api/admin-tasks endpoint in backend/src/api/admin-tasks.routes.ts (create task, validate role assignments, set recurringEndDate) restricted to Tier 2+
-- [ ] T111 [US7] Implement PUT /api/admin-tasks/:id endpoint in backend/src/api/admin-tasks.routes.ts (update task) restricted to Tier 2+
-- [ ] T112 [US7] Implement POST /api/admin-tasks/:id/complete endpoint in backend/src/api/admin-tasks.routes.ts (mark complete for current user, create notification)
-- [ ] T113 [US7] Implement DELETE /api/admin-tasks/:id endpoint in backend/src/api/admin-tasks.routes.ts (soft delete) restricted to Tier 2+
-- [ ] T114 [US7] Implement GET /api/admin-tasks/:id/completions endpoint in backend/src/api/admin-tasks.routes.ts (view completion status across volunteers) restricted to Tier 2+
+- [X] T106 [P] [US7] Create Zod validation schemas in backend/src/utils/validation/admin-task.schema.ts (createTaskSchema, updateTaskSchema, completeTaskSchema) from contracts/admin-tasks-api.md
+- [X] T107 [P] [US7] Create AdminTaskService in backend/src/services/admin-task.service.ts with CRUD operations, role assignment logic, completion tracking, recurring task year-end logic
+- [X] T108 [US7] Implement GET /api/admin-tasks endpoint in backend/src/api/admin-tasks.controller.ts (list tasks with assignedToMe/status/taskId filters, calculate isOverdue)
+- [X] T109 [US7] Implement GET /api/admin-tasks/:id endpoint in backend/src/api/admin-tasks.controller.ts (fetch task details, show completions array for Tier 2+)
+- [X] T110 [US7] Implement POST /api/admin-tasks endpoint in backend/src/api/admin-tasks.controller.ts (create task, validate role assignments, set recurringEndDate) restricted to Tier 2+
+- [X] T111 [US7] Implement PUT /api/admin-tasks/:id endpoint in backend/src/api/admin-tasks.controller.ts (update task) restricted to Tier 2+
+- [X] T112 [US7] Implement POST /api/admin-tasks/:id/complete endpoint in backend/src/api/admin-tasks.controller.ts (mark complete for current user, create notification)
+- [X] T113 [US7] Implement DELETE /api/admin-tasks/:id endpoint in backend/src/api/admin-tasks.controller.ts (soft delete) restricted to Tier 2+
+- [X] T114 [US7] Implement GET /api/admin-tasks/:id/completions endpoint in backend/src/api/admin-tasks.controller.ts (view completion status across volunteers) restricted to Tier 2+
 
 ### Frontend Implementation for User Story 7
 
-- [ ] T115 [P] [US7] Create admin task form components in frontend/src/components/forms/tasks/ (AdminTaskForm with completion steps editor, role selector)
-- [ ] T116 [P] [US7] Create admin task display components in frontend/src/components/shared/tasks/ (TaskCard, TaskDetails, CompletionSteps with URLs)
-- [ ] T117 [P] [US7] Create admin tasks API service in frontend/src/services/admin-tasks.service.ts with Axios methods for all admin task endpoints
-- [ ] T118 [US7] Create admin tasks list page in frontend/src/app/tasks/page.tsx with status filters (complete/incomplete/overdue), overdue highlighting
-- [ ] T119 [US7] Create admin task detail page in frontend/src/app/tasks/[id]/page.tsx with completion button and completion steps
-- [ ] T120 [US7] Create admin task creation page in frontend/src/app/tasks/create/page.tsx (Tier 2+ only) with AdminTaskForm
-- [ ] T121 [US7] Create admin task edit page in frontend/src/app/tasks/[id]/edit/page.tsx (Tier 2+ only) with AdminTaskForm pre-populated
-- [ ] T122 [US7] Create task completion tracking page in frontend/src/app/tasks/[id]/completions/page.tsx (Tier 2+ only) showing volunteer completion status
-- [ ] T123 [US7] Update navigation in frontend/src/components/layouts/nav.tsx to include Tasks link for all tiers
+- [X] T115 [P] [US7] Create admin task form components in frontend/src/components/forms/tasks/ (AdminTaskForm with completion steps editor, role selector)
+- [X] T116 [P] [US7] Create admin task display components in frontend/src/components/shared/tasks/ (TaskCard, TaskDetails, CompletionSteps with URLs)
+- [X] T117 [P] [US7] Create admin tasks API service in frontend/src/services/admin-tasks.service.ts with Axios methods for all admin task endpoints
+- [X] T118 [US7] Create admin tasks list page in frontend/src/app/tasks/page.tsx with status filters (complete/incomplete/overdue), overdue highlighting
+- [X] T119 [US7] Create admin task detail page in frontend/src/app/tasks/[id]/page.tsx with completion button and completion steps
+- [X] T120 [US7] Create admin task creation page in frontend/src/app/tasks/create/page.tsx (Tier 2+ only) with AdminTaskForm
+- [X] T121 [US7] Create admin task edit page in frontend/src/app/tasks/[id]/edit/page.tsx (Tier 2+ only) with AdminTaskForm pre-populated
+- [X] T122 [US7] Create task completion tracking page in frontend/src/app/tasks/[id]/completions/page.tsx (Tier 2+ only) showing volunteer completion status
+- [X] T123 [US7] Update navigation in frontend/src/components/layouts/navigation.tsx to include Tasks link for all tiers
 
 **Checkpoint**: User Stories 1-7 complete - administrative task tracking functional
 
@@ -290,25 +290,25 @@
 
 ### Backend Implementation for User Story 8
 
-- [ ] T124 [P] [US8] Create Zod validation schemas in backend/src/utils/validation/config.schema.ts (updatePackConfigSchema, createRoleSchema, updateRoleSchema) from contracts/reports-config-api.md
-- [ ] T125 [P] [US8] Create PackConfigService in backend/src/services/pack-config.service.ts with config CRUD, year-end date updates to recurring events/tasks
-- [ ] T126 [P] [US8] Create VolunteerRoleService in backend/src/services/volunteer-role.service.ts with role CRUD, soft delete with historical preservation, deletion prevention if role in use
-- [ ] T127 [US8] Implement GET /api/pack-config endpoint in backend/src/api/config.routes.ts (fetch pack configuration)
-- [ ] T128 [US8] Implement PUT /api/pack-config endpoint in backend/src/api/config.routes.ts (update pack config, cascade year-end date changes) restricted to Tier 3
-- [ ] T129 [US8] Implement GET /api/volunteer-roles endpoint in backend/src/api/config.routes.ts (list all active volunteer roles)
-- [ ] T130 [US8] Implement POST /api/volunteer-roles endpoint in backend/src/api/config.routes.ts (create new role) restricted to Tier 3
-- [ ] T131 [US8] Implement PUT /api/volunteer-roles/:id endpoint in backend/src/api/config.routes.ts (update role description) restricted to Tier 3
-- [ ] T132 [US8] Implement DELETE /api/volunteer-roles/:id endpoint in backend/src/api/config.routes.ts (soft delete, check for usage in future events) restricted to Tier 3
+- [X] T124 [P] [US8] Create Zod validation schemas in backend/src/utils/validation/config.schema.ts (updatePackConfigSchema, createRoleSchema, updateRoleSchema) from contracts/reports-config-api.md
+- [X] T125 [P] [US8] Create PackConfigService in backend/src/services/pack-config.service.ts with config CRUD, year-end date updates to recurring events/tasks
+- [X] T126 [P] [US8] Create VolunteerRoleService in backend/src/services/volunteer-role.service.ts with role CRUD, soft delete with historical preservation, deletion prevention if role in use
+- [X] T127 [US8] Implement GET /api/pack-config endpoint in backend/src/api/config.routes.ts (fetch pack configuration)
+- [X] T128 [US8] Implement PUT /api/pack-config endpoint in backend/src/api/config.routes.ts (update pack config, cascade year-end date changes) restricted to Tier 3
+- [X] T129 [US8] Implement GET /api/volunteer-roles endpoint in backend/src/api/config.routes.ts (list all active volunteer roles)
+- [X] T130 [US8] Implement POST /api/volunteer-roles endpoint in backend/src/api/config.routes.ts (create new role) restricted to Tier 3
+- [X] T131 [US8] Implement PUT /api/volunteer-roles/:id endpoint in backend/src/api/config.routes.ts (update role description) restricted to Tier 3
+- [X] T132 [US8] Implement DELETE /api/volunteer-roles/:id endpoint in backend/src/api/config.routes.ts (soft delete, check for usage in future events) restricted to Tier 3
 
 ### Frontend Implementation for User Story 8
 
-- [ ] T133 [P] [US8] Create pack config form component in frontend/src/components/forms/config/PackConfigForm.tsx with year date pickers and active ranks checkboxes
-- [ ] T134 [P] [US8] Create volunteer role form component in frontend/src/components/forms/config/VolunteerRoleForm.tsx with role type selector, specialty/rank fields
-- [ ] T135 [P] [US8] Create config API service in frontend/src/services/config.service.ts with Axios methods for pack config and role endpoints
-- [ ] T136 [US8] Create pack configuration page in frontend/src/app/admin/config/page.tsx (Tier 3 only) with PackConfigForm
-- [ ] T137 [US8] Create volunteer roles management page in frontend/src/app/admin/roles/page.tsx (Tier 3 only) with role list, create/edit/delete actions
-- [ ] T138 [US8] Update application header in frontend/src/app/layout.tsx to display pack name and number from pack config
-- [ ] T139 [US8] Update navigation in frontend/src/components/layouts/nav.tsx to include Admin section with Config and Roles links (Tier 3 only)
+- [X] T133 [P] [US8] Create pack config form component in frontend/src/components/forms/config/PackConfigForm.tsx with year date pickers and active ranks checkboxes
+- [X] T134 [P] [US8] Create volunteer role form component in frontend/src/components/forms/config/VolunteerRoleForm.tsx with role type selector, specialty/rank fields
+- [X] T135 [P] [US8] Create config API service in frontend/src/services/config.service.ts with Axios methods for pack config and role endpoints
+- [X] T136 [US8] Create pack configuration page in frontend/src/app/admin/config/page.tsx (Tier 3 only) with PackConfigForm
+- [X] T137 [US8] Create volunteer roles management page in frontend/src/app/admin/roles/page.tsx (Tier 3 only) with role list, create/edit/delete actions
+- [X] T138 [US8] Update application header in frontend/src/app/layout.tsx to display pack name and number from pack config
+- [X] T139 [US8] Update navigation in frontend/src/components/layouts/nav.tsx to include Admin section with Config and Roles links (Tier 3 only)
 
 **Checkpoint**: User Stories 1-8 complete - pack configuration and role management functional
 
@@ -322,21 +322,28 @@
 
 ### Backend Implementation for User Story 9
 
-- [ ] T140 [P] [US9] Create Zod validation schemas in backend/src/utils/validation/reports.schema.ts (participationReportSchema, adminTaskReportSchema) from contracts/reports-config-api.md
-- [ ] T141 [P] [US9] Create ReportsService in backend/src/services/reports.service.ts with participation aggregation, admin task completion aggregation, date range filtering
-- [ ] T142 [US9] Implement GET /api/reports/participation endpoint in backend/src/api/reports.routes.ts (generate summary or detailed participation reports) restricted to Tier 2+
-- [ ] T143 [US9] Implement GET /api/reports/administrative-tasks endpoint in backend/src/api/reports.routes.ts (generate summary or detailed admin task completion reports) restricted to Tier 2+
+- [X] T140 [P] [US9] Create Zod validation schemas in backend/src/utils/validation/reports.schema.ts (participationReportSchema, adminTaskReportSchema) from contracts/reports-config-api.md
+- [X] T141 [P] [US9] Create ReportsService in backend/src/services/reports.service.ts with participation aggregation, admin task completion aggregation, date range filtering
+- [X] T142 [US9] Implement GET /api/reports/participation endpoint in backend/src/api/reports.controller.ts (generate summary or detailed participation reports) restricted to Tier 2+
+- [X] T143 [US9] Implement GET /api/reports/administrative-tasks endpoint in backend/src/api/reports.controller.ts (generate summary or detailed admin task completion reports) restricted to Tier 2+
 
 ### Frontend Implementation for User Story 9
 
-- [ ] T144 [P] [US9] Create report filter components in frontend/src/components/forms/reports/ (ReportFilters with date range, rank level, format selectors)
-- [ ] T145 [P] [US9] Create report display components in frontend/src/components/shared/reports/ (ParticipationReportTable, AdminTaskReportTable, ReportStats)
-- [ ] T146 [P] [US9] Create reports API service in frontend/src/services/reports.service.ts with Axios methods for report endpoints
-- [ ] T147 [US9] Create reports dashboard page in frontend/src/app/reports/page.tsx (Tier 2+ only) with report type selector
-- [ ] T148 [US9] Create participation report page in frontend/src/app/reports/participation/page.tsx (Tier 2+ only) with filters and summary/detailed toggle
-- [ ] T149 [US9] Create admin task report page in frontend/src/app/reports/administrative-tasks/page.tsx (Tier 2+ only) with filters and summary/detailed toggle
-- [ ] T150 [US9] Add export functionality in frontend/src/components/shared/reports/ExportButton.tsx to download reports as CSV
-- [ ] T151 [US9] Update navigation in frontend/src/components/layouts/nav.tsx to include Reports link (Tier 2+ only)
+- [X] T144 [P] [US9] Create report filter components in frontend/src/components/forms/reports/ReportFilters.tsx (date range, rank level, format selectors)
+- [X] T145 [P] [US9] Create report display components in frontend/src/components/shared/reports/ (ParticipationReportTable, AdminTaskReportTable, ReportStats)
+- [X] T146 [P] [US9] Create reports API service in frontend/src/services/reports.service.ts with Axios methods for report endpoints
+- [X] T147 [US9] Create reports dashboard page in frontend/src/app/reports/page.tsx (Tier 2+ only) with report type selector
+- [X] T148 [US9] Create participation report page in frontend/src/app/reports/participation/page.tsx (Tier 2+ only) with filters and summary/detailed toggle
+- [X] T149 [US9] Create admin task report page in frontend/src/app/reports/administrative-tasks/page.tsx (Tier 2+ only) with filters and summary/detailed toggle
+- [X] T150 [US9] Add export functionality in frontend/src/services/reports.service.ts to download reports as CSV
+- [X] T151 [US9] Update navigation in frontend/src/components/layouts/navigation.tsx to include Reports link (Tier 2+ only)
+- [X] T152 [US9] Add upcomingEventsReportSchema validation in backend/src/utils/validation/reports.schema.ts for upcoming events report query parameters
+- [X] T153 [US9] Implement generateUpcomingEventsReport method in backend/src/services/reports.service.ts (fetch incomplete events with signup details)
+- [X] T154 [US9] Add GET /api/reports/upcoming-events endpoint in backend/src/api/reports.controller.ts (Tier 2+ only)
+- [X] T155 [US9] Add getUpcomingEventsReport method to frontend/src/services/reports.service.ts with support for date range and rank filters
+- [X] T156 [US9] Create upcoming events report page in frontend/src/app/reports/upcoming-events/page.tsx showing event details, signups, and capacity
+- [X] T157 [US9] Update reports dashboard page to include Upcoming Events & Signups report card
+- [X] T158 [US9] Update CSV export function to support upcoming events report format with volunteer contact info
 
 **Checkpoint**: User Stories 1-9 complete - reporting capabilities functional
 

@@ -68,6 +68,15 @@ apiClient.interceptors.response.use(
 
     // Handle 401 Unauthorized errors
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+      // Don't attempt token refresh for auth endpoints themselves
+      const authEndpoints = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/request-reset', '/auth/reset-password'];
+      const isAuthEndpoint = authEndpoints.some(endpoint => originalRequest.url?.includes(endpoint));
+      
+      if (isAuthEndpoint) {
+        // For auth endpoints, just reject the error without retry
+        return Promise.reject(error);
+      }
+      
       // If already refreshing, queue this request
       if (isRefreshing) {
         return new Promise((resolve) => {
@@ -94,8 +103,14 @@ apiClient.interceptors.response.use(
         isRefreshing = false;
         
         // Only redirect if we're in the browser (not during SSR)
+        // AND not already on a public auth page (to avoid infinite loops)
         if (typeof window !== 'undefined') {
-          window.location.href = '/auth/login';
+          const publicAuthPaths = ['/auth/login', '/auth/register', '/auth/reset-password', '/auth/change-password'];
+          const isOnPublicPage = publicAuthPaths.some(path => window.location.pathname.startsWith(path));
+          
+          if (!isOnPublicPage) {
+            window.location.href = '/auth/login';
+          }
         }
         
         return Promise.reject(refreshError);

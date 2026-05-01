@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PointsService } from './points.service';
+import { BadgeTierService } from './badge-tier.service';
 import { PointEventType } from '@prisma/client';
 import {
   setupTests,
@@ -23,7 +24,7 @@ describe('PointsService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [PointsService],
+      providers: [PointsService, BadgeTierService],
     }).compile();
 
     service = module.get<PointsService>(PointsService);
@@ -47,10 +48,12 @@ describe('PointsService', () => {
     it('should award 100 points for role assignment and create point event', async () => {
       const volunteer = await createTestVolunteer();
       const roleAssignmentId = 'role-assignment-123';
+      const roleId = 'role-123';
 
       await service.awardRoleAssignmentPoints(
         volunteer.id,
         roleAssignmentId,
+        roleId,
         volunteer.id
       );
 
@@ -69,10 +72,12 @@ describe('PointsService', () => {
     it('should update volunteer point balance', async () => {
       const volunteer = await createTestVolunteer();
       const roleAssignmentId = 'role-assignment-456';
+      const roleId = 'role-456';
 
       await service.awardRoleAssignmentPoints(
         volunteer.id,
         roleAssignmentId,
+        roleId,
         volunteer.id
       );
 
@@ -87,10 +92,12 @@ describe('PointsService', () => {
     it('should update leaderboard cache with badge tier', async () => {
       const volunteer = await createTestVolunteer();
       const roleAssignmentId = 'role-assignment-789';
+      const roleId = 'role-789';
 
       await service.awardRoleAssignmentPoints(
         volunteer.id,
         roleAssignmentId,
+        roleId,
         volunteer.id
       );
 
@@ -99,7 +106,83 @@ describe('PointsService', () => {
       });
 
       expect(leaderboard?.totalPoints).toBe(100);
-      expect(leaderboard?.badgeTier).toBe('Diamond'); // 100 points = Diamond
+      expect(leaderboard?.badgeTier).toBe('Arrow of Light'); // 100 points = Arrow of Light
+    });
+
+    it('should not award duplicate points for same role in current year', async () => {
+      const volunteer = await createTestVolunteer();
+      const roleId = 'role-dup-test';
+
+      // First assignment - should award points
+      await service.awardRoleAssignmentPoints(
+        volunteer.id,
+        'role-assignment-1',
+        roleId,
+        volunteer.id
+      );
+
+      // Second assignment of same role - should NOT award points
+      await service.awardRoleAssignmentPoints(
+        volunteer.id,
+        'role-assignment-2',
+        roleId,
+        volunteer.id
+      );
+
+      const balance = await prisma.volunteerPointBalance.findUnique({
+        where: { volunteerId: volunteer.id },
+      });
+
+      // Should only have 100 points (not 200)
+      expect(balance?.totalPoints).toBe(100);
+
+      // Verify only one point event was created
+      const pointEvents = await prisma.pointEvent.findMany({
+        where: {
+          volunteerId: volunteer.id,
+          eventType: PointEventType.ROLE_ASSIGNMENT,
+        },
+      });
+
+      expect(pointEvents).toHaveLength(1);
+      expect(pointEvents[0].referenceId).toBe('role-assignment-1');
+    });
+
+    it('should award points for different roles', async () => {
+      const volunteer = await createTestVolunteer();
+
+      // First role
+      await service.awardRoleAssignmentPoints(
+        volunteer.id,
+        'role-assignment-1',
+        'role-1',
+        volunteer.id
+      );
+
+      // Different role - should award points
+      await service.awardRoleAssignmentPoints(
+        volunteer.id,
+        'role-assignment-2',
+        'role-2',
+        volunteer.id
+      );
+
+      const balance = await prisma.volunteerPointBalance.findUnique({
+        where: { volunteerId: volunteer.id },
+      });
+
+      // Should have 200 points (100 per role)
+      expect(balance?.totalPoints).toBe(200);
+
+      // Verify two point events were created
+      const pointEvents = await prisma.pointEvent.findMany({
+        where: {
+          volunteerId: volunteer.id,
+          eventType: PointEventType.ROLE_ASSIGNMENT,
+        },
+      });
+
+      expect(pointEvents).toHaveLength(2);
     });
   });
 
@@ -155,7 +238,7 @@ describe('PointsService', () => {
         where: { volunteerId: volunteer.id },
       });
 
-      expect(leaderboard?.badgeTier).toBe('Bronze'); // 25 points = Bronze (20-39)
+      expect(leaderboard?.badgeTier).toBe('Tiger'); // 25 points = Tiger (20-39)
     });
   });
 
@@ -252,14 +335,14 @@ describe('PointsService', () => {
       const event1 = await createTestEvent(volunteer.id, { title: 'Event 1' });
       const event2 = await createTestEvent(volunteer.id, { title: 'Event 2' });
 
-      // Award 50 points total (Silver tier, 40-59)
+      // Award 50 points total (Wolf tier, 40-59)
       await service.awardEventPoints(volunteer.id, event1.id, activityType.id, 25, volunteer.id);
       await service.awardEventPoints(volunteer.id, event2.id, activityType.id, 25, volunteer.id);
 
       const leaderboardBefore = await prisma.leaderboardCache.findUnique({
         where: { volunteerId: volunteer.id },
       });
-      expect(leaderboardBefore?.badgeTier).toBe('Silver');
+      expect(leaderboardBefore?.badgeTier).toBe('Wolf');
 
       // Revoke one event's points
       const eventToRevoke = await prisma.pointEvent.findFirst({
@@ -276,7 +359,7 @@ describe('PointsService', () => {
       });
 
       expect(leaderboardAfter?.totalPoints).toBe(25);
-      expect(leaderboardAfter?.badgeTier).toBe('Bronze'); // Down to Bronze (20-39)
+      expect(leaderboardAfter?.badgeTier).toBe('Tiger'); // Down to Tiger (20-39)
     });
 
     it('should throw error if point event not found', async () => {
@@ -365,18 +448,18 @@ describe('PointsService', () => {
 
       expect(leaderboard).toBeDefined();
       expect(leaderboard?.totalPoints).toBe(25);
-      expect(leaderboard?.badgeTier).toBe('Bronze');
+      expect(leaderboard?.badgeTier).toBe('Tiger');
     });
 
     it('should assign correct badge tiers based on points', async () => {
       const testCases = [
-        { points: 5, expectedTier: null }, // No badge yet
-        { points: 20, expectedTier: 'Bronze' },
-        { points: 40, expectedTier: 'Silver' },
-        { points: 60, expectedTier: 'Gold' },
-        { points: 80, expectedTier: 'Platinum' },
-        { points: 100, expectedTier: 'Diamond' },
-        { points: 150, expectedTier: 'Diamond' }, // Still Diamond at max
+        { points: 5, expectedTier: 'Bobcat' },
+        { points: 20, expectedTier: 'Tiger' },
+        { points: 40, expectedTier: 'Wolf' },
+        { points: 60, expectedTier: 'Bear' },
+        { points: 80, expectedTier: 'Webelos' },
+        { points: 100, expectedTier: 'Arrow of Light' },
+        { points: 150, expectedTier: 'Arrow of Light' }, // Still max tier
       ];
 
       for (const testCase of testCases) {
@@ -452,7 +535,7 @@ describe('PointsService', () => {
       expect(snapshot).toBeDefined();
       expect(snapshot?.rank).toBe(1);
       expect(snapshot?.totalPoints).toBe(60);
-      expect(snapshot?.badgeTier).toBe('Gold');
+      expect(snapshot?.badgeTier).toBe('Bear');
       expect(snapshot?.snapshotDate).toBeDefined();
     });
 
@@ -514,7 +597,7 @@ describe('PointsService', () => {
       const event = await createTestEvent(volunteer.id);
 
       // Role assignment: 100 points
-      await service.awardRoleAssignmentPoints(volunteer.id, 'role-1', volunteer.id);
+      await service.awardRoleAssignmentPoints(volunteer.id, 'role-assignment-1', 'role-1', volunteer.id);
 
       // Event participation: 5 points
       await service.awardEventPoints(volunteer.id, event.id, activityType.id, 5, volunteer.id);

@@ -119,17 +119,17 @@ export default function DashboardPage() {
             <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
             <div className="space-y-2">
               <Link href="/events">
-                <Button className="w-full" variant="outline">
+                <Button className="w-full" variant="plainoutline">
                   View Events
                 </Button>
               </Link>
               <Link href="/tasks">
-                <Button className="w-full" variant="outline">
+                <Button className="w-full" variant="plainoutline">
                   My Tasks
                 </Button>
               </Link>
               <Link href="/leaderboard">
-                <Button className="w-full" variant="outline">
+                <Button className="w-full" variant="plainoutline">
                   Leaderboard
                 </Button>
               </Link>

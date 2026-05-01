@@ -302,7 +302,7 @@ export default function EventForm({ initialData, activityTypes, onSubmit, submit
       )}
 
       <div className="flex gap-4">
-        <Button type="submit" disabled={loading}>
+        <Button type="submit" variant="outline" disabled={loading}>
           {loading ? 'Saving...' : submitLabel}
         </Button>
         <Button type="button" variant="outline" onClick={() => router.back()}>

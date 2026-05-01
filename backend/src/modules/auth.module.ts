@@ -10,7 +10,7 @@ import { AuthGuard, TierGuard } from '../middleware/auth';
   imports: [
     ThrottlerModule.forRoot([{
       ttl: 60000, // 60 seconds
-      limit: 10, // 10 requests per minute default
+      limit: process.env.NODE_ENV === 'development' ? 1000 : 10, // Much higher in dev
     }]),
   ],
   controllers: [AuthController],

@@ -53,7 +53,7 @@ export const updateActivitySchema = z.object({
     .positive('Point value must be positive')
     .optional(),
   category: activityCategoryEnum.optional(),
-  description: z.string().max(500, 'Description must be 500 characters or less').optional()
+  description: z.string().max(500, 'Description must be 500 characters or less').nullable().optional()
 }).refine(
   (data) => {
     // If both pointValue and category are provided, validate they match

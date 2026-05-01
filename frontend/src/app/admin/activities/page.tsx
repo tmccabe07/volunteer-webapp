@@ -117,7 +117,7 @@ export default function AdminActivitiesPage() {
           </div>
         ) : (
           <div className="mb-6">
-            <Button onClick={() => setShowForm(true)}>
+            <Button variant="outline" onClick={() => setShowForm(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Create Activity Type
             </Button>

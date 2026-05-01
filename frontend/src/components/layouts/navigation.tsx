@@ -19,13 +19,14 @@ interface NavLink {
 const navLinks: NavLink[] = [
   { href: '/dashboard', label: 'Dashboard', minTier: 1 },
   { href: '/events', label: 'Events', minTier: 1 },
-  { href: '/tasks', label: 'My Tasks', minTier: 1 },
+  { href: '/tasks', label: 'Tasks', minTier: 1 },
   { href: '/leaderboard', label: 'Leaderboard', minTier: 1 },
   { href: '/profile', label: 'Profile', minTier: 1 },
   { href: '/volunteers', label: 'Volunteers', minTier: 2 },
   { href: '/reports', label: 'Reports', minTier: 2 },
-  { href: '/admin-tasks', label: 'Admin Tasks', minTier: 2 },
-  { href: '/admin', label: 'Admin', minTier: 3 },
+  { href: '/admin/config', label: 'Pack Config', minTier: 3 },
+  { href: '/admin/roles', label: 'Roles', minTier: 3 },
+  { href: '/admin/activities', label: 'Activities', minTier: 3 },
 ];
 
 interface NavigationProps {

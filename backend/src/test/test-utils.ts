@@ -84,32 +84,32 @@ export async function seedTestDatabase() {
     },
     { 
       name: 'Assistant Den Leader - Bear', 
-      roleType: 'ASSISTANT_DEN_LEADER',
-      grantsTier: 'LEADER',
-      rankLevel: 'BEAR',
+      roleType: 'ASSISTANT_DEN_LEADER' as const,
+      grantsTier: 'LEADER' as const,
+      rankLevel: 'BEAR' as const,
     },
     { 
       name: 'Committee Member - Treasurer', 
-      roleType: 'COMMITTEE',
-      grantsTier: 'LEADER',
+      roleType: 'COMMITTEE' as const,
+      grantsTier: 'LEADER' as const,
       specialty: 'treasurer',
     },
   ];
   
   for (const role of roles) {
-    await prisma.volunteerRole.create({ data: role });
+    await prisma.volunteerRole.create({ data: role as any });
   }
 
   // Create activity types
   const activities = [
-    { name: 'Event Setup', category: 'LOW', pointValue: 3, description: 'Help set up for pack events' },
-    { name: 'Event Volunteer', category: 'MEDIUM', pointValue: 5, description: 'Volunteer at pack events' },
-    { name: 'Den Meeting Leader', category: 'HIGH', pointValue: 10, description: 'Lead a den meeting' },
-    { name: 'Pack Committee Meeting', category: 'MEDIUM', pointValue: 5, description: 'Attend pack committee meeting' },
+    { name: 'Event Setup', category: 'LOW' as const, pointValue: 3, description: 'Help set up for pack events' },
+    { name: 'Event Volunteer', category: 'MEDIUM' as const, pointValue: 5, description: 'Volunteer at pack events' },
+    { name: 'Den Meeting Leader', category: 'HIGH' as const, pointValue: 10, description: 'Lead a den meeting' },
+    { name: 'Pack Committee Meeting', category: 'MEDIUM' as const, pointValue: 5, description: 'Attend pack committee meeting' },
   ];
   
   for (const activity of activities) {
-    await prisma.activityType.create({ data: activity });
+    await prisma.activityType.create({ data: activity as any });
   }
 }
 
