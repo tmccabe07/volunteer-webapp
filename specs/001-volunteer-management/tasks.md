@@ -322,21 +322,21 @@
 
 ### Backend Implementation for User Story 9
 
-- [ ] T140 [P] [US9] Create Zod validation schemas in backend/src/utils/validation/reports.schema.ts (participationReportSchema, adminTaskReportSchema) from contracts/reports-config-api.md
-- [ ] T141 [P] [US9] Create ReportsService in backend/src/services/reports.service.ts with participation aggregation, admin task completion aggregation, date range filtering
-- [ ] T142 [US9] Implement GET /api/reports/participation endpoint in backend/src/api/reports.routes.ts (generate summary or detailed participation reports) restricted to Tier 2+
-- [ ] T143 [US9] Implement GET /api/reports/administrative-tasks endpoint in backend/src/api/reports.routes.ts (generate summary or detailed admin task completion reports) restricted to Tier 2+
+- [X] T140 [P] [US9] Create Zod validation schemas in backend/src/utils/validation/reports.schema.ts (participationReportSchema, adminTaskReportSchema) from contracts/reports-config-api.md
+- [X] T141 [P] [US9] Create ReportsService in backend/src/services/reports.service.ts with participation aggregation, admin task completion aggregation, date range filtering
+- [X] T142 [US9] Implement GET /api/reports/participation endpoint in backend/src/api/reports.controller.ts (generate summary or detailed participation reports) restricted to Tier 2+
+- [X] T143 [US9] Implement GET /api/reports/administrative-tasks endpoint in backend/src/api/reports.controller.ts (generate summary or detailed admin task completion reports) restricted to Tier 2+
 
 ### Frontend Implementation for User Story 9
 
-- [ ] T144 [P] [US9] Create report filter components in frontend/src/components/forms/reports/ (ReportFilters with date range, rank level, format selectors)
-- [ ] T145 [P] [US9] Create report display components in frontend/src/components/shared/reports/ (ParticipationReportTable, AdminTaskReportTable, ReportStats)
-- [ ] T146 [P] [US9] Create reports API service in frontend/src/services/reports.service.ts with Axios methods for report endpoints
-- [ ] T147 [US9] Create reports dashboard page in frontend/src/app/reports/page.tsx (Tier 2+ only) with report type selector
-- [ ] T148 [US9] Create participation report page in frontend/src/app/reports/participation/page.tsx (Tier 2+ only) with filters and summary/detailed toggle
-- [ ] T149 [US9] Create admin task report page in frontend/src/app/reports/administrative-tasks/page.tsx (Tier 2+ only) with filters and summary/detailed toggle
-- [ ] T150 [US9] Add export functionality in frontend/src/components/shared/reports/ExportButton.tsx to download reports as CSV
-- [ ] T151 [US9] Update navigation in frontend/src/components/layouts/nav.tsx to include Reports link (Tier 2+ only)
+- [X] T144 [P] [US9] Create report filter components in frontend/src/components/forms/reports/ReportFilters.tsx (date range, rank level, format selectors)
+- [X] T145 [P] [US9] Create report display components in frontend/src/components/shared/reports/ (ParticipationReportTable, AdminTaskReportTable, ReportStats)
+- [X] T146 [P] [US9] Create reports API service in frontend/src/services/reports.service.ts with Axios methods for report endpoints
+- [X] T147 [US9] Create reports dashboard page in frontend/src/app/reports/page.tsx (Tier 2+ only) with report type selector
+- [X] T148 [US9] Create participation report page in frontend/src/app/reports/participation/page.tsx (Tier 2+ only) with filters and summary/detailed toggle
+- [X] T149 [US9] Create admin task report page in frontend/src/app/reports/administrative-tasks/page.tsx (Tier 2+ only) with filters and summary/detailed toggle
+- [X] T150 [US9] Add export functionality in frontend/src/services/reports.service.ts to download reports as CSV
+- [X] T151 [US9] Update navigation in frontend/src/components/layouts/navigation.tsx to include Reports link (Tier 2+ only)
 
 **Checkpoint**: User Stories 1-9 complete - reporting capabilities functional
 
