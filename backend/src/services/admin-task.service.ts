@@ -8,6 +8,8 @@
 import { Injectable } from '@nestjs/common';
 import prisma from '../utils/prisma';
 import type { AuthTier } from '@prisma/client';
+import { NotificationService } from './notification.service';
+import { NotificationType } from '@prisma/client';
 
 export interface CreateAdminTaskInput {
   name: string;
@@ -39,6 +41,8 @@ export interface ListAdminTasksInput {
 
 @Injectable()
 export class AdminTaskService {
+  constructor(private readonly notificationService: NotificationService) {}
+
   /**
    * Create a new administrative task
    * Auto-sets recurringEndDate from PackConfig if isRecurring=true
@@ -485,13 +489,11 @@ export class AdminTaskService {
       },
     });
 
-    // Create notification
-    await prisma.notification.create({
-      data: {
-        volunteerId,
-        type: 'TASK_COMPLETION',
-        message: `You completed: ${task.name}`,
-      },
+    // Create notification using NotificationService
+    await this.notificationService.createNotification({
+      volunteerId,
+      type: NotificationType.TASK_COMPLETION,
+      message: `You completed: ${task.name}`,
     });
 
     return {

@@ -57,6 +57,9 @@ export function ReportFilters({
     onFilterChange(resetFilters);
   };
 
+  // Get today's date in YYYY-MM-DD format for max date validation
+  const today = new Date().toISOString().split('T')[0];
+
   return (
     <div className="space-y-4 rounded-lg border p-4">
       <h3 className="text-lg font-semibold">Report Filters</h3>
@@ -68,6 +71,7 @@ export function ReportFilters({
           <Input
             id="startDate"
             type="date"
+            max={today}
             value={filters.startDate || ''}
             onChange={(e) => handleFilterUpdate('startDate', e.target.value)}
           />
@@ -79,6 +83,7 @@ export function ReportFilters({
           <Input
             id="endDate"
             type="date"
+            max={today}
             value={filters.endDate || ''}
             onChange={(e) => handleFilterUpdate('endDate', e.target.value)}
           />

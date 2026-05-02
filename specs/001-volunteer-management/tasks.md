@@ -357,22 +357,22 @@
 
 ### Backend Implementation for User Story 10
 
-- [ ] T152 [P] [US10] Create NotificationService in backend/src/services/notification.service.ts with notification creation, retrieval, mark-as-read logic
-- [ ] T153 [US10] Implement GET /api/notifications endpoint in backend/src/api/notifications.routes.ts (fetch user notifications with unread count, pagination)
-- [ ] T154 [US10] Implement PUT /api/notifications/:id/read endpoint in backend/src/api/notifications.routes.ts (mark notification as read)
-- [ ] T155 [US10] Implement PUT /api/notifications/read-all endpoint in backend/src/api/notifications.routes.ts (mark all notifications as read)
-- [ ] T156 [US10] Update BadgeTierService in backend/src/services/badge-tier.service.ts to create BADGE_ACHIEVEMENT notification on tier upgrade
-- [ ] T157 [US10] Update AdminTaskService in backend/src/services/admin-task.service.ts to create TASK_COMPLETION notification on task completion (already partially implemented in T112)
-- [ ] T158 [US10] Create scheduled job script in backend/src/jobs/event-reminders.ts to send EVENT_REMINDER notifications 48 hours before events
+- [X] T152 [P] [US10] Create NotificationService in backend/src/services/notification.service.ts with notification creation, retrieval, mark-as-read logic
+- [X] T153 [US10] Implement GET /api/notifications endpoint in backend/src/api/notifications.routes.ts (fetch user notifications with unread count, pagination)
+- [X] T154 [US10] Implement PUT /api/notifications/:id/read endpoint in backend/src/api/notifications.routes.ts (mark notification as read)
+- [X] T155 [US10] Implement PUT /api/notifications/read-all endpoint in backend/src/api/notifications.routes.ts (mark all notifications as read)
+- [X] T156 [US10] Update BadgeTierService in backend/src/services/badge-tier.service.ts to create BADGE_ACHIEVEMENT notification on tier upgrade
+- [X] T157 [US10] Update AdminTaskService in backend/src/services/admin-task.service.ts to create TASK_COMPLETION notification on task completion (already partially implemented in T112)
+- [X] T158 [US10] Create scheduled job script in backend/src/jobs/event-reminders.ts to send EVENT_REMINDER notifications 48 hours before events
 
 ### Frontend Implementation for User Story 10
 
-- [ ] T159 [P] [US10] Create notification display components in frontend/src/components/shared/notifications/ (NotificationDropdown, NotificationItem)
-- [ ] T160 [P] [US10] Create notifications API service in frontend/src/services/notifications.service.ts with Axios methods for notification endpoints
-- [ ] T161 [US10] Create notifications dropdown in frontend/src/components/layouts/header.tsx with unread count badge, mark-as-read functionality
-- [ ] T162 [US10] Create notifications page in frontend/src/app/notifications/page.tsx with full notification list, filters, mark all as read button
-- [ ] T163 [US10] Add notification polling or WebSocket connection in frontend/src/lib/notification-context.tsx to check for new notifications every 30 seconds
-- [ ] T164 [US10] Update navigation in frontend/src/components/layouts/nav.tsx to include notifications bell icon with unread badge
+- [X] T159 [P] [US10] Create notification display components in frontend/src/components/shared/notifications/ (NotificationDropdown, NotificationItem)
+- [X] T160 [P] [US10] Create notifications API service in frontend/src/services/notifications.service.ts with Axios methods for notification endpoints
+- [X] T161 [US10] Create notifications dropdown in frontend/src/components/layouts/header.tsx with unread count badge, mark-as-read functionality
+- [X] T162 [US10] Create notifications page in frontend/src/app/notifications/page.tsx with full notification list, filters, mark all as read button
+- [X] T163 [US10] Add notification polling or WebSocket connection in frontend/src/lib/notification-context.tsx to check for new notifications every 30 seconds
+- [X] T164 [US10] Update navigation in frontend/src/components/layouts/nav.tsx to include notifications bell icon with unread badge
 
 **Checkpoint**: User Stories 1-10 complete - all feature requirements implemented
 

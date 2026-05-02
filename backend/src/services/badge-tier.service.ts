@@ -7,9 +7,13 @@
 
 import { Injectable } from '@nestjs/common';
 import prisma from '../utils/prisma';
+import { NotificationService } from './notification.service';
+import { NotificationType } from '@prisma/client';
 
 @Injectable()
 export class BadgeTierService {
+  constructor(private readonly notificationService: NotificationService) {}
+
   /**
    * Get all badge tier definitions
    * Ordered by displayOrder (ascending)
@@ -86,8 +90,15 @@ export class BadgeTierService {
       },
     });
 
-    // TODO: Create BADGE_ACHIEVEMENT notification (User Story 10)
-    // This will be implemented in Phase 12
+    // Create BADGE_ACHIEVEMENT notification (User Story 10)
+    if (newTier) {
+      const message = `Congratulations! You've achieved the ${newTier} badge tier with ${newTotalPoints} points!`;
+      await this.notificationService.createNotification({
+        volunteerId,
+        type: NotificationType.BADGE_ACHIEVEMENT,
+        message,
+      });
+    }
 
     return true; // Tier changed
   }

@@ -34,10 +34,9 @@ export class ReportsService {
       ? new Date(packConfig.yearEndDate)
       : new Date(new Date().getFullYear(), 11, 31);
 
-    // Build event filter
+    // Build event filter - include all events in date range (past events based on eventDate)
     const eventFilter: any = {
       eventDate: { gte: startDate, lte: endDate },
-      isComplete: true,
       deletedAt: null,
     };
 

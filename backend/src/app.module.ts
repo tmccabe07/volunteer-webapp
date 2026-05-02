@@ -9,9 +9,10 @@ import { EventsModule } from './modules/events.module';
 import { ConfigModule } from './modules/config.module';
 import { AdminTasksModule } from './modules/admin-tasks.module';
 import { ReportsModule } from './modules/reports.module';
+import { NotificationsModule } from './modules/notifications.module';
 
 @Module({
-  imports: [AuthModule, PointsModule, VolunteersModule, AdminModule, EventsModule, ConfigModule, AdminTasksModule, ReportsModule],
+  imports: [AuthModule, PointsModule, VolunteersModule, AdminModule, EventsModule, ConfigModule, AdminTasksModule, ReportsModule, NotificationsModule],
   controllers: [AppController],
   providers: [AppService],
 })

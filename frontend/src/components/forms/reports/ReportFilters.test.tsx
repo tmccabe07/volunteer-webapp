@@ -127,4 +127,15 @@ describe('ReportFilters', () => {
 
     expect(screen.getByLabelText('Status')).toBeInTheDocument();
   });
+
+  it('should set max date to today for date inputs to prevent future dates', () => {
+    render(<ReportFilters onFilterChange={mockOnFilterChange} />);
+
+    const today = new Date().toISOString().split('T')[0];
+    const startDateInput = screen.getByLabelText('Start Date') as HTMLInputElement;
+    const endDateInput = screen.getByLabelText('End Date') as HTMLInputElement;
+
+    expect(startDateInput.max).toBe(today);
+    expect(endDateInput.max).toBe(today);
+  });
 });
