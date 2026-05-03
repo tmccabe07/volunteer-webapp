@@ -1035,6 +1035,85 @@ describe('EventForm', () => {
       // Form should be enabled again
       expect(screen.getByRole('button', { name: /create event/i })).not.toBeDisabled();
     });
+
+    it('should extract error message from API response', async () => {
+      const user = userEvent.setup();
+      // Simulate NestJS BadRequestException response format
+      const apiError = {
+        response: {
+          status: 400,
+          data: {
+            statusCode: 400,
+            message: { error: 'Event date must be in the future' },
+            error: 'Bad Request'
+          }
+        },
+        message: 'Request failed with status code 400'
+      };
+      mockOnSubmit.mockRejectedValueOnce(apiError);
+
+      render(
+        <EventForm
+          activityTypes={mockActivityTypes}
+          onSubmit={mockOnSubmit}
+        />
+      );
+
+      await user.type(screen.getByLabelText(/event title/i), 'Test Event');
+      await user.type(screen.getByLabelText(/event date/i), '2026-05-15');
+
+      // Select activity type
+      const activitySelect = screen.getAllByTestId('select-native')[1];
+      await user.selectOptions(activitySelect, 'activity-1');
+
+      const submitButton = screen.getByRole('button', { name: /create event/i });
+      await user.click(submitButton);
+
+      await waitFor(() => {
+        // Should show the backend error message, not the generic Axios message
+        expect(screen.getByText(/event date must be in the future/i)).toBeInTheDocument();
+        expect(screen.queryByText(/request failed with status code 400/i)).not.toBeInTheDocument();
+      });
+    });
+
+    it('should handle validation error details array', async () => {
+      const user = userEvent.setup();
+      const validationError = {
+        response: {
+          status: 400,
+          data: {
+            statusCode: 400,
+            message: { 
+              error: 'Invalid input',
+              details: ['Title is required', 'Event date is invalid']
+            },
+            error: 'Bad Request'
+          }
+        }
+      };
+      mockOnSubmit.mockRejectedValueOnce(validationError);
+
+      render(
+        <EventForm
+          activityTypes={mockActivityTypes}
+          onSubmit={mockOnSubmit}
+        />
+      );
+
+      await user.type(screen.getByLabelText(/event title/i), 'Test Event');
+      await user.type(screen.getByLabelText(/event date/i), '2026-05-15');
+
+      // Select activity type
+      const activitySelect = screen.getAllByTestId('select-native')[1];
+      await user.selectOptions(activitySelect, 'activity-1');
+
+      const submitButton = screen.getByRole('button', { name: /create event/i });
+      await user.click(submitButton);
+
+      await waitFor(() => {
+        expect(screen.getByText(/invalid input/i)).toBeInTheDocument();
+      });
+    });
   });
 
   describe('Cancel Functionality', () => {

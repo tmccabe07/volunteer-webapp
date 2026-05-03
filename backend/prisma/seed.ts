@@ -159,6 +159,27 @@ async function main() {
       rankLevel: 'WOLF'
     }
   });
+
+  // Assign Parent/Guardian role to test parent
+  const parentGuardianRole = await prisma.volunteerRole.findFirst({
+    where: { roleType: 'PARENT_GUARDIAN' }
+  });
+  
+  if (parentGuardianRole) {
+    await prisma.volunteerToRole.upsert({
+      where: {
+        volunteerId_roleId: {
+          volunteerId: parent.id,
+          roleId: parentGuardianRole.id
+        }
+      },
+      update: {},
+      create: {
+        volunteerId: parent.id,
+        roleId: parentGuardianRole.id
+      }
+    });
+  }
   console.log('✓ Test parent volunteer created (parent@example.com / Parent123!)');
 
   console.log('\n✅ Seeding complete!');

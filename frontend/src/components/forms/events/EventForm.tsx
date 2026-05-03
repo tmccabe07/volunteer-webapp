@@ -113,10 +113,20 @@ export default function EventForm({ initialData, activityTypes, onSubmit, submit
         }
       }
 
-      // Convert eventDate to ISO 8601
-      const eventDateTime = new Date(formData.eventDate);
+      // Convert eventDate and eventTime to ISO 8601
+      let eventDateTime: Date;
+      if (formData.eventTime) {
+        // Combine date and time
+        const dateTimeString = `${formData.eventDate}T${formData.eventTime}:00`;
+        eventDateTime = new Date(dateTimeString);
+      } else {
+        // No time specified - default to noon to allow same-day events
+        const dateTimeString = `${formData.eventDate}T12:00:00`;
+        eventDateTime = new Date(dateTimeString);
+      }
+
       if (isNaN(eventDateTime.getTime())) {
-        throw new Error('Invalid event date');
+        throw new Error('Invalid event date or time');
       }
 
       const submissionData: EventFormData = {
@@ -128,7 +138,29 @@ export default function EventForm({ initialData, activityTypes, onSubmit, submit
       await onSubmit(submissionData);
       router.push('/events');
     } catch (err: any) {
-      setError(err.message || 'Failed to save event');
+      // Extract error message from API response
+      let errorMessage = 'Failed to save event';
+      
+      // NestJS wraps BadRequestException objects in a message field
+      const responseData = err.response?.data?.message || err.response?.data;
+      
+      if (typeof responseData === 'object' && responseData.error) {
+        // Backend returned a structured error { error: "message", details?: [] }
+        errorMessage = responseData.error;
+        
+        // If there are validation details, append them
+        if (responseData.details && Array.isArray(responseData.details) && responseData.details.length > 0) {
+          errorMessage += ': ' + responseData.details.join(', ');
+        }
+      } else if (typeof responseData === 'string') {
+        // Backend returned a simple string message
+        errorMessage = responseData;
+      } else if (err.message) {
+        // Fallback to error message
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

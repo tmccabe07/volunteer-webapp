@@ -20,6 +20,7 @@ import type { Request } from 'express';
 import { AuthGuard, TierGuard, RequireTier } from '../middleware/auth';
 import { VolunteerService } from '../services/volunteer.service';
 import { PointsService } from '../services/points.service';
+import prisma from '../utils/prisma';
 import {
   updateProfileSchema,
   assignRoleSchema,
@@ -123,19 +124,25 @@ export class VolunteersController {
         validatedData.roleId
       );
 
-      // Award role assignment points if applicable (COMMITTEE or DEN_LEADER roles)
-      // This will be handled in a future enhancement when role types are checked
-      // For now, we award points for all LEADER-tier roles
-      try {
-        await this.pointsService.awardRoleAssignmentPoints(
-          userId,
-          result.id,
-          validatedData.roleId, // Pass roleId to prevent duplicate awards
-          userId // Self-assigned
-        );
-      } catch (pointError) {
-        // Points award failed, but role assignment succeeded
-        console.error('Failed to award role assignment points:', pointError);
+      // Award role assignment points only for COMMITTEE or DEN_LEADER roles
+      // Fetch the role to check its type
+      const role = await prisma.volunteerRole.findUnique({
+        where: { id: validatedData.roleId },
+        select: { roleType: true }
+      });
+
+      if (role && (role.roleType === 'COMMITTEE' || role.roleType === 'DEN_LEADER')) {
+        try {
+          await this.pointsService.awardRoleAssignmentPoints(
+            userId,
+            result.id,
+            validatedData.roleId, // Pass roleId to prevent duplicate awards
+            userId // Self-assigned
+          );
+        } catch (pointError) {
+          // Points award failed, but role assignment succeeded
+          console.error('Failed to award role assignment points:', pointError);
+        }
       }
 
       return result;
