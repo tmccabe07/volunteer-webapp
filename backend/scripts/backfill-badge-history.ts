@@ -9,11 +9,13 @@
 
 import prisma from '../src/utils/prisma';
 import { BadgeTierService } from '../src/services/badge-tier.service';
+import { NotificationService } from '../src/services/notification.service';
 
 async function backfillBadgeHistory() {
   console.log('Starting badge tier history backfill...\n');
 
-  const badgeTierService = new BadgeTierService();
+  const notificationService = new NotificationService();
+  const badgeTierService = new BadgeTierService(notificationService);
 
   // Get all volunteers with point balances
   const volunteers = await prisma.volunteerPointBalance.findMany({

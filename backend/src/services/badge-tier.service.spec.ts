@@ -513,4 +513,112 @@ describe('BadgeTierService', () => {
       }
     });
   });
+
+  describe('checkAndUpdateBadgeTier - Notification Creation', () => {
+    beforeEach(async () => {
+      // Create initial leaderboard entry with Bobcat tier (0-19 points)
+      await prisma.leaderboardCache.create({
+        data: {
+          volunteerId: testVolunteer.id,
+          totalPoints: 10,
+          badgeTier: 'Bobcat',
+          rank: 1,
+        },
+      });
+    });
+
+    it('should create BADGE_ACHIEVEMENT notification when tier upgrades', async () => {
+      // Upgrade from Bobcat (0-19) to Tiger (20-39)
+      await service.checkAndUpdateBadgeTier(testVolunteer.id, 25);
+
+      const notification = await prisma.notification.findFirst({
+        where: {
+          volunteerId: testVolunteer.id,
+          type: 'BADGE_ACHIEVEMENT',
+        },
+      });
+
+      expect(notification).toBeTruthy();
+      expect(notification!.message).toContain('Tiger');
+      expect(notification!.message).toContain('25 points');
+      expect(notification!.isRead).toBe(false);
+    });
+
+    it('should not create notification when tier does not change', async () => {
+      // Stay in Bobcat tier (0-19)
+      await service.checkAndUpdateBadgeTier(testVolunteer.id, 15);
+
+      const notifications = await prisma.notification.findMany({
+        where: {
+          volunteerId: testVolunteer.id,
+          type: 'BADGE_ACHIEVEMENT',
+        },
+      });
+
+      expect(notifications).toHaveLength(0);
+    });
+
+    it('should create notification for each tier upgrade', async () => {
+      // Upgrade to Tiger
+      await service.checkAndUpdateBadgeTier(testVolunteer.id, 25);
+
+      // Upgrade to Wolf
+      await service.checkAndUpdateBadgeTier(testVolunteer.id, 45);
+
+      // Upgrade to Bear
+      await service.checkAndUpdateBadgeTier(testVolunteer.id, 65);
+
+      const notifications = await prisma.notification.findMany({
+        where: {
+          volunteerId: testVolunteer.id,
+          type: 'BADGE_ACHIEVEMENT',
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      expect(notifications).toHaveLength(3);
+      expect(notifications[0].message).toContain('Tiger');
+      expect(notifications[1].message).toContain('Wolf');
+      expect(notifications[2].message).toContain('Bear');
+    });
+
+    it('should not create notification when downgrading tier', async () => {
+      // First upgrade to Wolf
+      await service.checkAndUpdateBadgeTier(testVolunteer.id, 45);
+
+      // Clear notifications to isolate downgrade test
+      await prisma.notification.deleteMany({
+        where: { volunteerId: testVolunteer.id },
+      });
+
+      // Downgrade back to Tiger (points decreased)
+      await service.checkAndUpdateBadgeTier(testVolunteer.id, 25);
+
+      // No notification should be created for downgrade
+      const notifications = await prisma.notification.findMany({
+        where: {
+          volunteerId: testVolunteer.id,
+          type: 'BADGE_ACHIEVEMENT',
+        },
+      });
+
+      expect(notifications).toHaveLength(0);
+    });
+
+    it('should create notification when reaching highest tier', async () => {
+      // Upgrade to Arrow of Light (100+)
+      await service.checkAndUpdateBadgeTier(testVolunteer.id, 150);
+
+      const notification = await prisma.notification.findFirst({
+        where: {
+          volunteerId: testVolunteer.id,
+          type: 'BADGE_ACHIEVEMENT',
+        },
+      });
+
+      expect(notification).toBeTruthy();
+      expect(notification!.message).toContain('Arrow of Light');
+      expect(notification!.message).toContain('150 points');
+    });
+  });
 });

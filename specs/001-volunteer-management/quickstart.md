@@ -27,13 +27,13 @@ npm --version   # Should show v10.x.x
 
 ```
 volunteer-webapp/
-├── backend/                 # Express.js API server
+├── backend/                 # NestJS API server
 │   ├── prisma/             # Database schema and migrations
 │   ├── src/                # Source code
-│   └── tests/              # Contract, integration, unit tests
+│   └── test/               # E2E and unit tests
 ├── frontend/               # Next.js 14 application
 │   ├── src/                # Source code
-│   └── tests/              # E2E and unit tests
+│   └── test/               # Unit tests
 └── specs/                  # Feature specifications (this directory)
 ```
 
@@ -55,15 +55,17 @@ npm install
 ```
 
 Expected packages:
-- `express` - Web framework
+- `@nestjs/core`, `@nestjs/common` - NestJS framework
+- `@nestjs/platform-express` - Express adapter
 - `@prisma/client` - Database ORM
 - `prisma` - Database toolkit
 - `bcrypt` - Password hashing
 - `jsonwebtoken` - JWT authentication
 - `zod` - Validation
-- `cors`, `helmet`, `cookie-parser` - Middleware
+- `helmet`, `cookie-parser` - Security middleware
 - `express-rate-limit` - Rate limiting
-- `jest`, `supertest` - Testing
+- `@nestjs/throttler` - NestJS rate limiting
+- `jest` - Testing
 
 ### Install Frontend Dependencies
 ```bash
@@ -91,8 +93,12 @@ Create `backend/.env`:
 DATABASE_URL="file:./dev.db"
 
 # JWT Secrets (generate secure random strings for production)
-JWT_SECRET="your-super-secret-jwt-key-change-this-in-production"
+JWT_ACCESS_SECRET="your-super-secret-jwt-key-change-this-in-production"
 JWT_REFRESH_SECRET="your-super-secret-refresh-key-change-this-in-production"
+
+# JWT Token Expiration
+JWT_ACCESS_EXPIRATION="15m"
+JWT_REFRESH_EXPIRATION="30d"
 
 # Server
 PORT=3001
@@ -285,13 +291,16 @@ Add to `backend/package.json`:
 ### Terminal 1: Backend Server
 ```bash
 cd backend
-npm run dev
+npm run start:dev
 ```
 
 Expected output:
 ```
-🚀 Server running on http://localhost:3001
-📊 Database connected
+[Nest] INFO  [NestFactory] Starting Nest application...
+[Nest] INFO  [NestApplication] Nest application successfully started
+🚀 Backend server running on http://localhost:3001/api
+📊 Database: file:./dev.db
+🌐 CORS enabled for: http://localhost:3000
 ```
 
 Backend will be available at: `http://localhost:3001`
@@ -319,13 +328,6 @@ Frontend will be available at: `http://localhost:3000`
 
 ### Test Backend API
 
-**Health Check**:
-```bash
-curl http://localhost:3001/api/health
-```
-
-Expected: `{"status":"ok"}`
-
 **Login as Admin**:
 ```bash
 curl -X POST http://localhost:3001/api/auth/login \
@@ -350,8 +352,11 @@ Expected response:
 **Get Pack Configuration** (using token from login):
 ```bash
 curl http://localhost:3001/api/pack-config \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Cookie: refreshToken=YOUR_REFRESH_TOKEN"
 ```
+
+Note: The backend uses HttpOnly cookies for refresh tokens. For easier testing, you can use the frontend UI or import the Postman collection.
 
 ### Test Frontend
 
@@ -372,14 +377,14 @@ cd backend
 npm run test
 ```
 
-**Contract Tests** (Supertest):
+**E2E Tests**:
 ```bash
-npm run test:contract
+npm run test:e2e
 ```
 
-**All Tests**:
+**All Tests with Coverage**:
 ```bash
-npm run test:all
+npm run test:cov
 ```
 
 ### Frontend Tests
@@ -390,9 +395,14 @@ cd frontend
 npm run test
 ```
 
-**E2E Tests** (Playwright):
+**Interactive Test UI**:
 ```bash
-npm run test:e2e
+npm run test:ui
+```
+
+**Coverage Report**:
+```bash
+npm run test:coverage
 ```
 
 ---
@@ -554,7 +564,7 @@ Now that your development environment is set up:
 
 | Task | Command |
 |------|---------|
-| **Start backend** | `cd backend && npm run dev` |
+| **Start backend** | `cd backend && npm run start:dev` |
 | **Start frontend** | `cd frontend && npm run dev` |
 | **View database** | `cd backend && npx prisma studio` |
 | **Reset database** | `cd backend && npx prisma migrate reset` |
@@ -570,11 +580,11 @@ Now that your development environment is set up:
 ## Additional Resources
 
 - [Next.js 14 Documentation](https://nextjs.org/docs)
+- [NestJS Documentation](https://docs.nestjs.com/)
 - [Prisma Documentation](https://www.prisma.io/docs)
-- [Express.js Guide](https://expressjs.com/en/guide/routing.html)
 - [Zod Validation](https://zod.dev/)
 - [JWT Best Practices](https://jwt.io/introduction)
-- [Playwright Testing](https://playwright.dev/docs/intro)
+- [Vitest Testing](https://vitest.dev/)
 
 ---
 

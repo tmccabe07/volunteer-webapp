@@ -7,12 +7,13 @@ import {
 import { PointsService } from '../services/points.service';
 import { BadgeTierService } from '../services/badge-tier.service';
 import { LeaderboardService } from '../services/leaderboard.service';
+import { NotificationService } from '../services/notification.service';
 import { AuthModule } from './auth.module';
 
 @Module({
   imports: [AuthModule],
   controllers: [PointsController, LeaderboardController, BadgeTierController],
-  providers: [PointsService, BadgeTierService, LeaderboardService],
+  providers: [PointsService, BadgeTierService, LeaderboardService, NotificationService],
   exports: [PointsService, BadgeTierService, LeaderboardService],
 })
 export class PointsModule {}

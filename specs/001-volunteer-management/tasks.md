@@ -357,22 +357,22 @@
 
 ### Backend Implementation for User Story 10
 
-- [ ] T152 [P] [US10] Create NotificationService in backend/src/services/notification.service.ts with notification creation, retrieval, mark-as-read logic
-- [ ] T153 [US10] Implement GET /api/notifications endpoint in backend/src/api/notifications.routes.ts (fetch user notifications with unread count, pagination)
-- [ ] T154 [US10] Implement PUT /api/notifications/:id/read endpoint in backend/src/api/notifications.routes.ts (mark notification as read)
-- [ ] T155 [US10] Implement PUT /api/notifications/read-all endpoint in backend/src/api/notifications.routes.ts (mark all notifications as read)
-- [ ] T156 [US10] Update BadgeTierService in backend/src/services/badge-tier.service.ts to create BADGE_ACHIEVEMENT notification on tier upgrade
-- [ ] T157 [US10] Update AdminTaskService in backend/src/services/admin-task.service.ts to create TASK_COMPLETION notification on task completion (already partially implemented in T112)
-- [ ] T158 [US10] Create scheduled job script in backend/src/jobs/event-reminders.ts to send EVENT_REMINDER notifications 48 hours before events
+- [X] T152 [P] [US10] Create NotificationService in backend/src/services/notification.service.ts with notification creation, retrieval, mark-as-read logic
+- [X] T153 [US10] Implement GET /api/notifications endpoint in backend/src/api/notifications.routes.ts (fetch user notifications with unread count, pagination)
+- [X] T154 [US10] Implement PUT /api/notifications/:id/read endpoint in backend/src/api/notifications.routes.ts (mark notification as read)
+- [X] T155 [US10] Implement PUT /api/notifications/read-all endpoint in backend/src/api/notifications.routes.ts (mark all notifications as read)
+- [X] T156 [US10] Update BadgeTierService in backend/src/services/badge-tier.service.ts to create BADGE_ACHIEVEMENT notification on tier upgrade
+- [X] T157 [US10] Update AdminTaskService in backend/src/services/admin-task.service.ts to create TASK_COMPLETION notification on task completion (already partially implemented in T112)
+- [X] T158 [US10] Create scheduled job script in backend/src/jobs/event-reminders.ts to send EVENT_REMINDER notifications 48 hours before events
 
 ### Frontend Implementation for User Story 10
 
-- [ ] T159 [P] [US10] Create notification display components in frontend/src/components/shared/notifications/ (NotificationDropdown, NotificationItem)
-- [ ] T160 [P] [US10] Create notifications API service in frontend/src/services/notifications.service.ts with Axios methods for notification endpoints
-- [ ] T161 [US10] Create notifications dropdown in frontend/src/components/layouts/header.tsx with unread count badge, mark-as-read functionality
-- [ ] T162 [US10] Create notifications page in frontend/src/app/notifications/page.tsx with full notification list, filters, mark all as read button
-- [ ] T163 [US10] Add notification polling or WebSocket connection in frontend/src/lib/notification-context.tsx to check for new notifications every 30 seconds
-- [ ] T164 [US10] Update navigation in frontend/src/components/layouts/nav.tsx to include notifications bell icon with unread badge
+- [X] T159 [P] [US10] Create notification display components in frontend/src/components/shared/notifications/ (NotificationDropdown, NotificationItem)
+- [X] T160 [P] [US10] Create notifications API service in frontend/src/services/notifications.service.ts with Axios methods for notification endpoints
+- [X] T161 [US10] Create notifications dropdown in frontend/src/components/layouts/header.tsx with unread count badge, mark-as-read functionality
+- [X] T162 [US10] Create notifications page in frontend/src/app/notifications/page.tsx with full notification list, filters, mark all as read button
+- [X] T163 [US10] Add notification polling or WebSocket connection in frontend/src/lib/notification-context.tsx to check for new notifications every 30 seconds
+- [X] T164 [US10] Update navigation in frontend/src/components/layouts/nav.tsx to include notifications bell icon with unread badge
 
 **Checkpoint**: User Stories 1-10 complete - all feature requirements implemented
 
@@ -382,19 +382,19 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T165 [P] Create comprehensive API documentation in docs/api-documentation.md using OpenAPI/Swagger spec from all contracts
-- [ ] T166 [P] Create developer documentation in backend/README.md and frontend/README.md with setup, architecture, deployment instructions
-- [ ] T167 [P] Setup audit logging middleware in backend/src/middleware/audit.ts to create AuditLog entries for all Tier 2+ actions
-- [ ] T168 [P] Add loading states and error boundaries in frontend/src/components/shared/LoadingSpinner.tsx and ErrorBoundary.tsx
-- [ ] T169 [P] Implement responsive design improvements across all frontend pages for mobile devices (tablets, phones)
-- [ ] T170 Create 404 and error pages in frontend/src/app/not-found.tsx and frontend/src/app/error.tsx
-- [ ] T171 Add accessibility improvements (ARIA labels, keyboard navigation) across all frontend components
-- [ ] T172 Implement rate limiting across all backend API endpoints using express-rate-limit middleware
-- [ ] T173 Add input sanitization in backend/src/middleware/sanitize.ts to prevent XSS attacks
-- [ ] T174 Create database backup script in backend/scripts/backup-database.sh
-- [ ] T175 Run quickstart.md validation to ensure developer setup guide is accurate and complete
-- [ ] T176 Create production environment configuration in backend/.env.production.example and frontend/.env.production.example
-- [ ] T177 Update project README.md in repository root with feature overview, quick start link, branch information
+- [X] T165 [P] Create comprehensive API documentation in docs/api-documentation.md using OpenAPI/Swagger spec from all contracts
+- [X] T166 [P] Create developer documentation in backend/README.md and frontend/README.md with setup, architecture, deployment instructions
+- [X] T167 [P] Setup audit logging middleware in backend/src/middleware/audit.ts to create AuditLog entries for all Tier 2+ actions
+- [X] T168 [P] Add loading states and error boundaries in frontend/src/components/shared/LoadingSpinner.tsx and ErrorBoundary.tsx
+- [X] T169 [P] Implement responsive design improvements across all frontend pages for mobile devices (tablets, phones)
+- [X] T170 Create 404 and error pages in frontend/src/app/not-found.tsx and frontend/src/app/error.tsx
+- [X] T171 Add accessibility improvements (ARIA labels, keyboard navigation) across all frontend components
+- [X] T172 Implement rate limiting across all backend API endpoints using express-rate-limit middleware
+- [X] T173 Add input sanitization in backend/src/middleware/sanitize.ts to prevent XSS attacks
+- [X] T174 Create database backup script in backend/scripts/backup-database.sh
+- [X] T175 Run quickstart.md validation to ensure developer setup guide is accurate and complete
+- [X] T176 Create production environment configuration in backend/.env.production.example and frontend/.env.production.example
+- [X] T177 Update project README.md in repository root with feature overview, quick start link, branch information
 
 ---
 

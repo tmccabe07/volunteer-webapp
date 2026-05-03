@@ -159,10 +159,10 @@ export class EventsController {
         });
       }
       if (error.message?.includes('future')) {
-        throw new BadRequestException(error.message);
+        throw new BadRequestException({ error: error.message });
       }
       if (error.message?.includes('do not exist')) {
-        throw new BadRequestException(error.message);
+        throw new BadRequestException({ error: error.message });
       }
       throw error;
     }
@@ -200,7 +200,7 @@ export class EventsController {
         throw new ConflictException(error.message);
       }
       if (error.message.includes('future')) {
-        throw new BadRequestException(error.message);
+        throw new BadRequestException({ error: error.message });
       }
       throw error;
     }

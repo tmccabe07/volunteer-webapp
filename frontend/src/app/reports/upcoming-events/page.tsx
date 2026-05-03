@@ -95,6 +95,8 @@ export default function UpcomingEventsReportPage() {
       <ReportFilters
         onFilterChange={handleFilterChange}
         showRankFilter={true}
+        allowFutureDates={true}
+        disablePastDates={true}
       />
 
       {/* Loading State */}

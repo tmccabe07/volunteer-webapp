@@ -8,10 +8,13 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { useNotifications } from '@/lib/notification-context';
 import { pointsService } from '@/services/points.service';
 import configService from '@/services/config.service';
 import { BadgeTier } from '@/components/shared/points/BadgeTier';
+import { NotificationDropdown } from '@/components/shared/notifications/NotificationDropdown';
 import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react';
 
@@ -31,6 +34,14 @@ const badgeTierColors: Record<string, string> = {
 
 export function Header() {
   const { user, isLoading, logout } = useAuth();
+  const router = useRouter();
+  const {
+    notifications,
+    unreadCount,
+    refreshNotifications,
+    markAsRead,
+    markAllAsRead,
+  } = useNotifications();
   const [packConfig, setPackConfig] = useState<PackConfig>({
     packNumber: '123',
     packName: 'Pack 123',
@@ -124,6 +135,16 @@ export function Header() {
                 )}
               </Link>
             )}
+
+            {/* Notifications Dropdown */}
+            <NotificationDropdown
+              notifications={notifications}
+              unreadCount={unreadCount}
+              onMarkAsRead={markAsRead}
+              onMarkAllAsRead={markAllAsRead}
+              onViewAll={() => router.push('/notifications')}
+              onRefresh={refreshNotifications}
+            />
 
             {/* User name */}
             <div className="text-sm text-muted-foreground">

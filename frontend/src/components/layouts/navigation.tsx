@@ -21,6 +21,7 @@ const navLinks: NavLink[] = [
   { href: '/events', label: 'Events', minTier: 1 },
   { href: '/tasks', label: 'Tasks', minTier: 1 },
   { href: '/leaderboard', label: 'Leaderboard', minTier: 1 },
+  { href: '/notifications', label: 'Notifications', minTier: 1 },
   { href: '/profile', label: 'Profile', minTier: 1 },
   { href: '/volunteers', label: 'Volunteers', minTier: 2 },
   { href: '/reports', label: 'Reports', minTier: 2 },
