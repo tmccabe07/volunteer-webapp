@@ -382,19 +382,19 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T165 [P] Create comprehensive API documentation in docs/api-documentation.md using OpenAPI/Swagger spec from all contracts
-- [ ] T166 [P] Create developer documentation in backend/README.md and frontend/README.md with setup, architecture, deployment instructions
-- [ ] T167 [P] Setup audit logging middleware in backend/src/middleware/audit.ts to create AuditLog entries for all Tier 2+ actions
-- [ ] T168 [P] Add loading states and error boundaries in frontend/src/components/shared/LoadingSpinner.tsx and ErrorBoundary.tsx
-- [ ] T169 [P] Implement responsive design improvements across all frontend pages for mobile devices (tablets, phones)
-- [ ] T170 Create 404 and error pages in frontend/src/app/not-found.tsx and frontend/src/app/error.tsx
-- [ ] T171 Add accessibility improvements (ARIA labels, keyboard navigation) across all frontend components
-- [ ] T172 Implement rate limiting across all backend API endpoints using express-rate-limit middleware
-- [ ] T173 Add input sanitization in backend/src/middleware/sanitize.ts to prevent XSS attacks
-- [ ] T174 Create database backup script in backend/scripts/backup-database.sh
-- [ ] T175 Run quickstart.md validation to ensure developer setup guide is accurate and complete
-- [ ] T176 Create production environment configuration in backend/.env.production.example and frontend/.env.production.example
-- [ ] T177 Update project README.md in repository root with feature overview, quick start link, branch information
+- [X] T165 [P] Create comprehensive API documentation in docs/api-documentation.md using OpenAPI/Swagger spec from all contracts
+- [X] T166 [P] Create developer documentation in backend/README.md and frontend/README.md with setup, architecture, deployment instructions
+- [X] T167 [P] Setup audit logging middleware in backend/src/middleware/audit.ts to create AuditLog entries for all Tier 2+ actions
+- [X] T168 [P] Add loading states and error boundaries in frontend/src/components/shared/LoadingSpinner.tsx and ErrorBoundary.tsx
+- [X] T169 [P] Implement responsive design improvements across all frontend pages for mobile devices (tablets, phones)
+- [X] T170 Create 404 and error pages in frontend/src/app/not-found.tsx and frontend/src/app/error.tsx
+- [X] T171 Add accessibility improvements (ARIA labels, keyboard navigation) across all frontend components
+- [X] T172 Implement rate limiting across all backend API endpoints using express-rate-limit middleware
+- [X] T173 Add input sanitization in backend/src/middleware/sanitize.ts to prevent XSS attacks
+- [X] T174 Create database backup script in backend/scripts/backup-database.sh
+- [X] T175 Run quickstart.md validation to ensure developer setup guide is accurate and complete
+- [X] T176 Create production environment configuration in backend/.env.production.example and frontend/.env.production.example
+- [X] T177 Update project README.md in repository root with feature overview, quick start link, branch information
 
 ---
 

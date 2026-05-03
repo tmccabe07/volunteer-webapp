@@ -23,6 +23,8 @@ export interface ReportFilterProps {
   onFilterChange: (filters: ReportFilters) => void;
   showRankFilter?: boolean;
   showStatusFilter?: boolean;
+  allowFutureDates?: boolean;
+  disablePastDates?: boolean;
 }
 
 export interface ReportFilters {
@@ -37,6 +39,8 @@ export function ReportFilters({
   onFilterChange,
   showRankFilter = false,
   showStatusFilter = false,
+  allowFutureDates = false,
+  disablePastDates = false,
 }: ReportFilterProps) {
   const [filters, setFilters] = useState<ReportFilters>({
     format: 'summary',
@@ -71,7 +75,8 @@ export function ReportFilters({
           <Input
             id="startDate"
             type="date"
-            max={today}
+            min={disablePastDates ? today : undefined}
+            max={allowFutureDates ? undefined : today}
             value={filters.startDate || ''}
             onChange={(e) => handleFilterUpdate('startDate', e.target.value)}
           />
@@ -83,7 +88,8 @@ export function ReportFilters({
           <Input
             id="endDate"
             type="date"
-            max={today}
+            min={disablePastDates ? today : undefined}
+            max={allowFutureDates ? undefined : today}
             value={filters.endDate || ''}
             onChange={(e) => handleFilterUpdate('endDate', e.target.value)}
           />
