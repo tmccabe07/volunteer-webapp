@@ -236,6 +236,43 @@ describe('DashboardPage', () => {
     });
   });
 
+  describe('Profile Edit Navigation', () => {
+    it('should display an Edit Profile button in the profile card', async () => {
+      render(<DashboardPage />);
+
+      await waitFor(() => {
+        const editButton = screen.getByRole('button', { name: /edit profile/i });
+        expect(editButton).toBeInTheDocument();
+      });
+    });
+
+    it('should navigate to profile edit page when Edit Profile button is clicked', async () => {
+      const user = userEvent.setup();
+      render(<DashboardPage />);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /edit profile/i })).toBeInTheDocument();
+      });
+
+      const editButton = screen.getByRole('button', { name: /edit profile/i });
+      await user.click(editButton);
+
+      expect(mockPush).toHaveBeenCalledWith('/profile/edit');
+    });
+
+    it('should not display Edit Profile button when user is not authenticated', () => {
+      mockUseRequireAuth.mockReturnValue({
+        user: null,
+        isLoading: false,
+      });
+
+      render(<DashboardPage />);
+
+      const editButton = screen.queryByRole('button', { name: /edit profile/i });
+      expect(editButton).not.toBeInTheDocument();
+    });
+  });
+
   describe('Points Card', () => {
     it('should display current year points', async () => {
       render(<DashboardPage />);

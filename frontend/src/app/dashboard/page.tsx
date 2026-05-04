@@ -4,6 +4,7 @@ import { useRequireAuth } from '@/lib/auth-context';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import eventsService from '@/services/events.service';
 
@@ -17,6 +18,7 @@ interface Event {
 
 export default function DashboardPage() {
   const { user, isLoading } = useRequireAuth();
+  const router = useRouter();
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
 
@@ -93,6 +95,15 @@ export default function DashboardPage() {
                 </span>
               </div>
             </div>
+            
+            {/* Edit Profile Button */}
+            <Button
+              variant="outline"
+              onClick={() => router.push('/profile/edit')}
+              className="mt-4 w-full"
+            >
+              Edit Profile
+            </Button>
           </Card>
 
           {/* Points Card */}
