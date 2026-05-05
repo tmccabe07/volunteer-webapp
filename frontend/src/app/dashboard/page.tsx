@@ -63,8 +63,8 @@ export default function DashboardPage() {
   };
 
   /**
-   * Load upcoming tasks assigned to the current user
-   * Fetches incomplete tasks, filters out overdue ones, and limits to 5 results
+   * Load tasks assigned to the current user
+   * Fetches incomplete tasks (including overdue) and limits to 5 results
    * Tasks are sorted by due date (soonest first)
    */
   const loadUpcomingTasks = async () => {
@@ -72,13 +72,11 @@ export default function DashboardPage() {
       const data = await adminTasksService.listTasks({
         assignedToMe: true,
         status: 'incomplete',
-        limit: 10,
+        limit: 5,
       });
-      // Filter out overdue tasks and limit to 5
-      const upcoming = (data.tasks || [])
-        .filter((task: Task) => !task.isOverdue)
-        .slice(0, 5);
-      setUpcomingTasks(upcoming);
+      // Take all tasks (including overdue), limit to 5
+      const myTasks = (data.tasks || []).slice(0, 5);
+      setUpcomingTasks(myTasks);
     } catch (error) {
       console.error('Failed to load tasks:', error);
     } finally {
@@ -293,7 +291,7 @@ export default function DashboardPage() {
 
           <Card className="p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Upcoming Tasks</h2>
+              <h2 className="text-xl font-semibold">My Tasks</h2>
               <Link href="/tasks?assignedToMe=true&status=incomplete">
                 <Button variant="ghost" size="sm">View All</Button>
               </Link>
@@ -316,7 +314,7 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-gray-600 text-sm">No upcoming tasks.</p>
+              <p className="text-gray-600 text-sm">No tasks assigned to you.</p>
             )}
           </Card>
         </div>

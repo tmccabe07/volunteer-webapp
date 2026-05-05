@@ -229,11 +229,11 @@ describe('DashboardPage', () => {
       });
     });
 
-    it('should render upcoming tasks section', async () => {
+    it('should render my tasks section', async () => {
       render(<DashboardPage />);
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: /upcoming tasks/i })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /my tasks/i })).toBeInTheDocument();
       });
     });
   });
@@ -546,15 +546,15 @@ describe('DashboardPage', () => {
     });
   });
 
-  describe('Upcoming Tasks Section', () => {
-    it('should load upcoming tasks on mount', async () => {
+  describe('My Tasks Section', () => {
+    it('should load assigned tasks on mount', async () => {
       render(<DashboardPage />);
 
       await waitFor(() => {
         expect(mockListTasks).toHaveBeenCalledWith({
           assignedToMe: true,
           status: 'incomplete',
-          limit: 10,
+          limit: 5,
         });
       });
     });
@@ -567,7 +567,7 @@ describe('DashboardPage', () => {
       expect(screen.getByText(/loading tasks.../i)).toBeInTheDocument();
     });
 
-    it('should display upcoming tasks for authenticated user', async () => {
+    it('should display assigned tasks for authenticated user', async () => {
       render(<DashboardPage />);
 
       await waitFor(() => {
@@ -577,7 +577,7 @@ describe('DashboardPage', () => {
       });
     });
 
-    it('should show empty state when no upcoming tasks', async () => {
+    it('should show empty state when no assigned tasks', async () => {
       mockListTasks.mockResolvedValueOnce({
         tasks: [],
         pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
@@ -586,11 +586,11 @@ describe('DashboardPage', () => {
       render(<DashboardPage />);
 
       await waitFor(() => {
-        expect(screen.getByText(/no upcoming tasks/i)).toBeInTheDocument();
+        expect(screen.getByText(/no tasks assigned to you/i)).toBeInTheDocument();
       });
     });
 
-    it('should exclude overdue tasks from display', async () => {
+    it('should include overdue tasks in display', async () => {
       const tasksWithOverdue = [
         ...mockUpcomingTasks,
         {
@@ -616,7 +616,7 @@ describe('DashboardPage', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/submit attendance report/i)).toBeInTheDocument();
-        expect(screen.queryByText(/overdue task/i)).not.toBeInTheDocument();
+        expect(screen.getByText(/overdue task/i)).toBeInTheDocument();
       });
     });
 
@@ -724,7 +724,7 @@ describe('DashboardPage', () => {
       render(<DashboardPage />);
 
       await waitFor(() => {
-        const heading = screen.getByRole('heading', { name: /upcoming tasks/i });
+        const heading = screen.getByRole('heading', { name: /my tasks/i });
         expect(heading).toBeInTheDocument();
       });
 
@@ -741,7 +741,7 @@ describe('DashboardPage', () => {
 
       await waitFor(() => {
         // Should show empty state, not crash
-        expect(screen.getByText(/no upcoming tasks/i)).toBeInTheDocument();
+        expect(screen.getByText(/no tasks assigned to you/i)).toBeInTheDocument();
       });
 
       consoleError.mockRestore();
@@ -909,11 +909,11 @@ describe('DashboardPage', () => {
   });
 
   describe('View All Tasks Link', () => {
-    it('should display View All button in Upcoming Tasks pane header', async () => {
+    it('should display View All button in My Tasks pane header', async () => {
       render(<DashboardPage />);
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: /upcoming tasks/i })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /my tasks/i })).toBeInTheDocument();
       });
 
       // Find View All buttons (one for events, one for tasks)
@@ -925,7 +925,7 @@ describe('DashboardPage', () => {
       render(<DashboardPage />);
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: /upcoming tasks/i })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /my tasks/i })).toBeInTheDocument();
       });
 
       // Find the View All link in tasks section
