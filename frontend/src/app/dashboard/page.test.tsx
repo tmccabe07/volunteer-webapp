@@ -620,6 +620,48 @@ describe('DashboardPage', () => {
       });
     });
 
+    it('should show completion toggle for overdue tasks', async () => {
+      const user = userEvent.setup();
+      const tasksWithOverdue = [
+        {
+          id: 'task-overdue',
+          name: 'Overdue task',
+          description: 'This task is overdue',
+          dueDate: futureDate(-1),
+          isOverdue: true,
+          isPackWide: false,
+          assignedRoles: [],
+          currentUserCompletion: null,
+          createdAt: futureDate(-10),
+          updatedAt: futureDate(-10),
+        },
+      ];
+
+      mockListTasks.mockResolvedValueOnce({
+        tasks: tasksWithOverdue,
+        pagination: { page: 1, limit: 10, total: 1, totalPages: 1 },
+      });
+
+      mockCompleteTask.mockResolvedValueOnce(undefined);
+
+      render(<DashboardPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/overdue task/i)).toBeInTheDocument();
+      });
+
+      // Find the completion toggle button for the overdue task
+      const toggleButton = screen.getByRole('button', { name: /mark complete/i });
+      expect(toggleButton).toBeInTheDocument();
+
+      // Verify we can click it to complete the task
+      await user.click(toggleButton);
+
+      await waitFor(() => {
+        expect(mockCompleteTask).toHaveBeenCalledWith('task-overdue');
+      });
+    });
+
     it('should limit display to 5 tasks', async () => {
       const manyTasks = Array.from({ length: 10 }, (_, i) => ({
         id: `task-${i + 1}`,
