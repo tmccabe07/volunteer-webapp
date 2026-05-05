@@ -7,6 +7,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import eventsService from '@/services/events.service';
+import adminTasksService from '@/services/admin-tasks.service';
+import DashboardTaskCard from '@/components/shared/tasks/DashboardTaskCard';
 
 interface Event {
   id: string;
@@ -16,18 +18,39 @@ interface Event {
   rankLevel?: string;
 }
 
+interface Task {
+  id: string;
+  name: string;
+  description: string | null;
+  dueDate: string;
+  isOverdue: boolean;
+  isPackWide: boolean;
+  assignedRoles: Array<{ id: string; name: string }>;
+  currentUserCompletion: { id: string; completedAt: string; isComplete: boolean } | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export default function DashboardPage() {
   const { user, isLoading } = useRequireAuth();
   const router = useRouter();
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
+  const [upcomingTasks, setUpcomingTasks] = useState<Task[]>([]);
+  const [loadingTasks, setLoadingTasks] = useState(true);
+  const [taskError, setTaskError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
       loadUpcomingEvents();
+      loadUpcomingTasks();
     }
   }, [user]);
 
+  /**
+   * Load upcoming events for display in the dashboard
+   * Fetches events with `upcoming: true` filter and limits to 5 results
+   */
   const loadUpcomingEvents = async () => {
     try {
       const data = await eventsService.listEvents({ upcoming: true, limit: 5 });
@@ -36,6 +59,89 @@ export default function DashboardPage() {
       console.error('Failed to load events:', error);
     } finally {
       setLoadingEvents(false);
+    }
+  };
+
+  /**
+   * Load tasks assigned to the current user
+   * Fetches incomplete tasks (including overdue) and limits to 5 results
+   * Tasks are sorted by due date (soonest first)
+   */
+  const loadUpcomingTasks = async () => {
+    try {
+      const data = await adminTasksService.listTasks({
+        assignedToMe: true,
+        status: 'incomplete',
+        limit: 5,
+      });
+      // Take all tasks (including overdue), limit to 5
+      const myTasks = (data.tasks || []).slice(0, 5);
+      setUpcomingTasks(myTasks);
+    } catch (error) {
+      console.error('Failed to load tasks:', error);
+    } finally {
+      setLoadingTasks(false);
+    }
+  };
+
+  /**
+   * Toggle task completion status with optimistic UI updates
+   * 
+   * Updates the UI immediately for responsive feel, then syncs with the backend.
+   * If the API call fails, reverts the optimistic update and shows an error message.
+   * 
+   * @param taskId - The ID of the task to toggle
+   * @param isCurrentlyComplete - Current completion status of the task
+   */
+  const handleToggleComplete = async (taskId: string, isCurrentlyComplete: boolean) => {
+    // Clear any previous errors
+    setTaskError(null);
+
+    // Optimistic update: update state immediately
+    setUpcomingTasks((prevTasks) =>
+      prevTasks.map((task) =>
+        task.id === taskId
+          ? {
+              ...task,
+              currentUserCompletion: isCurrentlyComplete
+                ? null
+                : {
+                    id: 'temp-completion',
+                    completedAt: new Date().toISOString(),
+                    isComplete: true,
+                  },
+            }
+          : task
+      )
+    );
+
+    try {
+      // Call API to persist the change
+      if (isCurrentlyComplete) {
+        await adminTasksService.uncompleteTask(taskId);
+      } else {
+        await adminTasksService.completeTask(taskId);
+      }
+    } catch (error) {
+      // Revert optimistic update on error
+      setUpcomingTasks((prevTasks) =>
+        prevTasks.map((task) =>
+          task.id === taskId
+            ? {
+                ...task,
+                currentUserCompletion: isCurrentlyComplete
+                  ? {
+                      id: 'reverted-completion',
+                      completedAt: new Date().toISOString(),
+                      isComplete: true,
+                    }
+                  : null,
+              }
+            : task
+        )
+      );
+      setTaskError('Failed to update task status. Please try again.');
+      console.error('Failed to toggle task completion:', error);
     }
   };
 
@@ -184,8 +290,32 @@ export default function DashboardPage() {
           </Card>
 
           <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
-            <p className="text-gray-600 text-sm">No recent activity.</p>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">My Tasks</h2>
+              <Link href="/tasks?assignedToMe=true&status=incomplete">
+                <Button variant="ghost" size="sm">View All</Button>
+              </Link>
+            </div>
+            {taskError && (
+              <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                {taskError}
+              </div>
+            )}
+            {loadingTasks ? (
+              <p className="text-gray-600 text-sm">Loading tasks...</p>
+            ) : upcomingTasks.length > 0 ? (
+              <div className="space-y-3">
+                {upcomingTasks.map((task) => (
+                  <DashboardTaskCard 
+                    key={task.id} 
+                    task={task}
+                    onToggleComplete={handleToggleComplete}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-600 text-sm">No tasks assigned to you.</p>
+            )}
           </Card>
         </div>
       </div>
