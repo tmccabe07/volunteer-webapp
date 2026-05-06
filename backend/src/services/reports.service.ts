@@ -69,11 +69,13 @@ export class ReportsService {
       },
     });
 
-    // Fetch point events in date range
+    // Fetch point events for these specific events (by referenceId)
+    // This ensures we get points for retroactive events that were completed after the date range
+    const eventIds = events.map(e => e.id);
     const pointEvents = await this.prisma.pointEvent.findMany({
       where: {
         eventType: 'EVENT_PARTICIPATION',
-        createdAt: { gte: startDate, lte: endDate },
+        referenceId: { in: eventIds },
       },
       include: {
         volunteer: true,

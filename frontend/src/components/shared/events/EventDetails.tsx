@@ -36,6 +36,7 @@ interface EventDetailsProps {
     rankLevel: string | null;
     isRecurring: boolean;
     isComplete: boolean;
+    isRetroactive?: boolean;
     recurringEndDate: string | null;
     activitySlots: ActivitySlot[];
     createdBy: {
@@ -77,7 +78,14 @@ export default function EventDetails({ event, currentUserId, onSignup, onWithdra
         <CardHeader>
           <div className="flex justify-between items-start">
             <div>
-              <CardTitle className="text-3xl">{event.title}</CardTitle>
+              <CardTitle className="text-3xl flex items-center gap-3">
+                {event.title}
+                {event.isRetroactive && (
+                  <Badge variant="secondary" className="text-sm">
+                    Retroactive
+                  </Badge>
+                )}
+              </CardTitle>
               {event.description && (
                 <CardDescription className="mt-2 text-base">
                   {event.description}
@@ -144,6 +152,22 @@ export default function EventDetails({ event, currentUserId, onSignup, onWithdra
                 <p className="font-medium">{event.createdBy.name}</p>
               </div>
             </div>
+
+            {event.isRetroactive && (
+              <div className="flex items-center">
+                <Calendar className="h-5 w-5 mr-3 text-gray-500" />
+                <div>
+                  <p className="text-sm text-gray-500">Created On</p>
+                  <p className="font-medium">
+                    {new Date(event.createdAt).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
