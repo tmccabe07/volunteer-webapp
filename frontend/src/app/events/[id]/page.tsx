@@ -8,6 +8,7 @@ import Link from 'next/link';
 import EventDetails from '@/components/shared/events/EventDetails';
 import CompleteEventDialog from '@/components/forms/events/CompleteEventDialog';
 import eventsService from '@/services/events.service';
+import { volunteerApi } from '@/services/volunteer.service';
 import { useAuth } from '@/lib/auth-context';
 
 export default function EventDetailPage() {
@@ -17,6 +18,7 @@ export default function EventDetailPage() {
   const eventId = params.id as string;
 
   const [event, setEvent] = useState<any | null>(null);
+  const [allVolunteers, setAllVolunteers] = useState<Array<{ id: string; name: string; email: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
@@ -26,6 +28,7 @@ export default function EventDetailPage() {
 
   useEffect(() => {
     loadEvent();
+    loadVolunteers();
   }, [eventId]);
 
   const loadEvent = async () => {
@@ -39,6 +42,25 @@ export default function EventDetailPage() {
       setError(err.message || 'Failed to load event');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadVolunteers = async () => {
+    try {
+      // Fetch all volunteers for the manual volunteer dropdown
+      // Backend limits to max 100 per request
+      const response = await volunteerApi.listVolunteers({ limit: 100 });
+      console.log('Loaded volunteers:', response.volunteers.length);
+      setAllVolunteers(response.volunteers.map(v => ({
+        id: v.id,
+        name: v.name,
+        email: v.email,
+      })));
+    } catch (err: any) {
+      // Log error for debugging
+      console.error('Failed to load volunteers:', err);
+      console.error('Error details:', err.response?.data || err.message);
+      // Manual volunteer feature will be unavailable but dialog can still be used
     }
   };
 
@@ -108,7 +130,7 @@ export default function EventDetailPage() {
 
         <div className="flex gap-2">
           {canComplete && (
-            <Button onClick={() => setShowCompleteDialog(true)}>
+            <Button variant="outline" onClick={() => setShowCompleteDialog(true)}>
               <CheckCircle className="h-4 w-4 mr-2" />
               Mark Complete
             </Button>
@@ -134,6 +156,7 @@ export default function EventDetailPage() {
       {showCompleteDialog && (
         <CompleteEventDialog
           event={event}
+          allVolunteers={allVolunteers}
           onComplete={handleComplete}
           onCancel={() => setShowCompleteDialog(false)}
         />

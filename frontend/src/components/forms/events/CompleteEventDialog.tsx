@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Dialog,
@@ -19,7 +18,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { PlusCircle, Trash2, Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface ManualVolunteer {
   volunteerId: string;
@@ -45,26 +58,20 @@ interface CompleteEventDialogProps {
       }>;
     }>;
   };
+  allVolunteers: Array<{
+    id: string;
+    name: string;
+    email: string;
+  }>;
   onComplete: (data: { manualVolunteers?: ManualVolunteer[] }) => Promise<void>;
   onCancel: () => void;
 }
 
-export default function CompleteEventDialog({ event, onComplete, onCancel }: CompleteEventDialogProps) {
+export default function CompleteEventDialog({ event, allVolunteers, onComplete, onCancel }: CompleteEventDialogProps) {
   const [manualVolunteers, setManualVolunteers] = useState<ManualVolunteer[]>([]);
+  const [openPopovers, setOpenPopovers] = useState<{ [key: number]: boolean }>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Get list of all volunteers who signed up (for dropdown)
-  const allVolunteers = event.activitySlots.flatMap(slot =>
-    slot.signups
-      .filter(s => !s.withdrawn)
-      .map(s => s.volunteer)
-  );
-
-  // Get unique volunteers
-  const uniqueVolunteers = Array.from(
-    new Map(allVolunteers.map(v => [v.id, v])).values()
-  );
 
   const addManualVolunteer = () => {
     setManualVolunteers(prev => [
@@ -83,6 +90,10 @@ export default function CompleteEventDialog({ event, onComplete, onCancel }: Com
       updated[index] = { ...updated[index], [field]: value };
       return updated;
     });
+  };
+
+  const togglePopover = (index: number, open: boolean) => {
+    setOpenPopovers(prev => ({ ...prev, [index]: open }));
   };
 
   const handleComplete = async () => {
@@ -117,7 +128,7 @@ export default function CompleteEventDialog({ event, onComplete, onCancel }: Com
 
   return (
     <Dialog open onOpenChange={() => onCancel()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-white max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Mark Event Complete</DialogTitle>
           <DialogDescription>
@@ -178,46 +189,93 @@ export default function CompleteEventDialog({ event, onComplete, onCancel }: Com
               </p>
             ) : (
               <div className="space-y-3">
-                {manualVolunteers.map((manual, index) => (
-                  <div key={index} className="flex gap-3 items-end p-3 border rounded-lg">
-                    <div className="flex-1">
-                      <Label>Volunteer</Label>
-                      <Input
-                        placeholder="Enter volunteer ID"
-                        value={manual.volunteerId}
-                        onChange={(e) => updateManualVolunteer(index, 'volunteerId', e.target.value)}
-                      />
-                    </div>
+                {manualVolunteers.map((manual, index) => {
+                  const selectedVolunteer = allVolunteers.find(v => v.id === manual.volunteerId);
+                  
+                  return (
+                    <div key={index} className="flex gap-3 items-end p-3 border rounded-lg">
+                      <div className="flex-1">
+                        <Label>Volunteer</Label>
+                        <Popover open={openPopovers[index]} onOpenChange={(open) => togglePopover(index, open)}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={openPopovers[index]}
+                              className="w-full justify-between"
+                            >
+                              {selectedVolunteer ? selectedVolunteer.name : "Select volunteer..."}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[400px] p-0">
+                            <Command>
+                              <CommandInput placeholder="Search volunteers..." />
+                              <CommandList>
+                                <CommandEmpty>
+                                  {allVolunteers.length === 0 
+                                    ? "No volunteers available. Please ensure volunteers are registered in the system." 
+                                    : "No volunteer found matching search."}
+                                </CommandEmpty>
+                                <CommandGroup>
+                                  {allVolunteers.map((volunteer) => (
+                                    <CommandItem
+                                      key={volunteer.id}
+                                      value={volunteer.name}
+                                      onSelect={() => {
+                                        updateManualVolunteer(index, 'volunteerId', volunteer.id);
+                                        togglePopover(index, false);
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          manual.volunteerId === volunteer.id ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      <div className="flex flex-col">
+                                        <span>{volunteer.name}</span>
+                                        <span className="text-xs text-gray-500">{volunteer.email}</span>
+                                      </div>
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
 
-                    <div className="flex-1">
-                      <Label>Activity</Label>
-                      <Select
-                        value={manual.activitySlotId}
-                        onValueChange={(value: string) => updateManualVolunteer(index, 'activitySlotId', value)}
+                      <div className="flex-1">
+                        <Label>Activity</Label>
+                        <Select
+                          value={manual.activitySlotId}
+                          onValueChange={(value: string) => updateManualVolunteer(index, 'activitySlotId', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select activity" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {event.activitySlots.map(slot => (
+                              <SelectItem key={slot.id} value={slot.id}>
+                                {slot.activityType.name} ({slot.activityType.pointValue} pts)
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => removeManualVolunteer(index)}
                       >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select activity" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {event.activitySlots.map(slot => (
-                            <SelectItem key={slot.id} value={slot.id}>
-                              {slot.activityType.name} ({slot.activityType.pointValue} pts)
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
-
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="icon"
-                      onClick={() => removeManualVolunteer(index)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -233,7 +291,7 @@ export default function CompleteEventDialog({ event, onComplete, onCancel }: Com
           <Button variant="outline" onClick={onCancel} disabled={loading}>
             Cancel
           </Button>
-          <Button onClick={handleComplete} disabled={loading}>
+          <Button variant="outline" onClick={handleComplete} disabled={loading}>
             {loading ? 'Completing...' : 'Mark Complete & Award Points'}
           </Button>
         </DialogFooter>
