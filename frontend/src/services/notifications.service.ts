@@ -3,7 +3,9 @@ import axios from '@/lib/axios';
 export type NotificationType = 
   | 'BADGE_ACHIEVEMENT'
   | 'TASK_COMPLETION'
+  | 'TASK_ASSIGNED'
   | 'EVENT_REMINDER'
+  | 'NEW_EVENT'
   | 'POINT_AWARD'
   | 'POINT_REVOCATION';
 
@@ -12,6 +14,7 @@ export interface Notification {
   volunteerId: string;
   type: NotificationType;
   message: string;
+  link?: string;
   isRead: boolean;
   createdAt: string;
 }
