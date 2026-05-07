@@ -103,7 +103,7 @@ export function NotificationDropdown({
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <Card className="absolute right-0 mt-2 w-96 max-h-[500px] flex flex-col shadow-lg z-50 border border-gray-200">
+        <Card className="absolute right-0 mt-2 w-96 max-h-[500px] flex flex-col shadow-lg z-50 border border-gray-200 bg-white">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-gray-200">
             <h3 className="font-semibold text-lg">Notifications</h3>

@@ -7,6 +7,7 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { type Notification } from '@/services/notifications.service';
 import { Badge } from '@/components/ui/badge';
 
@@ -23,8 +24,12 @@ const getNotificationIcon = (type: string) => {
       return '🏆'; // Trophy
     case 'TASK_COMPLETION':
       return '✅'; // Check mark
+    case 'TASK_ASSIGNED':
+      return '📋'; // Clipboard
     case 'EVENT_REMINDER':
       return '📅'; // Calendar
+    case 'NEW_EVENT':
+      return '🎉'; // Party
     case 'POINT_AWARD':
       return '⭐'; // Star
     case 'POINT_REVOCATION':
@@ -41,8 +46,12 @@ const getNotificationTypeLabel = (type: string) => {
       return 'Badge Achievement';
     case 'TASK_COMPLETION':
       return 'Task Complete';
+    case 'TASK_ASSIGNED':
+      return 'Task Assigned';
     case 'EVENT_REMINDER':
       return 'Event Reminder';
+    case 'NEW_EVENT':
+      return 'New Event';
     case 'POINT_AWARD':
       return 'Points Awarded';
     case 'POINT_REVOCATION':
@@ -74,18 +83,34 @@ export function NotificationItem({
   onMarkAsRead, 
   compact = false 
 }: NotificationItemProps) {
+  const router = useRouter();
+
   const handleClick = () => {
     if (!notification.isRead && onMarkAsRead) {
       onMarkAsRead(notification.id);
     }
+    // Navigate to the link if it exists
+    if (notification.link) {
+      router.push(notification.link);
+    }
   };
+
+  const isClickable = Boolean(notification.link);
 
   return (
     <div
-      className={`flex gap-3 p-3 border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer ${
-        !notification.isRead ? 'bg-blue-50' : ''
-      }`}
+      className={`flex gap-3 p-3 border-b border-gray-100 hover:bg-gray-50 transition-colors ${
+        isClickable ? 'cursor-pointer' : ''
+      } ${!notification.isRead ? 'bg-blue-50' : ''}`}
       onClick={handleClick}
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onKeyDown={(e) => {
+        if (isClickable && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          handleClick();
+        }
+      }}
     >
       {/* Icon */}
       <div className="text-2xl flex-shrink-0">
@@ -104,6 +129,11 @@ export function NotificationItem({
             <p className={`text-sm ${!notification.isRead ? 'font-semibold' : ''}`}>
               {notification.message}
             </p>
+            {notification.link && (
+              <p className="text-xs text-blue-600 mt-1">
+                Click to view →
+              </p>
+            )}
           </div>
           {!notification.isRead && (
             <div className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0 mt-1" title="Unread" />
