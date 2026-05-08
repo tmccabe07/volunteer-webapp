@@ -15,6 +15,7 @@ import { BadgeTier } from '@/components/shared/points/BadgeTier';
 import { BadgeTierLegend } from '@/components/shared/BadgeTierLegend';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Trophy, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 // Badge colors from BadgeTierService
 const badgeTierColors: Record<string, string> = {
@@ -33,6 +34,33 @@ const getRankMedal = (rank: number): string => {
     case 3: return '🥉';
     default: return '';
   }
+};
+
+// Rank change indicator (placeholder - requires backend support for historical rank data)
+const getRankChangeIndicator = (rankChange?: number) => {
+  if (!rankChange || rankChange === 0) {
+    return (
+      <span className="inline-flex items-center text-xs text-gray-400" title="No change">
+        <Minus className="h-3 w-3" />
+      </span>
+    );
+  }
+  
+  if (rankChange > 0) {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs text-[hsl(var(--success))] font-medium" title={`Up ${rankChange} positions`}>
+        <TrendingUp className="h-3 w-3" />
+        {rankChange}
+      </span>
+    );
+  }
+  
+  return (
+    <span className="inline-flex items-center gap-1 text-xs text-[hsl(var(--danger))] font-medium" title={`Down ${Math.abs(rankChange)} positions`}>
+      <TrendingDown className="h-3 w-3" />
+      {Math.abs(rankChange)}
+    </span>
+  );
 };
 
 // Rank styling for top 3
@@ -133,8 +161,14 @@ export default function LeaderboardPage() {
   const totalPages = Math.ceil(leaderboardData.pagination.total / leaderboardData.pagination.limit);
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 animate-fade-in">
       <div className="max-w-4xl mx-auto space-y-6">
+        {/* Page Title */}
+        <div className="flex items-center gap-3 mb-4">
+          <Trophy className="h-9 w-9 text-[hsl(var(--cub-gold))]" />
+          <h1 className="text-4xl font-bold text-gray-900">Volunteer Leaderboard</h1>
+        </div>
+        
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex gap-2">
@@ -161,16 +195,36 @@ export default function LeaderboardPage() {
 
         {/* Current User Position */}
         {leaderboardData.currentUser.rank && (
-          <Card className="p-6 bg-blue-50 border-blue-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Your Position</p>
-                <p className="text-2xl font-bold">#{leaderboardData.currentUser.rank}</p>
+          <Card className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-[hsl(var(--cub-blue))]/30">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Your Position</p>
+                  <p className="text-3xl font-bold text-[hsl(var(--cub-blue))]">#{leaderboardData.currentUser.rank}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">Your Points</p>
+                  <p className="text-3xl font-bold text-[hsl(var(--cub-blue))]">{leaderboardData.currentUser.totalPoints.toLocaleString()}</p>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Your Points</p>
-                <p className="text-2xl font-bold">{leaderboardData.currentUser.totalPoints}</p>
-              </div>
+              
+              {/* Comparison Stats */}
+              {leaderboardData.pagination.total > 1 && (
+                <div className="pt-4 border-t border-[hsl(var(--cub-blue))]/20">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Trophy className="h-4 w-4 text-[hsl(var(--cub-gold))]" />
+                    <span className="font-medium text-gray-700">
+                      {(() => {
+                        const percentile = Math.round((1 - (leaderboardData.currentUser.rank - 1) / leaderboardData.pagination.total) * 100);
+                        if (percentile >= 90) return `🌟 Top ${100 - percentile + 1}% of volunteers! Outstanding!`;
+                        if (percentile >= 75) return `⭐ Top ${100 - percentile + 1}% of volunteers! Excellent work!`;
+                        if (percentile >= 50) return `👏 Top half of volunteers! Keep it up!`;
+                        return `💪 You're making a difference! Keep volunteering!`;
+                      })()}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </Card>
         )}
@@ -198,11 +252,12 @@ export default function LeaderboardPage() {
                 .map((entry) => {
                   const styles = getRankStyles(entry.rank);
                   const medal = getRankMedal(entry.rank);
+                  const isCurrentUser = user && entry.volunteer.id === user.id;
                   
                   return (
                     <Card
                       key={entry.volunteer.id}
-                      className={`p-6 ${styles.cardClass} transition-all hover:scale-[1.02]`}
+                      className={`p-6 ${styles.cardClass} ${isCurrentUser ? 'ring-2 ring-[hsl(var(--cub-blue))] ring-offset-2' : ''} transition-all hover:scale-[1.02]`}
                     >
                       <div className="flex items-center gap-4">
                         {/* Rank with Medal */}
@@ -219,6 +274,9 @@ export default function LeaderboardPage() {
                         <div className="flex-1 min-w-0">
                           <p className={`font-bold ${styles.nameClass} truncate`}>
                             {entry.volunteer.name}
+                            {isCurrentUser && (
+                              <span className="ml-2 text-sm font-normal text-[hsl(var(--cub-blue))]">(You)</span>
+                            )}
                           </p>
                           <div className="flex items-center gap-2 mt-1">
                             {entry.badgeTier && (
@@ -246,43 +304,62 @@ export default function LeaderboardPage() {
               {/* Remaining ranks */}
               {leaderboardData.leaderboard
                 .filter(entry => entry.rank > 3)
-                .map((entry) => (
-                  <Card
-                    key={entry.volunteer.id}
-                    className="p-4 hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-4">
-                      {/* Rank */}
-                      <div className="flex-shrink-0 w-12 text-center">
-                        <span className="text-lg font-semibold text-gray-600">
-                          #{entry.rank}
-                        </span>
-                      </div>
-
-                      {/* Volunteer Name */}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{entry.volunteer.name}</p>
-                      </div>
-
-                      {/* Badge Tier */}
-                      {entry.badgeTier && (
-                        <div className="flex-shrink-0">
-                          <BadgeTier
-                            tierName={entry.badgeTier}
-                            badgeColor={badgeTierColors[entry.badgeTier] || '#999999'}
-                            size="sm"
-                          />
+                .map((entry) => {
+                  const isCurrentUser = user && entry.volunteer.id === user.id;
+                  
+                  return (
+                    <Card
+                      key={entry.volunteer.id}
+                      className={`p-4 transition-colors ${
+                        isCurrentUser 
+                          ? 'bg-[hsl(var(--cub-blue))]/5 border-2 border-[hsl(var(--cub-blue))] shadow-md' 
+                          : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        {/* Rank */}
+                        <div className="flex-shrink-0 w-12 text-center">
+                          <span className={`text-lg font-semibold ${
+                            isCurrentUser ? 'text-[hsl(var(--cub-blue))]' : 'text-gray-600'
+                          }`}>
+                            #{entry.rank}
+                          </span>
+                          {/* Rank change indicator - placeholder for future backend support */}
+                          <div className="mt-0.5">
+                            {getRankChangeIndicator(undefined /* entry.rankChange */)}
+                          </div>
                         </div>
-                      )}
 
-                      {/* Total Points */}
-                      <div className="flex-shrink-0 text-right min-w-[80px]">
-                        <p className="text-sm text-muted-foreground">Points</p>
-                        <p className="text-lg font-semibold">{entry.totalPoints.toLocaleString()}</p>
+                        {/* Volunteer Name */}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">
+                            {entry.volunteer.name}
+                            {isCurrentUser && (
+                              <span className="ml-2 text-sm text-[hsl(var(--cub-blue))]">(You)</span>
+                            )}
+                          </p>
+                        </div>
+
+                        {/* Badge Tier */}
+                        {entry.badgeTier && (
+                          <div className="flex-shrink-0">
+                            <BadgeTier
+                              tierName={entry.badgeTier}
+                              badgeColor={badgeTierColors[entry.badgeTier] || '#999999'}
+                              size="sm"
+                            />
+                          </div>
+                        )}
+
+                        {/* Total Points */}
+                        <div className="flex-shrink-0 text-right min-w-[80px]">
+                          <p className="text-sm text-muted-foreground">Points</p>
+                          <p className="text-lg font-semibold">{entry.totalPoints.toLocaleString()}</p>
+                        </div>
                       </div>
-                    </div>
-                  </Card>
-                ))}
+                    </Card>
+                  );
+                })}
             </>
           )}
         </div>

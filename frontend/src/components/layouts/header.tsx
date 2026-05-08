@@ -103,15 +103,15 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center">
-        <Link href={user ? "/dashboard" : "/"} className="flex items-center space-x-2">
-          <span className="text-xl font-bold text-primary">
-            🦁 {packConfig.packName}
-          </span>
+        <Link href={user ? "/dashboard" : "/"} className="flex items-center space-x-3">
+          <span className="text-2xl">🦁</span>
+          <div className="flex flex-col">
+            <span className="text-xl font-bold text-[hsl(var(--cub-blue))]">
+              {packConfig.packName}
+            </span>
+            <span className="text-xs text-muted-foreground">Volunteer Management</span>
+          </div>
         </Link>
-        
-        <div className="ml-4 text-sm text-muted-foreground">
-          Volunteer Management
-        </div>
 
         {/* Spacer */}
         <div className="flex-1" />

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { UserCheck } from 'lucide-react';
+import { UserCheck, Check } from 'lucide-react';
 
 interface SignupButtonProps {
   activitySlotId: string;
@@ -23,6 +23,7 @@ export default function SignupButton({
 }: SignupButtonProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const isAtCapacity = capacity !== null && signedUpCount >= capacity;
 
@@ -32,12 +33,25 @@ export default function SignupButton({
 
     try {
       await onSignup(activitySlotId);
+      
+      // Show success animation
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 2000);
     } catch (err: any) {
       setError(err.message || 'Failed to sign up');
     } finally {
       setLoading(false);
     }
   };
+
+  if (showSuccess) {
+    return (
+      <Button disabled variant="secondary" size="sm" className="bg-[hsl(var(--success))]/10 text-[hsl(var(--success))] border border-[hsl(var(--success))]/20">
+        <Check className="h-4 w-4 mr-2 motion-safe:animate-scale-in" />
+        Success!
+      </Button>
+    );
+  }
 
   if (isSignedUp) {
     return (

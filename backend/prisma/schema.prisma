@@ -401,6 +401,7 @@ model Notification {
   volunteer       Volunteer           @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
   type            NotificationType
   message         String
+  link            String?             // Optional link to related resource
   isRead          Boolean             @default(false)
   
   createdAt       DateTime            @default(now())
@@ -412,7 +413,9 @@ model Notification {
 enum NotificationType {
   BADGE_ACHIEVEMENT
   TASK_COMPLETION
+  TASK_ASSIGNED
   EVENT_REMINDER
+  NEW_EVENT
   POINT_AWARD
   POINT_REVOCATION
 }

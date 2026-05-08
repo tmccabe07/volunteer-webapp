@@ -457,6 +457,345 @@ Mobile-first approach with TailwindCSS breakpoints:
 
 ---
 
+## Design System
+
+The application features a comprehensive design system with Cub Scout branding, consistent visual hierarchy, smooth animations, and accessible patterns. This section documents the design tokens, components, and usage guidelines.
+
+### Design Tokens
+
+#### Colors
+
+Design tokens are defined in `src/app/globals.css` as CSS custom properties and exported as TypeScript constants in `src/lib/design-tokens.ts`.
+
+**Primary Colors:**
+- `--cub-blue`: HSL(221, 83%, 53%) - Primary brand color for buttons, links, and accents
+- `--cub-gold`: HSL(43, 96%, 56%) - Secondary brand color for highlights and achievements
+
+**Status Colors:**
+- `--success`: HSL(142, 71%, 45%) - Success states, completed items
+- `--warning`: HSL(38, 92%, 50%) - Warning states, attention needed
+- `--danger`: HSL(0, 84%, 60%) - Error states, critical items
+- `--info`: HSL(199, 89%, 48%) - Informational states
+
+**Usage in Components:**
+```tsx
+// TailwindCSS class
+<button className="bg-[hsl(var(--cub-blue))] text-white">
+
+// Inline style with TypeScript constant
+import { colors } from '@/lib/design-tokens';
+<div style={{ backgroundColor: colors.cubBlue }}>
+```
+
+#### Animation Durations
+
+- `--duration-fast`: 150ms - Micro-interactions (hover, focus)
+- `--duration-normal`: 250ms - Standard transitions
+- `--duration-slow`: 400ms - Complex animations
+
+**Usage:**
+```tsx
+<div className="transition-colors duration-[var(--duration-normal)]">
+```
+
+#### Badge Tier Colors
+
+- Bronze: `#CD7F32`
+- Silver: `#C0C0C0`
+- Gold: `#FFD700`
+- Platinum: `#E5E4E2`
+- Diamond: `#B9F2FF`
+
+#### Rank Colors (Leaderboard)
+
+Gold, Silver, Bronze medals for top 3 positions with gradient backgrounds.
+
+### Animation System
+
+#### Keyframe Animations
+
+Defined in `src/app/globals.css`:
+
+**fade-in** (0.4s ease-out):
+```css
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+```
+**Usage:** Dashboard pages, content loading
+```tsx
+<div className="animate-fade-in">
+```
+
+**scale-in** (0.3s ease-out):
+```css
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+```
+**Usage:** Modals, success icons, achievement displays
+```tsx
+<Check className="motion-safe:animate-scale-in" />
+```
+
+**slide-up** (0.4s ease-out):
+```css
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+```
+**Usage:** Toast notifications, bottom sheets
+
+**success-flash** (0.6s ease-in-out):
+```css
+@keyframes success-flash {
+  0%, 100% { background-color: transparent; }
+  50% { background-color: hsl(var(--success) / 0.15); }
+}
+```
+**Usage:** Task completion feedback
+```tsx
+<div className={showFlash ? "animate-[success-flash_0.6s_ease-in-out]" : ""}>
+```
+
+#### Reduced Motion Support
+
+All animations respect `prefers-reduced-motion` media query:
+```css
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+```
+
+Use `motion-safe:` prefix for optional animations:
+```tsx
+<div className="motion-safe:hover:scale-[1.02]">
+```
+
+### Component Library
+
+#### Button
+
+Enhanced button with loading states and variants:
+```tsx
+import { Button } from '@/components/ui/button';
+
+<Button variant="default" size="default" isLoading={false}>
+  Click Me
+</Button>
+```
+
+**Variants:** default (cub-blue), destructive, outline, secondary, ghost, link  
+**Sizes:** default, sm, lg, icon
+
+#### Card
+
+Card container with semantic variants:
+```tsx
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+
+<Card variant="event" interactive>
+  <CardHeader>
+    <CardTitle>Event Title</CardTitle>
+  </CardHeader>
+  <CardContent>Content here</CardContent>
+</Card>
+```
+
+**Variants:**
+- `default`: Standard card
+- `event`: Blue top border
+- `task`: Gold top border
+- `achievement`: Green top border
+- `stat`: Blue left border
+
+**Interactive:** Adds hover:shadow-lg and scale effect
+
+#### Progress
+
+Visual progress bar with near-goal emphasis:
+```tsx
+import { Progress } from '@/components/ui/progress';
+
+<Progress 
+  value={85} 
+  max={100} 
+  variant="default" 
+  size="default" 
+  showLabel 
+/>
+```
+
+**Features:**
+- Near-goal emphasis (≥80%): Pulsing animation, gold ring, 🔥 emoji
+- Completion (100%): Green color, checkmark icon
+- Variants: default, success, warning, danger, gold
+
+#### Badge Tier
+
+Displays volunteer badge tier with optional progress:
+```tsx
+import { BadgeTier } from '@/components/shared/points/BadgeTier';
+
+<BadgeTier
+  tierName="Gold"
+  badgeColor="#FFD700"
+  size="sm"
+  currentPoints={850}
+  minPoints={750}
+  maxPoints={1000}
+  showProgress
+/>
+```
+
+**Gold tier special styling:** Ring offset, ✨ emoji, gold shadow
+
+### Layout Components
+
+#### Navigation
+
+Enhanced with Lucide icons and active state highlighting:
+- Icons for all navigation links (Dashboard, Events, Tasks, etc.)
+- Active page: Blue background, bottom border, highlighted text
+- Responsive: Icons always visible, labels hidden on small screens
+
+#### Header
+
+Displays pack branding, points badge, badge tier, and notifications:
+- Pack name with 🦁 emoji
+- Points display with link to points history
+- Badge tier component (small size)
+- Notification dropdown
+- User name and logout button
+
+### Page Patterns
+
+#### Empty States
+
+Friendly empty states with emojis and helpful messages:
+```tsx
+{items.length === 0 && (
+  <Card className="p-8 text-center">
+    <div className="text-6xl mb-4">🎪</div>
+    <p className="text-lg text-gray-600">No events found</p>
+    <p className="text-sm text-gray-500 mt-2">
+      Check back soon for upcoming volunteer opportunities!
+    </p>
+  </Card>
+)}
+```
+
+**Emojis by context:**
+- 📅 No events (dashboard)
+- ✅ No tasks (dashboard)
+- 🎪 No events (events page)
+
+#### Loading States
+
+Skeleton screens with animated pulse:
+```tsx
+import { Skeleton } from '@/components/ui/skeleton';
+
+{loading && (
+  <div className="space-y-4">
+    <Skeleton className="h-24 w-full" />
+    <Skeleton className="h-24 w-full" />
+  </div>
+)}
+```
+
+#### Success Feedback
+
+Animated success states for user actions:
+```tsx
+{showSuccess && (
+  <Button disabled className="bg-[hsl(var(--success))]/10">
+    <Check className="h-4 w-4 mr-2 motion-safe:animate-scale-in" />
+    Success!
+  </Button>
+)}
+```
+
+### Gamification Elements
+
+#### Leaderboard
+
+**Top 3 Podium:**
+- Medal emojis (🥇🥈🥉)
+- Gradient backgrounds (gold, silver, bronze)
+- Larger text and prominent styling
+- Current user highlighting with blue ring
+
+**Current User Position:**
+- Distinct blue gradient background
+- Comparison stats ("🌟 Top 10% of volunteers!")
+- Trophy icon
+
+**User Highlighting:**
+- Blue background for current user's row
+- "(You)" label
+- Border emphasis
+
+#### Progress Indicators
+
+**Event Capacity:**
+- Progress bar at bottom of event cards
+- Shows signed up / max capacity
+- Color-coded variants
+
+**Task Completion:**
+- Progress summary card on tasks page
+- Shows X of Y tasks completed
+- Percentage display with label
+
+**Badge Progress:**
+- Displayed in badge tier component
+- Shows points to next tier
+- "Max tier reached!" for Diamond
+
+### Best Practices
+
+#### Visual Hierarchy
+
+1. **Featured content:** border-l-4 or border-t-4 with brand colors
+2. **Interactive elements:** Hover effects (scale, shadow, bg-color)
+3. **Status indicators:** Color-coded badges and borders
+4. **Urgency levels:** Clock icons and colored borders for tasks
+
+#### Color Usage
+
+- **Cub Blue:** Primary actions, links, active states
+- **Cub Gold:** Achievements, highlights, near-goal states
+- **Green:** Success, completion, positive feedback
+- **Red:** Errors, critical urgency, destructive actions
+- **Orange:** High urgency, warnings
+- **Yellow:** Medium urgency, attention needed
+
+#### Iconography
+
+- **Lucide React:** Consistent icon set across application
+- **Emoji:** Used sparingly for personality and empty states
+- **Size consistency:** h-4 w-4 for inline, h-6 w-6 for standalone
+
+#### Accessibility
+
+- **Color contrast:** All text meets WCAG AA standards
+- **Focus indicators:** Visible focus rings on interactive elements
+- **Motion sensitivity:** All animations respect prefers-reduced-motion
+- **Keyboard navigation:** All interactive elements keyboard accessible
+- **Screen readers:** Proper ARIA labels and semantic HTML
+
+---
+
 ## Deployment
 
 ### Production Build

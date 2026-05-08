@@ -39,6 +39,20 @@
   /* Custom colors for Cub Scout theme */
   --cub-blue: 221 83% 53%;
   --cub-gold: 43 96% 56%;
+
+  /* Semantic status colors */
+  --success: 142 71% 45%;
+  --warning: 25 95% 53%;
+  --danger: 0 84% 60%;
+  --info: 217 91% 60%;
+
+  /* Animation duration tokens */
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+
+  /* Shadow elevation for hover effects */
+  --shadow-hover: 0 10px 15px -3px rgb(0 0 0 / 0.1);
 }
 
 @theme inline {
@@ -63,6 +77,21 @@
   --color-ring: oklch(var(--ring));
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Cub Scout brand colors */
+  --color-cub-blue: hsl(var(--cub-blue));
+  --color-cub-gold: hsl(var(--cub-gold));
+
+  /* Semantic status colors */
+  --color-success: hsl(var(--success));
+  --color-warning: hsl(var(--warning));
+  --color-danger: hsl(var(--danger));
+  --color-info: hsl(var(--info));
+
+  /* Animation utilities */
+  --animate-fade-in: fade-in var(--duration-normal) ease-in;
+  --animate-scale-in: scale-in var(--duration-normal) ease-out;
+  --animate-slide-up: slide-up var(--duration-normal) ease-out;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -105,5 +134,69 @@ body {
 
 * {
   border-color: var(--border);
+}
+
+/* ========================================
+   Custom Animations (Feature 007)
+   ======================================== */
+
+/* Fade in animation for page content and loading states */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Scale in animation for modals and popovers */
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Slide up animation for toasts and notifications */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Success flash animation for completion feedback */
+@keyframes success-flash {
+  0%, 100% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: hsl(var(--success) / 0.2);
+  }
+}
+
+/* ========================================
+   Accessibility: Motion Preferences
+   ======================================== */
+
+/* Respect user's reduced motion preferences (WCAG 2.1 Success Criterion 2.3.3) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 

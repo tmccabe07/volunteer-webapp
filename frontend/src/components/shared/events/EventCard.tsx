@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { Calendar, MapPin, Users, Award } from 'lucide-react';
 
 interface ActivitySlot {
@@ -50,6 +51,10 @@ export default function EventCard({ event }: EventCardProps) {
     day: 'numeric',
     year: 'numeric',
   });
+  
+  // Extract date components for prominent badge
+  const month = eventDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+  const day = eventDate.getDate();
 
   const totalCapacity = event.activitySlots.reduce((sum, slot) => {
     return slot.capacity ? sum + slot.capacity : sum;
@@ -64,8 +69,14 @@ export default function EventCard({ event }: EventCardProps) {
 
   return (
     <Link href={`/events/${event.id}`}>
-      <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-        <CardHeader>
+      <Card variant="event" interactive className="hover:shadow-lg transition-shadow cursor-pointer relative">
+        {/* Prominent Date Badge */}
+        <div className="absolute top-4 right-4 flex flex-col items-center justify-center w-16 h-16 bg-[hsl(var(--cub-blue))] text-white rounded-lg shadow-md">
+          <div className="text-xs font-semibold tracking-wide">{month}</div>
+          <div className="text-2xl font-bold leading-none">{day}</div>
+        </div>
+        
+        <CardHeader className="pr-24">
           <div className="flex justify-between items-start">
             <div className="flex-1">
               <CardTitle className="text-xl">{event.title}</CardTitle>
@@ -74,7 +85,7 @@ export default function EventCard({ event }: EventCardProps) {
               </CardDescription>
             </div>
             {event.isComplete && (
-              <Badge variant="secondary">Completed</Badge>
+              <Badge variant="secondary" className="ml-2">Completed</Badge>
             )}
           </div>
         </CardHeader>
@@ -102,7 +113,7 @@ export default function EventCard({ event }: EventCardProps) {
               <Badge variant="outline">Pack-Wide</Badge>
             )}
             {isSignedUp && (
-              <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+              <Badge className="bg-[hsl(var(--success))]/10 text-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/10 border border-[hsl(var(--success))]/20">
                 ✓ Signed Up
               </Badge>
             )}
@@ -121,6 +132,18 @@ export default function EventCard({ event }: EventCardProps) {
               </div>
             )}
           </div>
+
+          {/* Capacity Progress Bar */}
+          {hasCapacity && totalCapacity > 0 && (
+            <div className="pt-2">
+              <Progress 
+                value={totalSignups} 
+                max={totalCapacity} 
+                variant={totalSignups >= totalCapacity ? 'success' : 'default'}
+                size="sm"
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
     </Link>

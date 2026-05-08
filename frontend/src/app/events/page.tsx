@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import EventCard from '@/components/shared/events/EventCard';
 import eventsService from '@/services/events.service';
@@ -81,11 +81,14 @@ export default function EventsPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
+    <div className="container mx-auto px-4 py-8 animate-fade-in">
+      <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold">Volunteer Events</h1>
-          <p className="text-gray-600 mt-1">Sign up for events to help your pack and earn points</p>
+          <div className="flex items-center gap-3 mb-2">
+            <Calendar className="h-9 w-9 text-[hsl(var(--cub-blue))]" />
+            <h1 className="text-4xl font-bold text-gray-900">Volunteer Events</h1>
+          </div>
+          <p className="text-lg text-gray-600 mt-1">Sign up for events to help your pack and earn points</p>
         </div>
         {canCreateEvents && (
           <Link href="/events/create">
@@ -167,8 +170,21 @@ export default function EventsPage() {
             </div>
           ) : (
             <Card className="p-12 text-center">
-              <p className="text-gray-500 text-lg">No events found</p>
-              <p className="text-gray-400 mt-2">Try adjusting your filters or check back later</p>
+              <div className="flex flex-col items-center">
+                <div className="text-7xl mb-4">🎪</div>
+                <p className="text-gray-700 text-xl font-semibold mb-2">No events found</p>
+                <p className="text-gray-500 mb-6">
+                  {upcoming ? 'No upcoming events match your filters.' : 'Try adjusting your filters to see more events.'}
+                </p>
+                {canCreateEvents && (
+                  <Link href="/events/create">
+                    <Button variant="outline">
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                      Create New Event
+                    </Button>
+                  </Link>
+                )}
+              </div>
             </Card>
           )}
 
