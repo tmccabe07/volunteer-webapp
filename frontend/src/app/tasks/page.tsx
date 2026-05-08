@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import {
   Select,
   SelectContent,
@@ -10,7 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, CheckSquare } from 'lucide-react';
 import Link from 'next/link';
 import TaskCard from '@/components/shared/tasks/TaskCard';
 import adminTasksService from '@/services/admin-tasks.service';
@@ -127,6 +128,22 @@ export default function TasksPage() {
       {error && (
         <Card className="p-4 mb-6 bg-red-50 border-red-200">
           <p className="text-red-600">{error}</p>
+        </Card>
+      )}
+
+      {/* Completion Progress Summary */}
+      {!loading && tasks.length > 0 && (
+        <Card className="p-4 mb-6 bg-gradient-to-r from-blue-50 to-indigo-50">
+          <div className="flex items-center gap-3 mb-3">
+            <CheckSquare className="h-5 w-5 text-[hsl(var(--cub-blue))]" />
+            <h3 className="font-semibold text-lg">Your Task Progress</h3>
+          </div>
+          <Progress 
+            value={tasks.filter(t => t.currentUserCompletion !== null).length} 
+            max={tasks.length} 
+            variant="success"
+            showLabel
+          />
         </Card>
       )}
 

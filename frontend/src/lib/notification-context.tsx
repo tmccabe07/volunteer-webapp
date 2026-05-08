@@ -59,9 +59,20 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       });
       setNotifications(response.notifications);
       setUnreadCount(response.unreadCount);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load notifications:', error);
-      // Don't clear existing notifications on error
+      console.error('Error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message,
+      });
+      // Don't clear existing notifications on error - gracefully degrade
+      // Set counts to 0 to avoid showing stale data
+      if (error.response?.status === 400) {
+        setNotifications([]);
+        setUnreadCount(0);
+      }
     } finally {
       setIsLoading(false);
     }

@@ -3,12 +3,14 @@
 import { useRequireAuth } from '@/lib/auth-context';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import eventsService from '@/services/events.service';
 import adminTasksService from '@/services/admin-tasks.service';
 import DashboardTaskCard from '@/components/shared/tasks/DashboardTaskCard';
+import { Award, Calendar, CheckSquare } from 'lucide-react';
 
 interface Event {
   id: string;
@@ -157,10 +159,79 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+      <div className="bg-gray-50 min-h-screen">
+        <div className="container mx-auto px-4 py-8">
+          <div className="mb-8">
+            <Skeleton className="h-10 w-64 mb-2" />
+            <Skeleton className="h-6 w-48" />
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Profile Card Skeleton */}
+            <Card className="p-6">
+              <Skeleton className="h-8 w-32 mb-4" />
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6" />
+                <Skeleton className="h-4 w-4/6" />
+                <Skeleton className="h-4 w-3/6" />
+              </div>
+              <Skeleton className="h-10 w-full mt-4" />
+            </Card>
+
+            {/* Points Card Skeleton */}
+            <Card className="p-6">
+              <Skeleton className="h-8 w-32 mb-4" />
+              <div className="text-center space-y-4">
+                <Skeleton className="h-16 w-32 mx-auto" />
+                <Skeleton className="h-4 w-40 mx-auto" />
+                <Skeleton className="h-12 w-24 mx-auto" />
+                <Skeleton className="h-4 w-32 mx-auto" />
+              </div>
+            </Card>
+
+            {/* Quick Actions Skeleton */}
+            <Card className="p-6">
+              <Skeleton className="h-8 w-32 mb-4" />
+              <div className="space-y-2">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            </Card>
+          </div>
+
+          {/* Events Section Skeleton */}
+          <div className="mt-8">
+            <Skeleton className="h-8 w-48 mb-4" />
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className="p-6">
+                  <Skeleton className="h-6 w-3/4 mb-3" />
+                  <Skeleton className="h-4 w-1/2 mb-2" />
+                  <Skeleton className="h-4 w-2/3" />
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          {/* Tasks Section Skeleton */}
+          <div className="mt-8">
+            <Skeleton className="h-8 w-48 mb-4" />
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className="p-4">
+                  <div className="flex justify-between">
+                    <div className="flex-1">
+                      <Skeleton className="h-5 w-3/4 mb-2" />
+                      <Skeleton className="h-4 w-1/2" />
+                    </div>
+                    <Skeleton className="h-8 w-24" />
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -171,17 +242,17 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="bg-gray-50 min-h-screen">
+    <div className="bg-gray-50 min-h-screen animate-fade-in">
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-gray-600 mt-1">Welcome back, {user.name}!</p>
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-lg text-gray-600 mt-2">Welcome back, {user.name}!</p>
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* User Info Card */}
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Your Profile</h2>
+          {/* User Info Card - Featured */}
+          <Card className="p-6 border-l-4 border-l-[hsl(var(--cub-blue))] shadow-md">
+            <h2 className="text-2xl font-semibold mb-4">Your Profile</h2>
             <div className="space-y-2 text-sm">
               <div>
                 <span className="font-medium">Name:</span> {user.name}
@@ -214,19 +285,22 @@ export default function DashboardPage() {
 
           {/* Points Card */}
           <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Your Points</h2>
-            <div className="space-y-3">
-              <div>
-                <div className="text-3xl font-bold text-blue-600">
+            <div className="flex items-center gap-2 mb-4">
+              <Award className="h-5 w-5 text-[hsl(var(--cub-gold))]" />
+              <h2 className="text-2xl font-semibold">Your Points</h2>
+            </div>
+            <div className="space-y-4">
+              <div className="text-center">
+                <div className="text-5xl font-bold text-[hsl(var(--cub-blue))]">
                   {user.pointBalance?.currentYearPoints || 0}
                 </div>
-                <div className="text-gray-600 text-sm">Points This Year</div>
+                <div className="text-sm text-gray-600 mt-2">Points This Year</div>
               </div>
-              <div>
-                <div className="text-2xl font-semibold text-gray-700">
+              <div className="text-center border-t pt-3">
+                <div className="text-3xl font-semibold text-gray-700">
                   {user.pointBalance?.totalPoints || 0}
                 </div>
-                <div className="text-gray-600 text-sm">Total Points</div>
+                <div className="text-sm text-gray-600 mt-1">Total Points</div>
               </div>
             </div>
           </Card>
@@ -258,7 +332,10 @@ export default function DashboardPage() {
         <div className="mt-8 grid md:grid-cols-2 gap-6">
           <Card className="p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Upcoming Events</h2>
+              <div className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-[hsl(var(--cub-blue))]" />
+                <h2 className="text-xl font-semibold">Upcoming Events</h2>
+              </div>
               <Link href="/events">
                 <Button variant="ghost" size="sm">View All</Button>
               </Link>
@@ -285,13 +362,23 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-gray-600 text-sm">No upcoming events scheduled.</p>
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="text-6xl mb-3">📅</div>
+                <p className="text-gray-700 font-medium mb-1">No upcoming events</p>
+                <p className="text-sm text-gray-500 mb-4">Check back later for new volunteer opportunities!</p>
+                <Link href="/events">
+                  <Button variant="outline" size="sm">Browse All Events</Button>
+                </Link>
+              </div>
             )}
           </Card>
 
           <Card className="p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">My Tasks</h2>
+              <div className="flex items-center gap-2">
+                <CheckSquare className="h-5 w-5 text-[hsl(var(--cub-blue))]" />
+                <h2 className="text-xl font-semibold">My Tasks</h2>
+              </div>
               <Link href="/tasks?assignedToMe=true&status=incomplete">
                 <Button variant="ghost" size="sm">View All</Button>
               </Link>
@@ -314,7 +401,14 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-gray-600 text-sm">No tasks assigned to you.</p>
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="text-6xl mb-3">✅</div>
+                <p className="text-gray-700 font-medium mb-1">All caught up!</p>
+                <p className="text-sm text-gray-500 mb-4">You have no pending tasks. Great work!</p>
+                <Link href="/tasks">
+                  <Button variant="outline" size="sm">View All Tasks</Button>
+                </Link>
+              </div>
             )}
           </Card>
         </div>
