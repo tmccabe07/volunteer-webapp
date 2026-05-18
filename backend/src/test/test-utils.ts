@@ -1,17 +1,15 @@
 /**
  * Test utilities for database setup, teardown, and test data factories
+ * 
+ * Note: Environment variables (DATABASE_URL, JWT_SECRET, etc.) are set in
+ * test/jest.setup.ts which runs before any tests to ensure test.db is used
+ * instead of dev.db
  */
 
 import { PrismaClient, Volunteer, VolunteerRole, Event, ActivityType } from '@prisma/client';
 import { hash } from 'bcrypt';
 import * as crypto from 'crypto';
 import prisma from '../utils/prisma';
-
-// Set test environment variables BEFORE anything else
-process.env.DATABASE_URL = process.env.DATABASE_URL || 'file:./test.db';
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
-process.env.JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'test-refresh-secret';
-process.env.NODE_ENV = 'test';
 
 // Re-export the singleton prisma instance for tests to use
 export { prisma };

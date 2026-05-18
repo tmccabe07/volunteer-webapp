@@ -159,17 +159,39 @@ describe('SignupService', () => {
       expect(signups).toHaveLength(3);
     });
 
-    it('should throw error when trying to re-signup after withdrawal', async () => {
+    it('should allow re-signup after withdrawal by reactivating the signup', async () => {
       // Sign up
-      await service.signupForActivity(testVolunteer.id, testActivitySlot.id);
+      const initialSignup = await service.signupForActivity(testVolunteer.id, testActivitySlot.id);
 
       // Withdraw
       await service.withdrawFromActivity(testVolunteer.id, testActivitySlot.id);
 
-      // Try to sign up again
-      await expect(
-        service.signupForActivity(testVolunteer.id, testActivitySlot.id)
-      ).rejects.toThrow('Cannot re-signup after withdrawal. Please contact event organizer.');
+      // Verify withdrawal
+      const withdrawnSignup = await prisma.signup.findFirst({
+        where: { 
+          volunteerId: testVolunteer.id,
+          activitySlotId: testActivitySlot.id,
+        },
+      });
+      expect(withdrawnSignup?.withdrawn).toBe(true);
+      expect(withdrawnSignup?.withdrawnAt).toBeTruthy();
+
+      // Sign up again - should reactivate the existing signup
+      const reactivatedSignup = await service.signupForActivity(testVolunteer.id, testActivitySlot.id);
+
+      // Should be the same signup ID, now reactivated
+      expect(reactivatedSignup.id).toBe(initialSignup.id);
+      expect(reactivatedSignup.withdrawn).toBe(false);
+      expect(reactivatedSignup.withdrawnAt).toBeNull();
+
+      // Verify only one signup record exists
+      const allSignups = await prisma.signup.findMany({
+        where: {
+          volunteerId: testVolunteer.id,
+          activitySlotId: testActivitySlot.id,
+        },
+      });
+      expect(allSignups).toHaveLength(1);
     });
 
     it('should count only non-withdrawn signups for capacity', async () => {

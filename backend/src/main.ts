@@ -32,15 +32,21 @@ async function bootstrap() {
 
   // Global rate limiting (environment-aware)
   const isDevelopment = process.env.NODE_ENV === 'development';
-  const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: isDevelopment ? 1000 : 100, // Much higher limit in dev
-    message: 'Too many requests from this IP, please try again later',
-    standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
-    legacyHeaders: false, // Disable `X-RateLimit-*` headers
-    skip: () => isDevelopment, // Skip rate limiting entirely in development
-  });
-  app.use(limiter);
+  
+  // Only apply rate limiting in production
+  if (!isDevelopment) {
+    const limiter = rateLimit({
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      max: 100, // Limit each IP to 100 requests per windowMs
+      message: 'Too many requests from this IP, please try again later',
+      standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
+      legacyHeaders: false, // Disable `X-RateLimit-*` headers
+    });
+    app.use(limiter);
+    console.log('🔒 Rate limiting enabled (100 requests per 15 minutes)');
+  } else {
+    console.log('⚠️  Rate limiting disabled in development mode');
+  }
 
   // Global prefix for all routes (/api)
   app.setGlobalPrefix('api');

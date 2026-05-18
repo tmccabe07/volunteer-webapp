@@ -80,12 +80,19 @@ export class SignupService {
       }
     }
 
-    // If previous signup was withdrawn, don't create a new one
+    // If previous signup was withdrawn, reactivate it
     if (existingSignup && existingSignup.withdrawn) {
-      throw new Error('Cannot re-signup after withdrawal. Please contact event organizer.');
+      const reactivatedSignup = await prisma.signup.update({
+        where: { id: existingSignup.id },
+        data: {
+          withdrawn: false,
+          withdrawnAt: null,
+        },
+      });
+      return reactivatedSignup;
     }
 
-    // Create signup
+    // Create new signup
     const signup = await prisma.signup.create({
       data: {
         volunteerId,
@@ -99,7 +106,7 @@ export class SignupService {
 
   /**
    * Withdraw a volunteer from an activity slot
-   * Cannot be undone
+   * Can be reversed by signing up again
    */
   async withdrawFromActivity(
     volunteerId: string,

@@ -3,6 +3,7 @@
 import { useRequireAuth } from '@/lib/auth-context';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -10,7 +11,8 @@ import { useState, useEffect } from 'react';
 import eventsService from '@/services/events.service';
 import adminTasksService from '@/services/admin-tasks.service';
 import DashboardTaskCard from '@/components/shared/tasks/DashboardTaskCard';
-import { Award, Calendar, CheckSquare } from 'lucide-react';
+import QuickSignupDialog from '@/components/shared/events/QuickSignupDialog';
+import { Award, Calendar, CheckSquare, CheckCircle2 } from 'lucide-react';
 
 interface Event {
   id: string;
@@ -18,6 +20,10 @@ interface Event {
   eventDate: string;
   location?: string;
   rankLevel?: string;
+  activitySlots?: Array<{
+    id: string;
+    currentUserSignup: { id: string; withdrawn: boolean } | null;
+  }>;
 }
 
 interface Task {
@@ -41,6 +47,8 @@ export default function DashboardPage() {
   const [upcomingTasks, setUpcomingTasks] = useState<Task[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [taskError, setTaskError] = useState<string | null>(null);
+  const [signupDialogOpen, setSignupDialogOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<{ id: string; title: string } | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -145,6 +153,45 @@ export default function DashboardPage() {
       setTaskError('Failed to update task status. Please try again.');
       console.error('Failed to toggle task completion:', error);
     }
+  };
+
+  /**
+   * Open the quick signup dialog for a specific event
+   * 
+   * @param eventId - The ID of the event
+   * @param eventTitle - The title of the event
+   */
+  const handleOpenSignupDialog = (eventId: string, eventTitle: string, e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent navigation when clicking the button
+    e.stopPropagation();
+    setSelectedEvent({ id: eventId, title: eventTitle });
+    setSignupDialogOpen(true);
+  };
+
+  /**
+   * Handle successful signup - refresh the events list
+   */
+  const handleSignupSuccess = () => {
+    loadUpcomingEvents();
+  };
+
+  /**
+   * Get signup status for an event
+   * Returns the count of activity slots the user has signed up for
+   */
+  const getSignupStatus = (event: Event): { signedUp: number; total: number } => {
+    if (!event.activitySlots || event.activitySlots.length === 0) {
+      return { signedUp: 0, total: 0 };
+    }
+
+    const signedUp = event.activitySlots.filter(
+      slot => slot.currentUserSignup && !slot.currentUserSignup.withdrawn
+    ).length;
+
+    return {
+      signedUp,
+      total: event.activitySlots.length,
+    };
   };
 
   const formatDate = (dateString: string) => {
@@ -344,22 +391,49 @@ export default function DashboardPage() {
               <p className="text-gray-600 text-sm">Loading events...</p>
             ) : upcomingEvents.length > 0 ? (
               <div className="space-y-3">
-                {upcomingEvents.map((event) => (
-                  <Link key={event.id} href={`/events/${event.id}`}>
-                    <div className="p-3 border rounded-lg hover:bg-gray-50 transition-colors">
-                      <div className="font-medium">{event.title}</div>
-                      <div className="text-sm text-gray-600 mt-1">
-                        {formatDate(event.eventDate)}
-                        {event.location && ` • ${event.location}`}
-                      </div>
-                      {event.rankLevel && (
-                        <div className="text-xs text-gray-500 mt-1">
-                          {event.rankLevel}
+                {upcomingEvents.map((event) => {
+                  const signupStatus = getSignupStatus(event);
+                  const hasSignups = signupStatus.signedUp > 0;
+                  const isFullySignedUp = signupStatus.signedUp === signupStatus.total && signupStatus.total > 0;
+
+                  return (
+                    <div key={event.id} className="p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                      <Link href={`/events/${event.id}`} className="block mb-2">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="font-medium hover:text-[hsl(var(--cub-blue))] transition-colors flex-1">
+                            {event.title}
+                          </div>
+                          {hasSignups && (
+                            <Badge 
+                              variant={isFullySignedUp ? "default" : "secondary"}
+                              className={isFullySignedUp ? "bg-green-600 hover:bg-green-700" : ""}
+                            >
+                              <CheckCircle2 className="h-3 w-3 mr-1" />
+                              {signupStatus.signedUp}/{signupStatus.total}
+                            </Badge>
+                          )}
                         </div>
-                      )}
+                        <div className="text-sm text-gray-600 mt-1">
+                          {formatDate(event.eventDate)}
+                          {event.location && ` • ${event.location}`}
+                        </div>
+                        {event.rankLevel && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            {event.rankLevel}
+                          </div>
+                        )}
+                      </Link>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full mt-2"
+                        onClick={(e) => handleOpenSignupDialog(event.id, event.title, e)}
+                      >
+                        {hasSignups ? 'Manage Signups' : 'Sign Up'}
+                      </Button>
                     </div>
-                  </Link>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -413,6 +487,18 @@ export default function DashboardPage() {
           </Card>
         </div>
       </div>
+
+      {/* Quick Signup Dialog */}
+      {selectedEvent && (
+        <QuickSignupDialog
+          eventId={selectedEvent.id}
+          eventTitle={selectedEvent.title}
+          open={signupDialogOpen}
+          onOpenChange={setSignupDialogOpen}
+          currentUserId={user?.id}
+          onSignupSuccess={handleSignupSuccess}
+        />
+      )}
     </div>
   );
 }

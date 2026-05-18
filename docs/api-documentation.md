@@ -691,7 +691,7 @@ Withdraw from an activity slot.
 ```
 
 **Notes**:
-- Cannot be undone
+- Can be reversed by signing up again
 
 ---
 

@@ -53,12 +53,12 @@ export default function WithdrawButton({
             Withdraw
           </Button>
         </AlertDialogTrigger>
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-white">
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Withdrawal</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to withdraw from <strong>{activityName}</strong>? 
-              This action cannot be undone. You will need to contact the event organizer to sign up again.
+              You can sign up again if you change your mind.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
