@@ -1,4 +1,5 @@
 import { EventService } from './event.service';
+import { NotificationService } from './notification.service';
 import {
   setupTests,
   teardownTests,
@@ -10,6 +11,7 @@ import {
 
 describe('EventService', () => {
   let service: EventService;
+  let notificationService: NotificationService;
   let testVolunteer: any;
   let testActivityType: any;
 
@@ -22,8 +24,9 @@ describe('EventService', () => {
   });
 
   beforeEach(async () => {
-    // EventService doesn't use DI, just instantiate directly
-    service = new EventService();
+    // Create NotificationService and EventService with dependency injection
+    notificationService = new NotificationService();
+    service = new EventService(notificationService);
     
     // Create test volunteer for use in tests
     testVolunteer = await createTestVolunteer({ authTier: 'LEADER' });
@@ -34,6 +37,7 @@ describe('EventService', () => {
 
   afterEach(async () => {
     // Clean up in order to respect foreign key constraints
+    await prisma.notification.deleteMany();
     await prisma.signup.deleteMany();
     await prisma.activitySlot.deleteMany();
     await prisma.event.deleteMany();
@@ -195,6 +199,82 @@ describe('EventService', () => {
       expect(event.activitySlots).toHaveLength(2);
       expect(event.activitySlots[0].activityType.id).toBe(testActivityType.id);
       expect(event.activitySlots[1].activityType.id).toBe(activityType2.id);
+    });
+
+    it('should send notifications to relevant volunteers for pack-wide events', async () => {
+      // Create additional test volunteers
+      const volunteer1 = await createTestVolunteer({ email: 'parent1@test.com' });
+      const volunteer2 = await createTestVolunteer({ email: 'parent2@test.com' });
+
+      const eventData = {
+        title: 'Pack-wide Campout',
+        description: 'All ranks invited',
+        eventDate: new Date('2026-07-15'),
+        rankLevel: null, // Pack-wide
+        isRecurring: false,
+        activitySlots: [
+          {
+            activityTypeId: testActivityType.id,
+            capacity: 20,
+          },
+        ],
+      };
+
+      const event = await service.createEvent(eventData, testVolunteer.id);
+
+      // Check that notifications were created for other volunteers (but not creator)
+      const notifications = await prisma.notification.findMany({
+        where: { type: 'NEW_EVENT' },
+      });
+
+      expect(notifications.length).toBeGreaterThan(0);
+      expect(notifications.some(n => n.volunteerId === volunteer1.id)).toBe(true);
+      expect(notifications.some(n => n.volunteerId === volunteer2.id)).toBe(true);
+      expect(notifications.some(n => n.volunteerId === testVolunteer.id)).toBe(false); // Creator should not get notification
+      expect(notifications[0].message).toContain('Pack-wide Campout');
+      expect(notifications[0].link).toBe(`/events/${event.id}`);
+    });
+
+    it('should send notifications only to volunteers with children in the specified rank', async () => {
+      // Create volunteers with different rank children
+      const wolfParent = await createTestVolunteer({ email: 'wolf@test.com' });
+      const bearParent = await createTestVolunteer({ email: 'bear@test.com' });
+
+      // Add child ranks
+      await prisma.childRank.create({
+        data: { volunteerId: wolfParent.id, rankLevel: 'WOLF' },
+      });
+      await prisma.childRank.create({
+        data: { volunteerId: bearParent.id, rankLevel: 'BEAR' },
+      });
+
+      const eventData = {
+        title: 'Wolf Den Meeting',
+        description: 'Wolf rank only',
+        eventDate: new Date('2026-07-15'),
+        rankLevel: 'WOLF',
+        isRecurring: false,
+        activitySlots: [
+          {
+            activityTypeId: testActivityType.id,
+            capacity: 10,
+          },
+        ],
+      };
+
+      const event = await service.createEvent(eventData, testVolunteer.id);
+
+      // Check that only wolf parent received notification
+      const notifications = await prisma.notification.findMany({
+        where: { type: 'NEW_EVENT' },
+      });
+
+      const wolfNotifications = notifications.filter(n => n.volunteerId === wolfParent.id);
+      const bearNotifications = notifications.filter(n => n.volunteerId === bearParent.id);
+
+      expect(wolfNotifications.length).toBe(1);
+      expect(bearNotifications.length).toBe(0);
+      expect(wolfNotifications[0].message).toContain('Wolf Den Meeting');
     });
   });
 

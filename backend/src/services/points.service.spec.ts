@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PointsService } from './points.service';
 import { BadgeTierService } from './badge-tier.service';
+import { NotificationService } from './notification.service';
 import { PointEventType } from '@prisma/client';
 import {
   setupTests,
@@ -24,13 +25,14 @@ describe('PointsService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [PointsService, BadgeTierService],
+      providers: [PointsService, BadgeTierService, NotificationService],
     }).compile();
 
     service = module.get<PointsService>(PointsService);
   });
 
   afterEach(async () => {
+    await prisma.notification.deleteMany();
     await prisma.leaderboardSnapshot.deleteMany();
     await prisma.leaderboardCache.deleteMany();
     await prisma.volunteerPointBalance.deleteMany();

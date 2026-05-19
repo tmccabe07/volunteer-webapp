@@ -72,6 +72,24 @@ export class BadgeTierService {
       return false; // No change
     }
 
+    // Determine if this is an upgrade (higher displayOrder) or downgrade
+    let isUpgrade = false;
+    if (newTier && currentTier) {
+      const currentTierData = await prisma.badgeTier.findUnique({
+        where: { tierName: currentTier },
+      });
+      const newTierData = await prisma.badgeTier.findUnique({
+        where: { tierName: newTier },
+      });
+      
+      if (currentTierData && newTierData) {
+        isUpgrade = newTierData.displayOrder > currentTierData.displayOrder;
+      }
+    } else if (newTier && !currentTier) {
+      // First tier achievement is always an upgrade
+      isUpgrade = true;
+    }
+
     // Record tier change in history
     await prisma.badgeTierHistory.create({
       data: {
@@ -90,8 +108,8 @@ export class BadgeTierService {
       },
     });
 
-    // Create BADGE_ACHIEVEMENT notification (User Story 10)
-    if (newTier) {
+    // Create BADGE_ACHIEVEMENT notification only for upgrades (User Story 10)
+    if (newTier && isUpgrade) {
       const message = `Congratulations! You've achieved the ${newTier} badge tier with ${newTotalPoints} points!`;
       await this.notificationService.createNotification({
         volunteerId,

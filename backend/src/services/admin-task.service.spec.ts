@@ -1,4 +1,5 @@
 import { AdminTaskService } from './admin-task.service';
+import { NotificationService } from './notification.service';
 import {
   setupTests,
   teardownTests,
@@ -8,6 +9,7 @@ import {
 
 describe('AdminTaskService', () => {
   let service: AdminTaskService;
+  let notificationService: NotificationService;
   let testVolunteer: any;
   let testLeader: any;
   let testRole: any;
@@ -21,7 +23,8 @@ describe('AdminTaskService', () => {
   });
 
   beforeEach(async () => {
-    service = new AdminTaskService();
+    notificationService = new NotificationService();
+    service = new AdminTaskService(notificationService);
     
     // Create test volunteers
     testVolunteer = await createTestVolunteer({ authTier: 'PARENT' });

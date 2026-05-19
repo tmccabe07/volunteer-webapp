@@ -1,16 +1,17 @@
-/**
+﻿/**
  * NotificationService Unit Tests
  * 
  * Tests notification creation, retrieval, mark-as-read, and pagination logic
  */
 
 import { NotificationService } from './notification.service';
-import { prisma } from '../utils/prisma';
+import prisma from '../utils/prisma';
 import { NotificationType } from '@prisma/client';
 
 // Mock Prisma
 jest.mock('../utils/prisma', () => ({
-  prisma: {
+  __esModule: true,
+  default: {
     notification: {
       create: jest.fn(),
       findMany: jest.fn(),
@@ -57,6 +58,7 @@ describe('NotificationService', () => {
           volunteerId: mockVolunteerId,
           type: NotificationType.BADGE_ACHIEVEMENT,
           message: 'Congratulations! You earned the Bronze badge!',
+          link: undefined,
           isRead: false,
         },
       });

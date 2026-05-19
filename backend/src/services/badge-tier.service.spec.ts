@@ -1,4 +1,5 @@
 import { BadgeTierService } from './badge-tier.service';
+import { NotificationService } from './notification.service';
 import {
   setupTests,
   teardownTests,
@@ -8,6 +9,7 @@ import {
 
 describe('BadgeTierService', () => {
   let service: BadgeTierService;
+  let notificationService: NotificationService;
   let testVolunteer: any;
 
   beforeAll(async () => {
@@ -19,8 +21,9 @@ describe('BadgeTierService', () => {
   });
 
   beforeEach(async () => {
-    // BadgeTierService doesn't use DI, just instantiate directly
-    service = new BadgeTierService();
+    // Create NotificationService and BadgeTierService with dependency injection
+    notificationService = new NotificationService();
+    service = new BadgeTierService(notificationService);
     
     // Create test volunteer
     testVolunteer = await createTestVolunteer({ name: 'Test Volunteer' });
@@ -28,6 +31,7 @@ describe('BadgeTierService', () => {
 
   afterEach(async () => {
     // Clean up in order to respect foreign key constraints
+    await prisma.notification.deleteMany();
     await prisma.signup.deleteMany();
     await prisma.activitySlot.deleteMany();
     await prisma.event.deleteMany();
@@ -68,86 +72,86 @@ describe('BadgeTierService', () => {
     it('should return tiers that exist from test setup', async () => {
       const tiers = await service.getAllTiers();
 
-      // From test-utils.ts seed data
+      // From test-utils.ts seed data (achievement-based)
       const tierNames = tiers.map(t => t.tierName);
-      expect(tierNames).toContain('Bobcat');
-      expect(tierNames).toContain('Tiger');
-      expect(tierNames).toContain('Wolf');
-      expect(tierNames).toContain('Bear');
-      expect(tierNames).toContain('Webelos');
-      expect(tierNames).toContain('Arrow of Light');
+      expect(tierNames).toContain('Bronze');
+      expect(tierNames).toContain('Silver');
+      expect(tierNames).toContain('Gold');
+      expect(tierNames).toContain('Platinum');
+      expect(tierNames).toContain('Diamond');
+      expect(tierNames).toContain('Titanium');
     });
   });
 
   describe('calculateBadgeTierForPoints', () => {
     it('should return correct tier for points in range', async () => {
-      // From test-utils.ts: Wolf tier is 40-59 points
-      const tier = await service.calculateBadgeTierForPoints(45);
+      // From test-utils.ts: Silver tier is 50-79 points
+      const tier = await service.calculateBadgeTierForPoints(55);
 
-      expect(tier).toBe('Wolf');
+      expect(tier).toBe('Silver');
     });
 
     it('should return lowest tier for minimum points', async () => {
-      // From test-utils.ts: Bobcat tier starts at 0 points
+      // From test-utils.ts: Bronze tier starts at 0 points
       const tier = await service.calculateBadgeTierForPoints(0);
 
-      expect(tier).toBe('Bobcat');
+      expect(tier).toBe('Bronze');
     });
 
     it('should return highest tier for points above maximum', async () => {
-      // From test-utils.ts: Arrow of Light tier is 100+ (no max)
+      // From test-utils.ts: Titanium tier is 170+ (no max)
       const tier = await service.calculateBadgeTierForPoints(500);
 
-      expect(tier).toBe('Arrow of Light');
+      expect(tier).toBe('Titanium');
     });
 
     it('should return correct tier at boundary - lower edge', async () => {
-      // From test-utils.ts: Tiger tier is 20-39 points
-      const tier = await service.calculateBadgeTierForPoints(20);
+      // From test-utils.ts: Silver tier is 50-79 points
+      const tier = await service.calculateBadgeTierForPoints(50);
 
-      expect(tier).toBe('Tiger');
+      expect(tier).toBe('Silver');
     });
 
     it('should return correct tier at boundary - upper edge', async () => {
-      // From test-utils.ts: Tiger tier is 20-39 points
-      const tier = await service.calculateBadgeTierForPoints(39);
+      // From test-utils.ts: Silver tier is 50-79 points
+      const tier = await service.calculateBadgeTierForPoints(79);
 
-      expect(tier).toBe('Tiger');
+      expect(tier).toBe('Silver');
     });
 
     it('should handle tier transitions correctly', async () => {
-      // From test-utils.ts: Bear tier is 60-79, Webelos is 80-99
-      const bearTier = await service.calculateBadgeTierForPoints(79);
-      const webelosTier = await service.calculateBadgeTierForPoints(80);
+      // From test-utils.ts: Gold tier is 80-99, Platinum is 100-129
+      const goldTier = await service.calculateBadgeTierForPoints(99);
+      const platinumTier = await service.calculateBadgeTierForPoints(100);
 
-      expect(bearTier).toBe('Bear');
-      expect(webelosTier).toBe('Webelos');
+      expect(goldTier).toBe('Gold');
+      expect(platinumTier).toBe('Platinum');
     });
 
     it('should return highest tier for exact min of highest tier', async () => {
-      // From test-utils.ts: Arrow of Light tier starts at 100
-      const tier = await service.calculateBadgeTierForPoints(100);
+      // From test-utils.ts: Titanium tier starts at 170
+      const tier = await service.calculateBadgeTierForPoints(170);
 
-      expect(tier).toBe('Arrow of Light');
+      expect(tier).toBe('Titanium');
     });
   });
 
   describe('checkAndUpdateBadgeTier', () => {
     beforeEach(async () => {
-      // Create initial leaderboard entry with Bobcat tier (0-19 points)
+      // Create initial leaderboard entry with Bronze tier (0-49 points)
       await prisma.leaderboardCache.create({
         data: {
           volunteerId: testVolunteer.id,
           totalPoints: 10,
-          badgeTier: 'Bobcat',
+          badgeTier: 'Bronze',
           rank: 1,
         },
       });
     });
 
     it('should update badge tier when points increase to new tier', async () => {
-      // Upgrade from Bobcat (0-19) to Tiger (20-39)
-      const changed = await service.checkAndUpdateBadgeTier(testVolunteer.id, 25);
+      // Upgrade from Bronze (0-49) to Silver (50-79)
+      const changed = await service.checkAndUpdateBadgeTier(testVolunteer.id, 55);
 
       expect(changed).toBe(true);
 
@@ -155,25 +159,25 @@ describe('BadgeTierService', () => {
         where: { volunteerId: testVolunteer.id },
       });
 
-      expect(updatedCache!.badgeTier).toBe('Tiger');
+      expect(updatedCache!.badgeTier).toBe('Silver');
     });
 
     it('should record tier change in history', async () => {
-      await service.checkAndUpdateBadgeTier(testVolunteer.id, 45);
+      await service.checkAndUpdateBadgeTier(testVolunteer.id, 85);
 
       const history = await prisma.badgeTierHistory.findFirst({
         where: { volunteerId: testVolunteer.id },
       });
 
       expect(history).toBeTruthy();
-      expect(history!.oldTier).toBe('Bobcat');
-      expect(history!.newTier).toBe('Wolf');
-      expect(history!.pointsAtChange).toBe(45);
+      expect(history!.oldTier).toBe('Bronze');
+      expect(history!.newTier).toBe('Gold');
+      expect(history!.pointsAtChange).toBe(85);
     });
 
     it('should return false when tier does not change', async () => {
-      // Stay in Bobcat tier (0-19)
-      const changed = await service.checkAndUpdateBadgeTier(testVolunteer.id, 15);
+      // Stay in Bronze tier (0-49)
+      const changed = await service.checkAndUpdateBadgeTier(testVolunteer.id, 25);
 
       expect(changed).toBe(false);
 
@@ -186,8 +190,8 @@ describe('BadgeTierService', () => {
     });
 
     it('should handle tier upgrades across multiple tiers', async () => {
-      // Jump from Bobcat (0-19) to Bear (60-79)
-      const changed = await service.checkAndUpdateBadgeTier(testVolunteer.id, 65);
+      // Jump from Bronze (0-49) to Platinum (100-129)
+      const changed = await service.checkAndUpdateBadgeTier(testVolunteer.id, 105);
 
       expect(changed).toBe(true);
 
@@ -195,20 +199,20 @@ describe('BadgeTierService', () => {
         where: { volunteerId: testVolunteer.id },
       });
 
-      expect(updatedCache!.badgeTier).toBe('Bear');
+      expect(updatedCache!.badgeTier).toBe('Platinum');
     });
 
     it('should handle tier downgrades when points decrease', async () => {
-      // First upgrade to Wolf
-      await service.checkAndUpdateBadgeTier(testVolunteer.id, 45);
+      // First upgrade to Gold (80-99)
+      await service.checkAndUpdateBadgeTier(testVolunteer.id, 85);
 
       // Clear history to isolate downgrade test
       await prisma.badgeTierHistory.deleteMany({
         where: { volunteerId: testVolunteer.id },
       });
 
-      // Then downgrade back to Tiger (20-39)
-      const changed = await service.checkAndUpdateBadgeTier(testVolunteer.id, 25);
+      // Then downgrade back to Silver (50-79)
+      const changed = await service.checkAndUpdateBadgeTier(testVolunteer.id, 55);
 
       expect(changed).toBe(true);
 
@@ -216,13 +220,13 @@ describe('BadgeTierService', () => {
         where: { volunteerId: testVolunteer.id },
       });
 
-      expect(history!.oldTier).toBe('Wolf');
-      expect(history!.newTier).toBe('Tiger');
+      expect(history!.oldTier).toBe('Gold');
+      expect(history!.newTier).toBe('Silver');
     });
 
     it('should handle upgrade to highest tier', async () => {
-      // Upgrade to Arrow of Light (100+)
-      const changed = await service.checkAndUpdateBadgeTier(testVolunteer.id, 150);
+      // Upgrade to Titanium (170+)
+      const changed = await service.checkAndUpdateBadgeTier(testVolunteer.id, 175);
 
       expect(changed).toBe(true);
 
@@ -230,12 +234,12 @@ describe('BadgeTierService', () => {
         where: { volunteerId: testVolunteer.id },
       });
 
-      expect(updatedCache!.badgeTier).toBe('Arrow of Light');
+      expect(updatedCache!.badgeTier).toBe('Titanium');
     });
 
     it('should stay at highest tier when points increase further', async () => {
-      // First get to Arrow of Light
-      await service.checkAndUpdateBadgeTier(testVolunteer.id, 100);
+      // First get to Titanium (170+)
+      await service.checkAndUpdateBadgeTier(testVolunteer.id, 170);
 
       // Clear history
       await prisma.badgeTierHistory.deleteMany({
@@ -272,7 +276,7 @@ describe('BadgeTierService', () => {
       });
 
       expect(history!.oldTier).toBeNull();
-      expect(history!.newTier).toBe('Tiger');
+      expect(history!.newTier).toBe('Bronze');
     });
   });
 
@@ -283,26 +287,26 @@ describe('BadgeTierService', () => {
         data: {
           volunteerId: testVolunteer.id,
           totalPoints: 10,
-          badgeTier: 'Bobcat',
+          badgeTier: 'Bronze',
           rank: 1,
         },
       });
 
       // Create multiple tier changes
-      await service.checkAndUpdateBadgeTier(testVolunteer.id, 25); // Tiger
+      await service.checkAndUpdateBadgeTier(testVolunteer.id, 55); // Silver
       await new Promise(resolve => setTimeout(resolve, 10));
-      await service.checkAndUpdateBadgeTier(testVolunteer.id, 45); // Wolf
+      await service.checkAndUpdateBadgeTier(testVolunteer.id, 85); // Gold
       await new Promise(resolve => setTimeout(resolve, 10));
-      await service.checkAndUpdateBadgeTier(testVolunteer.id, 65); // Bear
+      await service.checkAndUpdateBadgeTier(testVolunteer.id, 105); // Platinum
 
       const history = await service.getTierHistory(testVolunteer.id);
 
       expect(history).toHaveLength(3);
       
-      // Most recent should be first (Bear upgrade)
-      expect(history[0].newTier).toBe('Bear');
-      expect(history[1].newTier).toBe('Wolf');
-      expect(history[2].newTier).toBe('Tiger');
+      // Most recent should be first (Platinum upgrade)
+      expect(history[0].newTier).toBe('Platinum');
+      expect(history[1].newTier).toBe('Gold');
+      expect(history[2].newTier).toBe('Silver');
 
       // Verify ordering by timestamp
       expect(new Date(history[0].achievedAt).getTime()).toBeGreaterThan(
@@ -322,12 +326,12 @@ describe('BadgeTierService', () => {
         data: {
           volunteerId: testVolunteer.id,
           totalPoints: 10,
-          badgeTier: 'Bobcat',
+          badgeTier: 'Bronze',
           rank: 1,
         },
       });
 
-      await service.checkAndUpdateBadgeTier(testVolunteer.id, 25);
+      await service.checkAndUpdateBadgeTier(testVolunteer.id, 55);
 
       const history = await service.getTierHistory(testVolunteer.id);
       const entry = history[0];
@@ -349,21 +353,21 @@ describe('BadgeTierService', () => {
           {
             volunteerId: testVolunteer.id,
             totalPoints: 10,
-            badgeTier: 'Bobcat',
+            badgeTier: 'Bronze',
             rank: 1,
           },
           {
             volunteerId: volunteer2.id,
             totalPoints: 15,
-            badgeTier: 'Bobcat',
+            badgeTier: 'Bronze',
             rank: 2,
           },
         ],
       });
 
       // Create tier changes for both
-      await service.checkAndUpdateBadgeTier(testVolunteer.id, 25);
-      await service.checkAndUpdateBadgeTier(volunteer2.id, 30);
+      await service.checkAndUpdateBadgeTier(testVolunteer.id, 55);
+      await service.checkAndUpdateBadgeTier(volunteer2.id, 60);
 
       const history = await service.getTierHistory(testVolunteer.id);
 
@@ -377,15 +381,15 @@ describe('BadgeTierService', () => {
       await prisma.leaderboardCache.create({
         data: {
           volunteerId: testVolunteer.id,
-          totalPoints: 45,
-          badgeTier: 'Wolf',
+          totalPoints: 85,
+          badgeTier: 'Gold',
           rank: 1,
         },
       });
 
       const tier = await service.getCurrentTier(testVolunteer.id);
 
-      expect(tier).toBe('Wolf');
+      expect(tier).toBe('Gold');
     });
 
     it('should return null when volunteer has no leaderboard entry', async () => {
@@ -415,21 +419,21 @@ describe('BadgeTierService', () => {
         data: {
           volunteerId: testVolunteer.id,
           totalPoints: 10,
-          badgeTier: 'Bobcat',
+          badgeTier: 'Bronze',
           rank: 1,
         },
       });
 
       // Check tier before upgrade
       const tierBefore = await service.getCurrentTier(testVolunteer.id);
-      expect(tierBefore).toBe('Bobcat');
+      expect(tierBefore).toBe('Bronze');
 
       // Upgrade tier
-      await service.checkAndUpdateBadgeTier(testVolunteer.id, 45);
+      await service.checkAndUpdateBadgeTier(testVolunteer.id, 85);
 
       // Check tier after upgrade
       const tierAfter = await service.getCurrentTier(testVolunteer.id);
-      expect(tierAfter).toBe('Wolf');
+      expect(tierAfter).toBe('Gold');
     });
   });
 
@@ -516,20 +520,20 @@ describe('BadgeTierService', () => {
 
   describe('checkAndUpdateBadgeTier - Notification Creation', () => {
     beforeEach(async () => {
-      // Create initial leaderboard entry with Bobcat tier (0-19 points)
+      // Create initial leaderboard entry with Bronze tier (0-49 points)
       await prisma.leaderboardCache.create({
         data: {
           volunteerId: testVolunteer.id,
           totalPoints: 10,
-          badgeTier: 'Bobcat',
+          badgeTier: 'Bronze',
           rank: 1,
         },
       });
     });
 
     it('should create BADGE_ACHIEVEMENT notification when tier upgrades', async () => {
-      // Upgrade from Bobcat (0-19) to Tiger (20-39)
-      await service.checkAndUpdateBadgeTier(testVolunteer.id, 25);
+      // Upgrade from Bronze (0-49) to Silver (50-79)
+      await service.checkAndUpdateBadgeTier(testVolunteer.id, 55);
 
       const notification = await prisma.notification.findFirst({
         where: {
@@ -539,14 +543,14 @@ describe('BadgeTierService', () => {
       });
 
       expect(notification).toBeTruthy();
-      expect(notification!.message).toContain('Tiger');
-      expect(notification!.message).toContain('25 points');
+      expect(notification!.message).toContain('Silver');
+      expect(notification!.message).toContain('55 points');
       expect(notification!.isRead).toBe(false);
     });
 
     it('should not create notification when tier does not change', async () => {
-      // Stay in Bobcat tier (0-19)
-      await service.checkAndUpdateBadgeTier(testVolunteer.id, 15);
+      // Stay in Bronze tier (0-49)
+      await service.checkAndUpdateBadgeTier(testVolunteer.id, 25);
 
       const notifications = await prisma.notification.findMany({
         where: {
@@ -559,14 +563,14 @@ describe('BadgeTierService', () => {
     });
 
     it('should create notification for each tier upgrade', async () => {
-      // Upgrade to Tiger
-      await service.checkAndUpdateBadgeTier(testVolunteer.id, 25);
+      // Upgrade to Silver (50-79)
+      await service.checkAndUpdateBadgeTier(testVolunteer.id, 55);
 
-      // Upgrade to Wolf
-      await service.checkAndUpdateBadgeTier(testVolunteer.id, 45);
+      // Upgrade to Gold (80-99)
+      await service.checkAndUpdateBadgeTier(testVolunteer.id, 85);
 
-      // Upgrade to Bear
-      await service.checkAndUpdateBadgeTier(testVolunteer.id, 65);
+      // Upgrade to Platinum (100-129)
+      await service.checkAndUpdateBadgeTier(testVolunteer.id, 105);
 
       const notifications = await prisma.notification.findMany({
         where: {
@@ -577,21 +581,21 @@ describe('BadgeTierService', () => {
       });
 
       expect(notifications).toHaveLength(3);
-      expect(notifications[0].message).toContain('Tiger');
-      expect(notifications[1].message).toContain('Wolf');
-      expect(notifications[2].message).toContain('Bear');
+      expect(notifications[0].message).toContain('Silver');
+      expect(notifications[1].message).toContain('Gold');
+      expect(notifications[2].message).toContain('Platinum');
     });
 
     it('should not create notification when downgrading tier', async () => {
-      // First upgrade to Wolf
-      await service.checkAndUpdateBadgeTier(testVolunteer.id, 45);
+      // First upgrade to Silver (50-79)
+      await service.checkAndUpdateBadgeTier(testVolunteer.id, 55);
 
       // Clear notifications to isolate downgrade test
       await prisma.notification.deleteMany({
         where: { volunteerId: testVolunteer.id },
       });
 
-      // Downgrade back to Tiger (points decreased)
+      // Downgrade back to Bronze (points decreased to 25)
       await service.checkAndUpdateBadgeTier(testVolunteer.id, 25);
 
       // No notification should be created for downgrade
@@ -606,8 +610,8 @@ describe('BadgeTierService', () => {
     });
 
     it('should create notification when reaching highest tier', async () => {
-      // Upgrade to Arrow of Light (100+)
-      await service.checkAndUpdateBadgeTier(testVolunteer.id, 150);
+      // Upgrade to Titanium (170+)
+      await service.checkAndUpdateBadgeTier(testVolunteer.id, 175);
 
       const notification = await prisma.notification.findFirst({
         where: {
@@ -617,8 +621,8 @@ describe('BadgeTierService', () => {
       });
 
       expect(notification).toBeTruthy();
-      expect(notification!.message).toContain('Arrow of Light');
-      expect(notification!.message).toContain('150 points');
+      expect(notification!.message).toContain('Titanium');
+      expect(notification!.message).toContain('175 points');
     });
   });
 });

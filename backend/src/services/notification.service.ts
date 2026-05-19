@@ -9,12 +9,14 @@ export class NotificationService {
     volunteerId: string;
     type: NotificationType;
     message: string;
+    link?: string;
   }) {
     return await prisma.notification.create({
       data: {
         volunteerId: data.volunteerId,
         type: data.type,
         message: data.message,
+        link: data.link,
         isRead: false,
       },
     });
