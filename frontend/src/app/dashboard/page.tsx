@@ -187,10 +187,14 @@ export default function DashboardPage() {
   };
 
   /**
-   * Handle successful signup - refresh the events list
+   * Handle successful signup - refresh the events list and profile (for projected points)
    */
   const handleSignupSuccess = () => {
     loadUpcomingEvents();
+    loadProfile();
+    
+    // Notify header to refresh points
+    window.dispatchEvent(new Event('pointsUpdated'));
   };
 
   /**
@@ -361,12 +365,6 @@ export default function DashboardPage() {
                 </div>
                 <div className="text-sm text-gray-600 mt-2">Points This Year</div>
               </div>
-              <div className="text-center border-t pt-3">
-                <div className="text-3xl font-semibold text-gray-700">
-                  {profile.pointBalance?.totalPoints || 0}
-                </div>
-                <div className="text-sm text-gray-600 mt-1">Total Points</div>
-              </div>
               
               {/* Badge Tier Section */}
               {profile.badgeTier && (
@@ -410,7 +408,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="text-xs text-gray-600 mt-1">Projected from Signups</div>
                     <div className="text-xs text-gray-500 mt-0.5">
-                      (Total after events: {(profile.pointBalance?.totalPoints || 0) + profile.projectedPoints})
+                      (Total after events: {(profile.pointBalance?.currentYearPoints || 0) + profile.projectedPoints})
                     </div>
                   </div>
                 </div>

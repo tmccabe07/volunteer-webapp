@@ -363,14 +363,7 @@ describe('DashboardPage', () => {
       });
     });
 
-    it('should display total points', async () => {
-      render(<DashboardPage />);
 
-      await waitFor(() => {
-        expect(screen.getByText('425')).toBeInTheDocument();
-        expect(screen.getByText(/total points/i)).toBeInTheDocument();
-      });
-    });
 
     it('should display zero when point balance is missing', async () => {
       const userWithoutPoints = { ...mockUser, pointBalance: undefined };

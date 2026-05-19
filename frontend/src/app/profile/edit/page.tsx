@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { volunteerApi, type VolunteerProfile, type AvailableRole } from '@/services/volunteer.service';
 import { RoleSelectionForm } from '@/components/forms/profile/RoleSelectionForm';
@@ -27,6 +27,7 @@ export default function ProfileEditPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const hasLoadedRef = useRef(false);
 
   // Form state
   const [name, setName] = useState('');
@@ -40,11 +41,12 @@ export default function ProfileEditPage() {
       return;
     }
 
-    if (user) {
+    if (user && !hasLoadedRef.current) {
+      hasLoadedRef.current = true;
       loadProfile();
       loadAvailableRoles();
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, router]);
 
   const loadProfile = async () => {
     try {
@@ -123,6 +125,9 @@ export default function ProfileEditPage() {
       const result = await volunteerApi.assignRole(roleId);
       await loadProfile();
       
+      // Notify header to refresh points
+      window.dispatchEvent(new Event('pointsUpdated'));
+      
       // Check if tier was upgraded
       if (result.tierUpgraded) {
         alert('🎉 Congratulations! You\'ve been promoted to Leader tier.\n\n⚠️ IMPORTANT: Please save profile, log out and log back in for your new permissions to take effect.');
@@ -136,6 +141,9 @@ export default function ProfileEditPage() {
   const handleRemoveRole = async (roleAssignmentId: string) => {
     await volunteerApi.removeRole(roleAssignmentId);
     await loadProfile();
+    
+    // Notify header to refresh points
+    window.dispatchEvent(new Event('pointsUpdated'));
   };
 
   if (authLoading || isLoading) {
