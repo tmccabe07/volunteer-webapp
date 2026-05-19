@@ -281,6 +281,41 @@ describe('Events API (e2e)', () => {
         .get(`/api/events/${event.id}`)
         .expect(401);
     });
+
+    // T039: GET event returns endTime field correctly
+    it('should return endTime field for event with time range', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      await createTestVolunteer({
+        email: 'parent@example.com',
+        passwordHash,
+      });
+
+      const leader = await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const event = await createTestEvent(leader.id, {
+        title: 'Event With Time Range',
+        eventDate: new Date('2026-06-01'),
+        eventTime: '14:00',
+        endTime: '16:30',
+      });
+
+      const cookies = await loginUser('parent@example.com', password);
+
+      return request(app.getHttpServer())
+        .get(`/api/events/${event.id}`)
+        .set('Cookie', cookies)
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.id).toBe(event.id);
+          expect(res.body.eventTime).toBe('14:00');
+          expect(res.body.endTime).toBe('16:30');
+        });
+    });
   });
 
   describe('POST /api/events', () => {
@@ -489,6 +524,219 @@ describe('Events API (e2e)', () => {
         })
         .expect(401);
     });
+
+    // T033: Create event with valid start and end times
+    it('should create event with start and end times', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const activityType = await createTestActivityType();
+      const cookies = await loginUser('leader@example.com', password);
+
+      return request(app.getHttpServer())
+        .post('/api/events')
+        .set('Cookie', cookies)
+        .send({
+          title: 'Event With Time Range',
+          description: 'Event with both start and end times',
+          eventDate: '2026-07-01T10:00:00Z',
+          eventTime: '14:00',
+          endTime: '16:30',
+          activitySlots: [
+            {
+              activityTypeId: activityType.id,
+              capacity: 10,
+            },
+          ],
+        })
+        .expect(201)
+        .expect((res) => {
+          expect(res.body.eventTime).toBe('14:00');
+          expect(res.body.endTime).toBe('16:30');
+        });
+    });
+
+    // T034: Create event with start time only (existing behavior)
+    it('should create event with start time only', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const activityType = await createTestActivityType();
+      const cookies = await loginUser('leader@example.com', password);
+
+      return request(app.getHttpServer())
+        .post('/api/events')
+        .set('Cookie', cookies)
+        .send({
+          title: 'Event With Start Time Only',
+          description: 'Event without end time',
+          eventDate: '2026-07-01T10:00:00Z',
+          eventTime: '14:00',
+          activitySlots: [
+            {
+              activityTypeId: activityType.id,
+              capacity: 10,
+            },
+          ],
+        })
+        .expect(201)
+        .expect((res) => {
+          expect(res.body.eventTime).toBe('14:00');
+          expect(res.body.endTime).toBeNull();
+        });
+    });
+
+    // T035: Reject event with end time before start time
+    it('should allow event with end time before start time (midnight-spanning)', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const activityType = await createTestActivityType();
+      const cookies = await loginUser('leader@example.com', password);
+
+      return request(app.getHttpServer())
+        .post('/api/events')
+        .set('Cookie', cookies)
+        .send({
+          title: 'Midnight-Spanning Event',
+          description: 'Event that spans midnight (logs warning)',
+          eventDate: '2026-07-01T10:00:00Z',
+          eventTime: '23:00',
+          endTime: '01:00',
+          activitySlots: [
+            {
+              activityTypeId: activityType.id,
+              capacity: 10,
+            },
+          ],
+        })
+        .expect(201)
+        .expect((res) => {
+          expect(res.body.eventTime).toBe('23:00');
+          expect(res.body.endTime).toBe('01:00');
+        });
+    });
+
+    // T036: Reject event with end time but no start time
+    it('should reject event with end time but no start time', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const activityType = await createTestActivityType();
+      const cookies = await loginUser('leader@example.com', password);
+
+      return request(app.getHttpServer())
+        .post('/api/events')
+        .set('Cookie', cookies)
+        .send({
+          title: 'End Time Without Start',
+          description: 'End time provided without start time',
+          eventDate: '2026-07-01T10:00:00Z',
+          endTime: '16:00',
+          activitySlots: [
+            {
+              activityTypeId: activityType.id,
+              capacity: 10,
+            },
+          ],
+        })
+        .expect(400)
+        .expect((res) => {
+          expect(res.body.error).toBe('Invalid input');
+        });
+    });
+
+    // T060: Create full-day event with fullDay=true, times=null
+    it('should create full-day event with no times', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const activityType = await createTestActivityType();
+      const cookies = await loginUser('leader@example.com', password);
+
+      return request(app.getHttpServer())
+        .post('/api/events')
+        .set('Cookie', cookies)
+        .send({
+          title: 'Full Day Event',
+          description: 'All day activity',
+          eventDate: '2026-07-01T10:00:00Z',
+          fullDay: true,
+          activitySlots: [
+            {
+              activityTypeId: activityType.id,
+              capacity: 10,
+            },
+          ],
+        })
+        .expect(201)
+        .expect((res) => {
+          expect(res.body.title).toBe('Full Day Event');
+          expect(res.body.fullDay).toBe(true);
+          expect(res.body.eventTime).toBeNull();
+          expect(res.body.endTime).toBeNull();
+        });
+    });
+
+    // T061: Reject full-day event with times provided
+    it('should reject full-day event with times provided', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const activityType = await createTestActivityType();
+      const cookies = await loginUser('leader@example.com', password);
+
+      return request(app.getHttpServer())
+        .post('/api/events')
+        .set('Cookie', cookies)
+        .send({
+          title: 'Invalid Full Day Event',
+          description: 'Full day with times should be rejected',
+          eventDate: '2026-07-01T10:00:00Z',
+          fullDay: true,
+          eventTime: '14:00',
+          activitySlots: [
+            {
+              activityTypeId: activityType.id,
+              capacity: 10,
+            },
+          ],
+        })
+        .expect(400)
+        .expect((res) => {
+          expect(res.body.error).toBe('Invalid input');
+        });
+    });
   });
 
   describe('PUT /api/events/:id', () => {
@@ -644,6 +892,138 @@ describe('Events API (e2e)', () => {
           eventDate: '2020-01-01T10:00:00Z',
         })
         .expect(400);
+    });
+
+    // T037: Update event to add end time
+    it('should update event to add end time', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      const leader = await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const event = await createTestEvent(leader.id, {
+        title: 'Event Without End Time',
+        eventDate: new Date('2026-06-01'),
+        eventTime: '14:00',
+      });
+
+      const cookies = await loginUser('leader@example.com', password);
+
+      return request(app.getHttpServer())
+        .put(`/api/events/${event.id}`)
+        .set('Cookie', cookies)
+        .send({
+          endTime: '16:30',
+        })
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.eventTime).toBe('14:00');
+          expect(res.body.endTime).toBe('16:30');
+        });
+    });
+
+    // T038: Update event to change end time
+    it('should update event to change end time', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      const leader = await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const event = await createTestEvent(leader.id, {
+        title: 'Event With End Time',
+        eventDate: new Date('2026-06-01'),
+        eventTime: '14:00',
+        endTime: '16:00',
+      });
+
+      const cookies = await loginUser('leader@example.com', password);
+
+      return request(app.getHttpServer())
+        .put(`/api/events/${event.id}`)
+        .set('Cookie', cookies)
+        .send({
+          endTime: '17:30',
+        })
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.eventTime).toBe('14:00');
+          expect(res.body.endTime).toBe('17:30');
+        });
+    });
+
+    // T062: Update event to convert to full-day (clears times)
+    it('should update event to convert to full-day', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      const leader = await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const event = await createTestEvent(leader.id, {
+        title: 'Timed Event',
+        eventDate: new Date('2026-06-01'),
+        eventTime: '14:00',
+        endTime: '16:00',
+      });
+
+      const cookies = await loginUser('leader@example.com', password);
+
+      return request(app.getHttpServer())
+        .put(`/api/events/${event.id}`)
+        .set('Cookie', cookies)
+        .send({
+          fullDay: true,
+          eventTime: null,
+          endTime: null,
+        })
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.fullDay).toBe(true);
+          expect(res.body.eventTime).toBeNull();
+          expect(res.body.endTime).toBeNull();
+        });
+    });
+
+    // T063: Update event from full-day to timed
+    it('should update event from full-day to timed', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      const leader = await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const event = await createTestEvent(leader.id, {
+        title: 'Full Day Event',
+        eventDate: new Date('2026-06-01'),
+        fullDay: true,
+      });
+
+      const cookies = await loginUser('leader@example.com', password);
+
+      return request(app.getHttpServer())
+        .put(`/api/events/${event.id}`)
+        .set('Cookie', cookies)
+        .send({
+          fullDay: false,
+          eventTime: '14:00',
+          endTime: '16:00',
+        })
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.fullDay).toBe(false);
+          expect(res.body.eventTime).toBe('14:00');
+          expect(res.body.endTime).toBe('16:00');
+        });
     });
   });
 

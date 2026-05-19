@@ -164,7 +164,9 @@ model Event {
   title           String
   description     String?
   eventDate       DateTime
-  eventTime       String?
+  eventTime       String?       // Start time in HH:mm format (24hr)
+  endTime         String?       // End time in HH:mm format (24hr), optional
+  fullDay         Boolean       @default(false) // If true, times are ignored
   location        String?
   rankLevel       RankLevel?    // null = pack-wide
   isRecurring     Boolean       @default(false)
@@ -193,13 +195,28 @@ model ActivitySlot {
   activityTypeId  String
   activityType    ActivityType  @relation(fields: [activityTypeId], references: [id], onDelete: Restrict)
   capacity        Int?          // null = unlimited
+  description     String?       // Custom event-specific description (max 500 chars)
   
   signups         Signup[]
+  steps           ActivitySlotStep[] // Numbered step-by-step instructions
   
   createdAt       DateTime      @default(now())
   
   @@index([eventId])
   @@index([activityTypeId])
+}
+
+model ActivitySlotStep {
+  id              String        @id @default(cuid())
+  activitySlotId  String
+  activitySlot    ActivitySlot  @relation(fields: [activitySlotId], references: [id], onDelete: Cascade)
+  orderIndex      Int           // 0-based ordering (0, 1, 2, ..., 19)
+  stepText        String        // Step instruction text (max 200 chars)
+  
+  createdAt       DateTime      @default(now())
+  
+  @@unique([activitySlotId, orderIndex]) // Prevent duplicate order within same slot
+  @@index([activitySlotId, orderIndex])  // Optimize ordered retrieval
 }
 
 model Signup {

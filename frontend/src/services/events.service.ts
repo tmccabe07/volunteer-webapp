@@ -16,6 +16,8 @@ export interface CreateEventData {
   description?: string;
   eventDate: string;
   eventTime?: string;
+  endTime?: string;
+  fullDay?: boolean;
   location?: string;
   rankLevel?: string | null;
   isRecurring?: boolean;
@@ -27,6 +29,8 @@ export interface UpdateEventData {
   description?: string;
   eventDate?: string;
   eventTime?: string;
+  endTime?: string;
+  fullDay?: boolean;
   location?: string;
   rankLevel?: string | null;
   isRecurring?: boolean;

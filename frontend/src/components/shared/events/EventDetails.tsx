@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Calendar, MapPin, User, Award, Clock } from 'lucide-react';
 import ActivitySlotList from './ActivitySlotList';
+import { formatEventTime } from '@/lib/time-format.util';
 
 interface ActivitySlot {
   id: string;
@@ -32,6 +33,8 @@ interface EventDetailsProps {
     description: string | null;
     eventDate: string;
     eventTime: string | null;
+    endTime?: string | null;
+    fullDay?: boolean;
     location: string | null;
     rankLevel: string | null;
     isRecurring: boolean;
@@ -69,6 +72,11 @@ export default function EventDetails({ event, currentUserId, onSignup, onWithdra
   });
 
   const isPastEvent = eventDate < new Date();
+  const formattedTime = formatEventTime({
+    eventTime: event.eventTime,
+    endTime: event.endTime,
+    fullDay: event.fullDay || false,
+  });
 
   return (
     <div className="space-y-6">
@@ -107,12 +115,12 @@ export default function EventDetails({ event, currentUserId, onSignup, onWithdra
               </div>
             </div>
 
-            {event.eventTime && (
+            {formattedTime && (
               <div className="flex items-center">
                 <Clock className="h-5 w-5 mr-3 text-gray-500" />
                 <div>
                   <p className="text-sm text-gray-500">Time</p>
-                  <p className="font-medium">{event.eventTime}</p>
+                  <p className="font-medium">{formattedTime}</p>
                 </div>
               </div>
             )}

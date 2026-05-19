@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -14,7 +15,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, Clock } from 'lucide-react';
+import { calculateDuration } from '@/lib/time-format.util';
 
 interface ActivitySlot {
   activityTypeId: string;
@@ -26,6 +28,8 @@ interface EventFormData {
   description?: string;
   eventDate: string;
   eventTime?: string;
+  endTime?: string;
+  fullDay?: boolean;
   location?: string;
   rankLevel?: string | null;
   isRecurring?: boolean;
@@ -63,17 +67,70 @@ export default function EventForm({ initialData, activityTypes, onSubmit, submit
     description: initialData?.description || '',
     eventDate: initialData?.eventDate || '',
     eventTime: initialData?.eventTime || '',
+    endTime: initialData?.endTime || '',
+    fullDay: initialData?.fullDay || false,
     location: initialData?.location || '',
     rankLevel: initialData?.rankLevel || null,
     isRecurring: initialData?.isRecurring || false,
     activitySlots: initialData?.activitySlots || [{ activityTypeId: '', capacity: null }],
   });
 
+  // Cache for preserving time values when toggling fullDay
+  const [timeCache, setTimeCache] = useState<{ eventTime?: string; endTime?: string }>({
+    eventTime: initialData?.eventTime || '',
+    endTime: initialData?.endTime || '',
+  });
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Calculate duration for display
+  const duration = useMemo(() => {
+    if (!formData.fullDay && formData.eventTime && formData.endTime) {
+      try {
+        return calculateDuration(formData.eventTime, formData.endTime);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }, [formData.fullDay, formData.eventTime, formData.endTime]);
+
+  // Validate time range
+  const timeError = useMemo(() => {
+    if (!formData.fullDay && formData.endTime && !formData.eventTime) {
+      return 'End time requires a start time';
+    }
+    return null;
+  }, [formData.fullDay, formData.eventTime, formData.endTime]);
+
   const handleChange = (field: keyof EventFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleFullDayToggle = (checked: boolean) => {
+    if (checked) {
+      // Cache current time values before clearing
+      setTimeCache({
+        eventTime: formData.eventTime,
+        endTime: formData.endTime,
+      });
+      // Clear times and set fullDay
+      setFormData(prev => ({
+        ...prev,
+        fullDay: true,
+        eventTime: '',
+        endTime: '',
+      }));
+    } else {
+      // Restore cached times and clear fullDay
+      setFormData(prev => ({
+        ...prev,
+        fullDay: false,
+        eventTime: timeCache.eventTime || '',
+        endTime: timeCache.endTime || '',
+      }));
+    }
   };
 
   const handleActivitySlotChange = (index: number, field: keyof ActivitySlot, value: any) => {
@@ -106,6 +163,11 @@ export default function EventForm({ initialData, activityTypes, onSubmit, submit
     setLoading(true);
 
     try {
+      // Validate time range (skip if fullDay)
+      if (!formData.fullDay && timeError) {
+        throw new Error(timeError);
+      }
+
       // Validate activity slots
       for (const slot of formData.activitySlots) {
         if (!slot.activityTypeId) {
@@ -115,13 +177,13 @@ export default function EventForm({ initialData, activityTypes, onSubmit, submit
 
       // Convert eventDate and eventTime to ISO 8601
       let eventDateTime: Date;
-      if (formData.eventTime) {
-        // Combine date and time
-        const dateTimeString = `${formData.eventDate}T${formData.eventTime}:00`;
+      if (formData.fullDay || !formData.eventTime) {
+        // Full-day or no time specified - default to noon to allow same-day events
+        const dateTimeString = `${formData.eventDate}T12:00:00`;
         eventDateTime = new Date(dateTimeString);
       } else {
-        // No time specified - default to noon to allow same-day events
-        const dateTimeString = `${formData.eventDate}T12:00:00`;
+        // Combine date and time
+        const dateTimeString = `${formData.eventDate}T${formData.eventTime}:00`;
         eventDateTime = new Date(dateTimeString);
       }
 
@@ -133,6 +195,9 @@ export default function EventForm({ initialData, activityTypes, onSubmit, submit
         ...formData,
         eventDate: eventDateTime.toISOString(),
         rankLevel: formData.rankLevel === '' ? null : formData.rankLevel,
+        // Ensure empty strings become undefined for proper API handling
+        eventTime: formData.eventTime || undefined,
+        endTime: formData.endTime || undefined,
       };
 
       await onSubmit(submissionData);
@@ -210,17 +275,56 @@ export default function EventForm({ initialData, activityTypes, onSubmit, submit
               />
             </div>
 
-            <div>
-              <Label htmlFor="eventTime">Event Time</Label>
-              <Input
-                id="eventTime"
-                type="time"
-                value={formData.eventTime}
-                onChange={(e) => handleChange('eventTime', e.target.value)}
-                placeholder="6:00 PM"
+            <div className="flex items-center space-x-2 pt-8">
+              <Checkbox
+                id="fullDay"
+                checked={formData.fullDay || false}
+                onCheckedChange={handleFullDayToggle}
               />
+              <Label htmlFor="fullDay" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Full Day Event
+              </Label>
             </div>
           </div>
+
+          {!formData.fullDay && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="eventTime">Start Time</Label>
+                  <Input
+                    id="eventTime"
+                    type="time"
+                    value={formData.eventTime}
+                    onChange={(e) => handleChange('eventTime', e.target.value)}
+                    placeholder="6:00 PM"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="endTime">End Time (optional)</Label>
+                  <Input
+                    id="endTime"
+                    type="time"
+                    value={formData.endTime}
+                    onChange={(e) => handleChange('endTime', e.target.value)}
+                    placeholder="8:00 PM"
+                    disabled={!formData.eventTime}
+                  />
+                </div>
+              </div>
+
+              {timeError && (
+                <p className="text-sm text-red-600">{timeError}</p>
+              )}
+              {duration && (
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Clock className="h-4 w-4" />
+                  <span>Duration: {duration}</span>
+                </div>
+              )}
+            </>
+          )}
 
           <div>
             <Label htmlFor="location">Location</Label>

@@ -10,6 +10,7 @@ import { PointEventType, NotificationType } from '@prisma/client';
 import prisma from '../utils/prisma';
 import type { CreateEventInput, UpdateEventInput, CompleteEventInput } from '../utils/validation/event.schema';
 import { NotificationService } from './notification.service';
+import { validateEventTimes } from '../utils/time-validation.util';
 
 @Injectable()
 export class EventService {
@@ -173,6 +174,24 @@ export class EventService {
       const eventDate = new Date(data.eventDate);
       if (eventDate < new Date()) {
         throw new Error('Event date must be in the future');
+      }
+    }
+
+    // Validate time constraints if any time fields are being updated
+    if (data.eventTime !== undefined || data.endTime !== undefined || data.fullDay !== undefined) {
+      // Merge existing times with updates
+      const mergedEventTime = data.eventTime !== undefined ? data.eventTime : existingEvent.eventTime;
+      const mergedEndTime = data.endTime !== undefined ? data.endTime : existingEvent.endTime;
+      const mergedFullDay = data.fullDay !== undefined ? data.fullDay : existingEvent.fullDay;
+      
+      const result = validateEventTimes(
+        mergedEventTime,
+        mergedEndTime,
+        mergedFullDay
+      );
+      
+      if (!result.valid) {
+        throw new Error(result.error || 'Invalid time configuration');
       }
     }
 
