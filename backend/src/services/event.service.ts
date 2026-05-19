@@ -6,9 +6,10 @@
  */
 
 import { Injectable } from '@nestjs/common';
-import { PointEventType } from '@prisma/client';
+import { PointEventType, NotificationType } from '@prisma/client';
 import prisma from '../utils/prisma';
 import type { CreateEventInput, UpdateEventInput, CompleteEventInput } from '../utils/validation/event.schema';
+import { NotificationService } from './notification.service';
 
 /**
  * Determines if an event was created retroactively (after its event date)
@@ -27,6 +28,7 @@ export function isRetroactiveEvent(event: { createdAt: Date; eventDate: Date }):
 
 @Injectable()
 export class EventService {
+  constructor(private readonly notificationService: NotificationService) {}
   /**
    * Create a new event
    * Auto-sets recurringEndDate from PackConfig if isRecurring=true
@@ -93,7 +95,71 @@ export class EventService {
       },
     });
 
+    // Send notifications to relevant volunteers
+    await this.notifyRelevantVolunteers(event);
+
     return event;
+  }
+
+  /**
+   * Send notifications to volunteers who should know about a new event
+   * - Pack-wide events: notify all active volunteers
+   * - Rank-specific events: notify volunteers with children in that rank
+   */
+  private async notifyRelevantVolunteers(event: any) {
+    try {
+      // Format event date for notification message
+      const eventDate = new Date(event.eventDate);
+      const formattedDate = eventDate.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+      });
+
+      const message = `New event: ${event.title} on ${formattedDate}`;
+      const link = `/events/${event.id}`;
+
+      let targetVolunteers: string[] = [];
+
+      if (!event.rankLevel) {
+        // Pack-wide event: notify all active volunteers
+        const volunteers = await prisma.volunteer.findMany({
+          where: { deletedAt: null },
+          select: { id: true },
+        });
+        targetVolunteers = volunteers.map(v => v.id);
+      } else {
+        // Rank-specific event: notify volunteers with children in that rank
+        const childRanks = await prisma.childRank.findMany({
+          where: {
+            rankLevel: event.rankLevel,
+            volunteer: { deletedAt: null },
+          },
+          select: { volunteerId: true },
+        });
+        targetVolunteers = [...new Set(childRanks.map(cr => cr.volunteerId))];
+      }
+
+      // Create notifications for all target volunteers (excluding the event creator)
+      const notifications = targetVolunteers
+        .filter(id => id !== event.createdById)
+        .map(volunteerId => ({
+          volunteerId,
+          type: NotificationType.NEW_EVENT,
+          message,
+          link,
+          isRead: false,
+        }));
+
+      if (notifications.length > 0) {
+        await prisma.notification.createMany({
+          data: notifications,
+        });
+      }
+    } catch (error) {
+      // Log error but don't fail event creation if notifications fail
+      console.error('Failed to send event notifications:', error);
+    }
   }
 
   /**

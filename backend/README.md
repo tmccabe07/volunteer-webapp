@@ -296,14 +296,26 @@ npm run test:debug
 
 ### Test Database
 
-E2E tests use a separate test database (`test.db`). The test setup:
+**All tests (unit and E2E) use a separate test database (`test.db`) to protect your development data.**
 
-1. Creates/resets test database before all tests
-2. Runs migrations
-3. Seeds test data
-4. Cleans up after each test
+The test isolation is configured in `test/jest.setup.ts`, which runs before any tests and sets:
+- `DATABASE_URL=file:./test.db`
+- Test-specific JWT secrets
+- `NODE_ENV=test`
 
-**Important**: Tests run with `maxWorkers: 1` to prevent parallel execution issues.
+This means:
+- ✅ Running tests **never affects** your `dev.db` development database
+- ✅ You can safely run tests without losing development data
+- ✅ Tests are fully isolated from your running development server
+
+To set up the test database:
+```bash
+npm run test:setup
+```
+
+This creates `test.db`, runs migrations, and prepares it for testing.
+
+**Important**: Tests run with `maxWorkers: 1` to prevent parallel execution issues with SQLite.
 
 ### Test Coverage
 

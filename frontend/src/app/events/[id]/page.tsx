@@ -68,6 +68,9 @@ export default function EventDetailPage() {
     try {
       await eventsService.signupForActivity(eventId, activitySlotId);
       await loadEvent(); // Reload to show updated signups
+      
+      // Notify header to refresh points (for projected points)
+      window.dispatchEvent(new Event('pointsUpdated'));
     } catch (err: any) {
       throw err; // Let the component handle the error display
     }
@@ -77,6 +80,9 @@ export default function EventDetailPage() {
     try {
       await eventsService.withdrawFromActivity(eventId, activitySlotId);
       await loadEvent(); // Reload to show updated signups
+      
+      // Notify header to refresh points (for projected points)
+      window.dispatchEvent(new Event('pointsUpdated'));
     } catch (err: any) {
       throw err; // Let the component handle the error display
     }
@@ -87,6 +93,9 @@ export default function EventDetailPage() {
       await eventsService.completeEvent(eventId, data);
       setShowCompleteDialog(false);
       await loadEvent(); // Reload to show completed status
+      
+      // Notify header to refresh points (for awarded points)
+      window.dispatchEvent(new Event('pointsUpdated'));
     } catch (err: any) {
       throw err; // Let the dialog handle the error display
     }

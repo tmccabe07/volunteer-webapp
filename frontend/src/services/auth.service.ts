@@ -22,6 +22,22 @@ export interface User {
     totalPoints: number;
     currentYearPoints: number;
   };
+  badgeTier: {
+    current: string | null;
+    currentTierDetails: {
+      tierName: string;
+      minPoints: number;
+      maxPoints: number | null;
+      badgeColor: string;
+    } | null;
+    nextTier: {
+      tierName: string;
+      minPoints: number;
+      badgeColor: string;
+    } | null;
+    pointsToNextTier: number | null;
+  };
+  projectedPoints: number;
 }
 
 export interface AuthResponse {

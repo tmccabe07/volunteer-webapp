@@ -1,17 +1,15 @@
 /**
  * Test utilities for database setup, teardown, and test data factories
+ * 
+ * Note: Environment variables (DATABASE_URL, JWT_SECRET, etc.) are set in
+ * test/jest.setup.ts which runs before any tests to ensure test.db is used
+ * instead of dev.db
  */
 
 import { PrismaClient, Volunteer, VolunteerRole, Event, ActivityType } from '@prisma/client';
 import { hash } from 'bcrypt';
 import * as crypto from 'crypto';
 import prisma from '../utils/prisma';
-
-// Set test environment variables BEFORE anything else
-process.env.DATABASE_URL = process.env.DATABASE_URL || 'file:./test.db';
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
-process.env.JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'test-refresh-secret';
-process.env.NODE_ENV = 'test';
 
 // Re-export the singleton prisma instance for tests to use
 export { prisma };
@@ -55,14 +53,14 @@ export async function seedTestDatabase() {
     },
   });
 
-  // Create badge tiers
+  // Create badge tiers (achievement-based naming to match production seed data)
   const tiers = [
-    { tierName: 'Bobcat', minPoints: 0, maxPoints: 19, displayOrder: 0, badgeColor: '#F4A460', iconPath: '/badges/bobcat.png' },
-    { tierName: 'Tiger', minPoints: 20, maxPoints: 39, displayOrder: 1, badgeColor: '#FFA500', iconPath: '/badges/tiger.png' },
-    { tierName: 'Wolf', minPoints: 40, maxPoints: 59, displayOrder: 2, badgeColor: '#8B4513', iconPath: '/badges/wolf.png' },
-    { tierName: 'Bear', minPoints: 60, maxPoints: 79, displayOrder: 3, badgeColor: '#654321', iconPath: '/badges/bear.png' },
-    { tierName: 'Webelos', minPoints: 80, maxPoints: 99, displayOrder: 4, badgeColor: '#4169E1', iconPath: '/badges/webelos.png' },
-    { tierName: 'Arrow of Light', minPoints: 100, maxPoints: null, displayOrder: 5, badgeColor: '#FFD700', iconPath: '/badges/aol.png' },
+    { tierName: 'Bronze', minPoints: 0, maxPoints: 49, displayOrder: 1, badgeColor: '#CD7F32' },
+    { tierName: 'Silver', minPoints: 50, maxPoints: 79, displayOrder: 2, badgeColor: '#C0C0C0' },
+    { tierName: 'Gold', minPoints: 80, maxPoints: 99, displayOrder: 3, badgeColor: '#FFD700' },
+    { tierName: 'Platinum', minPoints: 100, maxPoints: 129, displayOrder: 4, badgeColor: '#E5E4E2' },
+    { tierName: 'Diamond', minPoints: 130, maxPoints: 169, displayOrder: 5, badgeColor: '#B9F2FF' },
+    { tierName: 'Titanium', minPoints: 170, maxPoints: null, displayOrder: 6, badgeColor: '#FF4500' },
   ];
   
   for (const tier of tiers) {

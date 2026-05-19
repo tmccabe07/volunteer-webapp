@@ -4,9 +4,10 @@ import { EventService } from '../services/event.service';
 import { SignupService } from '../services/signup.service';
 import { AuthModule } from './auth.module';
 import { PointsModule } from './points.module';
+import { NotificationsModule } from './notifications.module';
 
 @Module({
-  imports: [AuthModule, PointsModule],
+  imports: [AuthModule, PointsModule, NotificationsModule],
   controllers: [EventsController],
   providers: [EventService, SignupService],
   exports: [EventService, SignupService],

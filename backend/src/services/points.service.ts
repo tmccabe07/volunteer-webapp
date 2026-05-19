@@ -78,6 +78,44 @@ export class PointsService {
   }
 
   /**
+   * Calculate projected points from active event signups
+   * Returns the sum of point values from future, incomplete events
+   */
+  async getProjectedPoints(volunteerId: string): Promise<number> {
+    const activeSignups = await prisma.signup.findMany({
+      where: {
+        volunteerId,
+        withdrawn: false,
+        deletedAt: null,
+        activitySlot: {
+          event: {
+            isComplete: false,
+            deletedAt: null,
+            eventDate: {
+              gte: new Date() // Only future events
+            }
+          }
+        }
+      },
+      select: {
+        activitySlot: {
+          select: {
+            activityType: {
+              select: {
+                pointValue: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    return activeSignups.reduce((sum, signup) => {
+      return sum + signup.activitySlot.activityType.pointValue;
+    }, 0);
+  }
+
+  /**
    * Award points for event participation
    * Called when an event is marked complete
    */

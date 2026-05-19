@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { AuthTier, RoleType } from '@prisma/client';
 import prisma from '../utils/prisma';
+import { BadgeTierService } from './badge-tier.service';
+import { PointsService } from './points.service';
 
 /**
  * VolunteerService handles volunteer profile management, role assignments,
@@ -8,6 +10,10 @@ import prisma from '../utils/prisma';
  */
 @Injectable()
 export class VolunteerService {
+  constructor(
+    private readonly badgeTierService: BadgeTierService,
+    private readonly pointsService: PointsService
+  ) {}
   /**
    * Get volunteer profile with roles, ranks, and point balance
    */
@@ -54,6 +60,14 @@ export class VolunteerService {
       throw new Error('Volunteer not found');
     }
 
+    const currentTotalPoints = volunteer.pointBalance?.totalPoints ?? 0;
+
+    // Get badge tier info from BadgeTierService
+    const badgeTier = await this.badgeTierService.getBadgeTierInfo(volunteerId, currentTotalPoints);
+
+    // Get projected points from PointsService
+    const projectedPoints = await this.pointsService.getProjectedPoints(volunteerId);
+
     // Map to API response format
     return {
       id: volunteer.id,
@@ -78,6 +92,8 @@ export class VolunteerService {
         badgeTier: volunteer.leaderboardEntry?.badgeTier ?? null,
         rank: volunteer.leaderboardEntry?.rank ?? null,
       },
+      badgeTier,
+      projectedPoints,
       createdAt: volunteer.createdAt.toISOString(),
     };
   }
@@ -487,11 +503,14 @@ export class VolunteerService {
 
   /**
    * Get all available volunteer roles
-   * Returns only non-deleted roles
+   * Returns only non-deleted roles (excludes PARENT_GUARDIAN as it's the default role)
    */
   async getAvailableRoles() {
     const roles = await prisma.volunteerRole.findMany({
-      where: { deletedAt: null },
+      where: { 
+        deletedAt: null,
+        roleType: { not: 'PARENT_GUARDIAN' } // Exclude default parent role
+      },
       select: {
         id: true,
         name: true,

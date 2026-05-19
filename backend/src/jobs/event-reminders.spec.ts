@@ -5,12 +5,13 @@
  */
 
 import { sendEventReminders } from './event-reminders';
-import { prisma } from '../utils/prisma';
+import prisma from '../utils/prisma';
 import { NotificationType } from '@prisma/client';
 
 // Mock Prisma
 jest.mock('../utils/prisma', () => ({
-  prisma: {
+  __esModule: true,
+  default: {
     event: {
       findMany: jest.fn(),
     },
@@ -181,6 +182,8 @@ describe('Event Reminders Job', () => {
         volunteerId: 'vol-1',
         type: NotificationType.EVENT_REMINDER,
         message: expect.stringContaining('Pack Meeting'),
+        link: undefined,
+        isRead: false,
       },
     });
 
@@ -281,7 +284,7 @@ describe('Event Reminders Job', () => {
       expect.stringContaining('Starting event reminder job')
     );
     expect(console.log).toHaveBeenCalledWith(
-      expect.stringContaining('Job complete')
+      expect.stringContaining('No upcoming events found in the 48-hour window')
     );
   });
 

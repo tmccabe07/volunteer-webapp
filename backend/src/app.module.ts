@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './modules/auth.module';
@@ -12,7 +13,21 @@ import { ReportsModule } from './modules/reports.module';
 import { NotificationsModule } from './modules/notifications.module';
 
 @Module({
-  imports: [AuthModule, PointsModule, VolunteersModule, AdminModule, EventsModule, ConfigModule, AdminTasksModule, ReportsModule, NotificationsModule],
+  imports: [
+    ThrottlerModule.forRoot([{
+      ttl: 60000, // 60 seconds
+      limit: process.env.NODE_ENV === 'development' ? 10000 : 100, // Very high in dev, reasonable in prod
+    }]),
+    AuthModule, 
+    PointsModule, 
+    VolunteersModule, 
+    AdminModule, 
+    EventsModule, 
+    ConfigModule, 
+    AdminTasksModule, 
+    ReportsModule, 
+    NotificationsModule
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

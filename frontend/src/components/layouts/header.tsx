@@ -74,6 +74,19 @@ export function Header() {
     }
   }, [user, isLoading]);
 
+  // Listen for points updates from other components
+  useEffect(() => {
+    const handlePointsUpdate = () => {
+      fetchPoints();
+    };
+    
+    window.addEventListener('pointsUpdated', handlePointsUpdate);
+    
+    return () => {
+      window.removeEventListener('pointsUpdated', handlePointsUpdate);
+    };
+  }, [user]);
+
   const fetchPackConfig = async () => {
     try {
       const config = await configService.getPackConfig();

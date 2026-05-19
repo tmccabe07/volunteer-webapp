@@ -269,9 +269,6 @@ export class EventsController {
       if (error.message.includes('Already')) {
         throw new ConflictException(error.message);
       }
-      if (error.message.includes('re-signup')) {
-        throw new BadRequestException(error.message);
-      }
       throw error;
     }
   }

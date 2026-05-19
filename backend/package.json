@@ -86,7 +86,8 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node",
-    "maxWorkers": 1
+    "maxWorkers": 1,
+    "setupFilesAfterEnv": ["<rootDir>/../test/jest.setup.ts"]
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

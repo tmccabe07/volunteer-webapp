@@ -4,6 +4,28 @@
 
 This document describes the comprehensive test coverage added for the Volunteer Management Webapp. The testing strategy follows the BDD-first principle outlined in the project constitution.
 
+## Database Isolation
+
+**IMPORTANT**: Tests use a separate `test.db` database to prevent interfering with your development data.
+
+- **Development database**: `dev.db` (used when running the app with `npm run start:dev`)
+- **Test database**: `test.db` (used automatically when running tests)
+
+The `test/jest.setup.ts` file runs before all tests and sets `DATABASE_URL=file:./test.db` to ensure test isolation. This means:
+- ✅ Running tests will **never** affect your `dev.db` data
+- ✅ You can safely run tests without worrying about clearing development data
+- ✅ Tests can be run in parallel without database conflicts (configured with `maxWorkers: 1` for SQLite compatibility)
+
+If you need to reset your **development** database, run:
+```bash
+npx prisma db seed
+```
+
+To reset the **test** database, run:
+```bash
+npm run test:setup
+```
+
 ## Test Coverage Summary
 
 ### **Backend Unit Tests** (Created)
