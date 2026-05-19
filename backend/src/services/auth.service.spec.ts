@@ -39,9 +39,6 @@ describe('AuthService', () => {
     // Delete in order to respect foreign key constraints
     await prisma.passwordReset.deleteMany();
     await prisma.notification.deleteMany();
-    await prisma.signup.deleteMany();
-    await prisma.pointEvent.deleteMany();
-    await prisma.badgeTierHistory.deleteMany();
     await prisma.volunteerToRole.deleteMany();
     await prisma.childRank.deleteMany();
     await prisma.volunteerPointBalance.deleteMany();
@@ -421,3 +418,4 @@ describe('AuthService', () => {
     });
   });
 });
+

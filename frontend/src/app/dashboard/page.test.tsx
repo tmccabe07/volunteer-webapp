@@ -23,6 +23,22 @@ const mockUser = {
     currentYearPoints: 150,
     totalPoints: 425,
   },
+  badgeTier: {
+    current: 'Platinum',
+    currentTierDetails: {
+      tierName: 'Platinum',
+      minPoints: 100,
+      maxPoints: 129,
+      badgeColor: '#E5E4E2',
+    },
+    nextTier: {
+      tierName: 'Diamond',
+      minPoints: 130,
+      badgeColor: '#B9F2FF',
+    },
+    pointsToNextTier: 5,
+  },
+  projectedPoints: 15,
 };
 
 const mockUseRequireAuth = vi.fn();
@@ -386,6 +402,82 @@ describe('DashboardPage', () => {
       await waitFor(() => {
         expect(screen.getByText('0')).toBeInTheDocument();
         expect(screen.getByText('100')).toBeInTheDocument();
+      });
+    });
+
+    it('should display current badge tier', async () => {
+      render(<DashboardPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Platinum Tier/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should display points to next badge tier', async () => {
+      render(<DashboardPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/5.*points to.*Diamond/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should display projected points from signups', async () => {
+      render(<DashboardPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText('+15')).toBeInTheDocument();
+        expect(screen.getByText(/Projected from Signups/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should display total after projected points', async () => {
+      render(<DashboardPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Total after events: 440/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should not display badge tier when not available', async () => {
+      const userWithoutBadgeTier = {
+        ...mockUser,
+        badgeTier: {
+          current: null,
+          currentTierDetails: null,
+          nextTier: {
+            tierName: 'Bronze',
+            minPoints: 0,
+            badgeColor: '#FFD700',
+          },
+          pointsToNextTier: 425,
+        },
+      };
+      mockUseRequireAuth.mockReturnValue({
+        user: userWithoutBadgeTier,
+        isLoading: false,
+      });
+
+      render(<DashboardPage />);
+
+      await waitFor(() => {
+        expect(screen.queryByText(/Tier$/i)).not.toBeInTheDocument();
+      });
+    });
+
+    it('should not display projected points when zero', async () => {
+      const userWithoutProjectedPoints = {
+        ...mockUser,
+        projectedPoints: 0,
+      };
+      mockUseRequireAuth.mockReturnValue({
+        user: userWithoutProjectedPoints,
+        isLoading: false,
+      });
+
+      render(<DashboardPage />);
+
+      await waitFor(() => {
+        expect(screen.queryByText(/Projected from Signups/i)).not.toBeInTheDocument();
       });
     });
   });

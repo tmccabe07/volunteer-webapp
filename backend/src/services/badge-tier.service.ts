@@ -146,6 +146,52 @@ export class BadgeTierService {
   }
 
   /**
+   * Get detailed badge tier information including next tier progression
+   * Returns current tier details, next tier info, and points needed
+   */
+  async getBadgeTierInfo(volunteerId: string, totalPoints: number) {
+    const allTiers = await this.getAllTiers();
+    // Calculate tier based on current points, not just leaderboard cache
+    const currentBadgeTier = await this.calculateBadgeTierForPoints(totalPoints);
+
+    type TierType = typeof allTiers[0];
+    let currentTierDetails: TierType | undefined = undefined;
+    let nextTier: TierType | undefined = undefined;
+    let pointsToNextTier: number | null = null;
+
+    if (currentBadgeTier) {
+      currentTierDetails = allTiers.find(t => t.tierName === currentBadgeTier);
+      if (currentTierDetails) {
+        // Find the next tier (higher displayOrder)
+        nextTier = allTiers.find(t => t.displayOrder === currentTierDetails!.displayOrder + 1);
+      }
+    } else {
+      // No tier qualifies (below minimum), use the first tier as next tier
+      nextTier = allTiers[0];
+    }
+
+    if (nextTier) {
+      pointsToNextTier = nextTier.minPoints - totalPoints;
+    }
+
+    return {
+      current: currentBadgeTier,
+      currentTierDetails: currentTierDetails ? {
+        tierName: currentTierDetails.tierName,
+        minPoints: currentTierDetails.minPoints,
+        maxPoints: currentTierDetails.maxPoints,
+        badgeColor: currentTierDetails.badgeColor
+      } : null,
+      nextTier: nextTier ? {
+        tierName: nextTier.tierName,
+        minPoints: nextTier.minPoints,
+        badgeColor: nextTier.badgeColor
+      } : null,
+      pointsToNextTier
+    };
+  }
+
+  /**
    * Seed default badge tiers on initial setup
    * Only creates tiers if none exist
    */

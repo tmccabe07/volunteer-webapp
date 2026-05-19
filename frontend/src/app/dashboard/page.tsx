@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import eventsService from '@/services/events.service';
 import adminTasksService from '@/services/admin-tasks.service';
+import volunteersService, { VolunteerProfile } from '@/services/volunteers.service';
 import DashboardTaskCard from '@/components/shared/tasks/DashboardTaskCard';
 import QuickSignupDialog from '@/components/shared/events/QuickSignupDialog';
 import { Award, Calendar, CheckSquare, CheckCircle2 } from 'lucide-react';
@@ -42,6 +43,8 @@ interface Task {
 export default function DashboardPage() {
   const { user, isLoading } = useRequireAuth();
   const router = useRouter();
+  const [profile, setProfile] = useState<VolunteerProfile | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [upcomingTasks, setUpcomingTasks] = useState<Task[]>([]);
@@ -52,10 +55,25 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (user) {
+      loadProfile();
       loadUpcomingEvents();
       loadUpcomingTasks();
     }
   }, [user]);
+
+  /**
+   * Load volunteer profile with badge tier and projected points
+   */
+  const loadProfile = async () => {
+    try {
+      const data = await volunteersService.getMyProfile();
+      setProfile(data);
+    } catch (error) {
+      console.error('Failed to load profile:', error);
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
 
   /**
    * Load upcoming events for display in the dashboard
@@ -284,7 +302,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (!user) {
+  if (!user || !profile) {
     return null; // useRequireAuth will redirect
   }
 
@@ -339,16 +357,64 @@ export default function DashboardPage() {
             <div className="space-y-4">
               <div className="text-center">
                 <div className="text-5xl font-bold text-[hsl(var(--cub-blue))]">
-                  {user.pointBalance?.currentYearPoints || 0}
+                  {profile.pointBalance?.currentYearPoints || 0}
                 </div>
                 <div className="text-sm text-gray-600 mt-2">Points This Year</div>
               </div>
               <div className="text-center border-t pt-3">
                 <div className="text-3xl font-semibold text-gray-700">
-                  {user.pointBalance?.totalPoints || 0}
+                  {profile.pointBalance?.totalPoints || 0}
                 </div>
                 <div className="text-sm text-gray-600 mt-1">Total Points</div>
               </div>
+              
+              {/* Badge Tier Section */}
+              {profile.badgeTier && (
+                <div className="border-t pt-3">
+                  {profile.badgeTier.current ? (
+                    <div className="space-y-2">
+                      <div className="text-center">
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold"
+                          style={{ 
+                            backgroundColor: profile.badgeTier.currentTierDetails?.badgeColor + '20',
+                            color: profile.badgeTier.currentTierDetails?.badgeColor,
+                            border: `2px solid ${profile.badgeTier.currentTierDetails?.badgeColor}`
+                          }}>
+                          <Award className="h-4 w-4" />
+                          {profile.badgeTier.current} Tier
+                        </div>
+                      </div>
+                      
+                      {profile.badgeTier.nextTier && profile.badgeTier.pointsToNextTier !== null && profile.badgeTier.pointsToNextTier > 0 && (
+                        <div className="text-center text-sm text-gray-600">
+                          <span className="font-medium">{profile.badgeTier.pointsToNextTier}</span> points to <span className="font-medium">{profile.badgeTier.nextTier.tierName}</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    profile.badgeTier.nextTier && (
+                      <div className="text-center text-sm text-gray-600">
+                        <span className="font-medium">{profile.badgeTier.pointsToNextTier}</span> points to first badge tier ({profile.badgeTier.nextTier.tierName})
+                      </div>
+                    )
+                  )}
+                </div>
+              )}
+              
+              {/* Projected Points Section */}
+              {profile.projectedPoints > 0 && (
+                <div className="border-t pt-3">
+                  <div className="text-center">
+                    <div className="text-2xl font-semibold text-green-600">
+                      +{profile.projectedPoints}
+                    </div>
+                    <div className="text-xs text-gray-600 mt-1">Projected from Signups</div>
+                    <div className="text-xs text-gray-500 mt-0.5">
+                      (Total after events: {(profile.pointBalance?.totalPoints || 0) + profile.projectedPoints})
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </Card>
 
