@@ -420,9 +420,12 @@ describe('VolunteerService', () => {
       const beforeRoles = await service.getAvailableRoles();
       const beforeCount = beforeRoles.length;
 
-      // Soft delete one role
+      // Soft delete one role (not PARENT_GUARDIAN as it's already excluded)
       const roleToDelete = await prisma.volunteerRole.findFirst({
-        where: { deletedAt: null },
+        where: { 
+          deletedAt: null,
+          roleType: { not: 'PARENT_GUARDIAN' }
+        },
       });
       await prisma.volunteerRole.update({
         where: { id: roleToDelete!.id },
@@ -482,6 +485,14 @@ describe('VolunteerService', () => {
       roles.forEach((role) => {
         expect(role).toHaveProperty('description');
       });
+    });
+
+    it('should exclude PARENT_GUARDIAN role type', async () => {
+      const roles = await service.getAvailableRoles();
+
+      // PARENT_GUARDIAN should not be in available roles (it's a default role)
+      const parentRole = roles.find((r) => r.roleType === 'PARENT_GUARDIAN');
+      expect(parentRole).toBeUndefined();
     });
   });
 });

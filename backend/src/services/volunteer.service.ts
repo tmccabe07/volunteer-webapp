@@ -503,11 +503,14 @@ export class VolunteerService {
 
   /**
    * Get all available volunteer roles
-   * Returns only non-deleted roles
+   * Returns only non-deleted roles (excludes PARENT_GUARDIAN as it's the default role)
    */
   async getAvailableRoles() {
     const roles = await prisma.volunteerRole.findMany({
-      where: { deletedAt: null },
+      where: { 
+        deletedAt: null,
+        roleType: { not: 'PARENT_GUARDIAN' } // Exclude default parent role
+      },
       select: {
         id: true,
         name: true,

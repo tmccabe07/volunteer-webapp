@@ -20,7 +20,7 @@ const RANK_OPTIONS = [
 
 export default function ProfileEditPage() {
   const router = useRouter();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, refreshUser } = useAuth();
   const [profile, setProfile] = useState<VolunteerProfile | null>(null);
   const [availableRoles, setAvailableRoles] = useState<AvailableRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -100,6 +100,10 @@ export default function ProfileEditPage() {
         leaderboardOptIn,
         childrenRanks: selectedRanks,
       });
+      
+      // Refresh user data in auth context to update name everywhere
+      await refreshUser();
+      
       router.push('/profile');
     } catch (err: any) {
       if (err.response?.data?.details) {

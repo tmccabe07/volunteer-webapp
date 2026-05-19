@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { ThrottlerModule } from '@nestjs/throttler';
 import { Reflector } from '@nestjs/core';
 import { AuthController } from '../api/auth.controller';
 import { AuthService } from '../services/auth.service';
@@ -7,12 +6,7 @@ import { PasswordResetService } from '../services/password-reset.service';
 import { AuthGuard, TierGuard } from '../middleware/auth';
 
 @Module({
-  imports: [
-    ThrottlerModule.forRoot([{
-      ttl: 60000, // 60 seconds
-      limit: process.env.NODE_ENV === 'development' ? 1000 : 10, // Much higher in dev
-    }]),
-  ],
+  imports: [],
   controllers: [AuthController],
   providers: [
     AuthService, 

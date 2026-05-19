@@ -340,6 +340,21 @@ export default function DashboardPage() {
                   {user.authTier}
                 </span>
               </div>
+              {profile?.childrenRanks && profile.childrenRanks.length > 0 && (
+                <div>
+                  <span className="font-medium">Rank(s):</span>{' '}
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {profile.childrenRanks.map((rank) => (
+                      <span
+                        key={rank.id}
+                        className="inline-block px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-semibold"
+                      >
+                        {rank.rankLevel}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             
             {/* Edit Profile Button */}
