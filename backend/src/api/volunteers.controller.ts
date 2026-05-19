@@ -210,12 +210,12 @@ export class VolunteersController {
 
   /**
    * GET /api/volunteers
-   * List all volunteers (admin/leader view)
-   * Requires Tier 2+ (LEADER or ADMIN)
+   * List all volunteers
+   * Requires authentication (PARENT tier or higher)
    */
   @Get()
   @UseGuards(TierGuard)
-  @RequireTier('LEADER')
+  @RequireTier('PARENT')
   @HttpCode(HttpStatus.OK)
   async listVolunteers(@Query() query: any) {
     try {
