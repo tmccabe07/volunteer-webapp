@@ -50,6 +50,7 @@ export interface CompleteEventData {
     volunteerId: string;
     activitySlotId: string;
   }>;
+  excludedSignupIds?: string[];
 }
 
 export interface ListEventsParams {

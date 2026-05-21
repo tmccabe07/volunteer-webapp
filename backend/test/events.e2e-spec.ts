@@ -392,7 +392,7 @@ describe('Events API (e2e)', () => {
         .expect(403);
     });
 
-    it('should reject event with past date', async () => {
+    it('should accept event with past date for retroactive events', async () => {
       const password = 'Password123!';
       const passwordHash = await bcrypt.hash(password, 12);
       await createTestVolunteer({
@@ -405,7 +405,7 @@ describe('Events API (e2e)', () => {
 
       const cookies = await loginUser('leader@example.com', password);
 
-      return request(app.getHttpServer())
+      const response = await request(app.getHttpServer())
         .post('/api/events')
         .set('Cookie', cookies)
         .send({
@@ -419,7 +419,10 @@ describe('Events API (e2e)', () => {
             },
           ],
         })
-        .expect(400);
+        .expect(201);
+
+      expect(response.body.title).toBe('Past Event');
+      expect(response.body.eventDate).toBe('2020-01-01T10:00:00.000Z');
     });
 
     it('should reject event with no activity slots', async () => {
@@ -871,7 +874,7 @@ describe('Events API (e2e)', () => {
         });
     });
 
-    it('should reject update with past event date', async () => {
+    it('should accept update with past event date for retroactive events', async () => {
       const password = 'Password123!';
       const passwordHash = await bcrypt.hash(password, 12);
       const leader = await createTestVolunteer({
@@ -886,13 +889,15 @@ describe('Events API (e2e)', () => {
 
       const cookies = await loginUser('leader@example.com', password);
 
-      return request(app.getHttpServer())
+      const response = await request(app.getHttpServer())
         .put(`/api/events/${event.id}`)
         .set('Cookie', cookies)
         .send({
           eventDate: '2020-01-01T10:00:00Z',
         })
-        .expect(400);
+        .expect(200);
+
+      expect(response.body.eventDate).toBe('2020-01-01T10:00:00.000Z');
     });
 
     // T037: Update event to add end time
@@ -1207,6 +1212,79 @@ describe('Events API (e2e)', () => {
           expect(res.body.pointsAwarded).toHaveLength(1);
           expect(res.body.pointsAwarded[0].volunteerId).toBe(manualVolunteer.id);
           expect(res.body.pointsAwarded[0].points).toBe(15);
+        });
+    });
+
+    it('should exclude specified signups from receiving points', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      const leader = await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const volunteer1 = await createTestVolunteer({
+        email: 'volunteer1@example.com',
+        passwordHash,
+        authTier: 'PARENT',
+      });
+
+      const volunteer2 = await createTestVolunteer({
+        email: 'volunteer2@example.com',
+        passwordHash,
+        authTier: 'PARENT',
+      });
+
+      const activityType = await createTestActivityType({
+        pointValue: 10,
+      });
+
+      const event = await createTestEvent(leader.id, {
+        eventDate: new Date('2026-06-01'),
+      });
+
+      const activitySlot = await prisma.activitySlot.findFirst({
+        where: { eventId: event.id },
+      });
+
+      await prisma.activitySlot.update({
+        where: { id: activitySlot!.id },
+        data: { activityTypeId: activityType.id },
+      });
+
+      // Create two signups
+      const signup1 = await prisma.signup.create({
+        data: {
+          volunteerId: volunteer1.id,
+          activitySlotId: activitySlot!.id,
+          withdrawn: false,
+        },
+      });
+
+      const signup2 = await prisma.signup.create({
+        data: {
+          volunteerId: volunteer2.id,
+          activitySlotId: activitySlot!.id,
+          withdrawn: false,
+        },
+      });
+
+      const cookies = await loginUser('leader@example.com', password);
+
+      // Exclude volunteer2 who didn't show up
+      return request(app.getHttpServer())
+        .post(`/api/events/${event.id}/complete`)
+        .set('Cookie', cookies)
+        .send({
+          excludedSignupIds: [signup2.id],
+        })
+        .expect(201)
+        .expect((res) => {
+          expect(res.body.isComplete).toBe(true);
+          expect(res.body.pointsAwarded).toHaveLength(1);
+          expect(res.body.pointsAwarded[0].volunteerId).toBe(volunteer1.id);
+          expect(res.body.pointsAwarded[0].points).toBe(10);
         });
     });
   });

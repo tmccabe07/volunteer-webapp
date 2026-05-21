@@ -16,11 +16,25 @@ export class LeaderboardService {
    * or after significant point changes
    */
   async recalculateRanks(): Promise<void> {
-    // Get all leaderboard entries ordered by total points descending
+    // Get all leaderboard entries ordered by total points descending, then by name ascending
     const entries = await prisma.leaderboardCache.findMany({
-      orderBy: {
-        totalPoints: 'desc',
+      include: {
+        volunteer: {
+          select: {
+            name: true,
+          },
+        },
       },
+      orderBy: [
+        {
+          totalPoints: 'desc',
+        },
+        {
+          volunteer: {
+            name: 'asc',
+          },
+        },
+      ],
     });
 
     // Assign ranks (1-indexed, handle ties)
@@ -60,13 +74,20 @@ export class LeaderboardService {
   async getLeaderboard(page: number = 1, limit: number = 50) {
     const skip = (page - 1) * limit;
 
-    // Get leaderboard entries
+    // Get leaderboard entries ordered by points desc, then name asc
     const entries = await prisma.leaderboardCache.findMany({
       skip,
       take: limit,
-      orderBy: {
-        rank: 'asc',
-      },
+      orderBy: [
+        {
+          totalPoints: 'desc',
+        },
+        {
+          volunteer: {
+            name: 'asc',
+          },
+        },
+      ],
       include: {
         volunteer: {
           select: {

@@ -18,20 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { PlusCircle, Trash2, Check, ChevronsUpDown } from 'lucide-react';
+import { PlusCircle, Trash2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ManualVolunteer {
@@ -50,6 +37,7 @@ interface CompleteEventDialogProps {
         pointValue: number;
       };
       signups: Array<{
+        id: string;
         volunteer: {
           id: string;
           name: string;
@@ -63,13 +51,13 @@ interface CompleteEventDialogProps {
     name: string;
     email: string;
   }>;
-  onComplete: (data: { manualVolunteers?: ManualVolunteer[] }) => Promise<void>;
+  onComplete: (data: { manualVolunteers?: ManualVolunteer[]; excludedSignupIds?: string[] }) => Promise<void>;
   onCancel: () => void;
 }
 
 export default function CompleteEventDialog({ event, allVolunteers, onComplete, onCancel }: CompleteEventDialogProps) {
   const [manualVolunteers, setManualVolunteers] = useState<ManualVolunteer[]>([]);
-  const [openPopovers, setOpenPopovers] = useState<{ [key: number]: boolean }>({});
+  const [excludedSignupIds, setExcludedSignupIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -92,8 +80,16 @@ export default function CompleteEventDialog({ event, allVolunteers, onComplete, 
     });
   };
 
-  const togglePopover = (index: number, open: boolean) => {
-    setOpenPopovers(prev => ({ ...prev, [index]: open }));
+  const toggleExcludeSignup = (signupId: string) => {
+    setExcludedSignupIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(signupId)) {
+        newSet.delete(signupId);
+      } else {
+        newSet.add(signupId);
+      }
+      return newSet;
+    });
   };
 
   const handleComplete = async () => {
@@ -108,6 +104,7 @@ export default function CompleteEventDialog({ event, allVolunteers, onComplete, 
 
       await onComplete({
         manualVolunteers: validManuals.length > 0 ? validManuals : undefined,
+        excludedSignupIds: excludedSignupIds.size > 0 ? Array.from(excludedSignupIds) : undefined,
       });
     } catch (err: any) {
       setError(err.message || 'Failed to complete event');
@@ -116,13 +113,13 @@ export default function CompleteEventDialog({ event, allVolunteers, onComplete, 
     }
   };
 
-  // Count active signups
+  // Count active signups minus excluded ones
   const totalSignups = event.activitySlots.reduce((sum, slot) => {
-    return sum + slot.signups.filter(s => !s.withdrawn).length;
+    return sum + slot.signups.filter(s => !s.withdrawn && !excludedSignupIds.has(s.id)).length;
   }, 0);
 
   const totalPoints = event.activitySlots.reduce((sum, slot) => {
-    const activeSignups = slot.signups.filter(s => !s.withdrawn).length;
+    const activeSignups = slot.signups.filter(s => !s.withdrawn && !excludedSignupIds.has(s.id)).length;
     return sum + (activeSignups * slot.activityType.pointValue);
   }, 0);
 
@@ -149,6 +146,7 @@ export default function CompleteEventDialog({ event, allVolunteers, onComplete, 
           {/* Activity Slots with Signups */}
           <div>
             <h4 className="font-semibold mb-2">Signed Up Volunteers</h4>
+            <p className="text-sm text-gray-600 mb-3">Click the X to exclude volunteers who didn't show up</p>
             <div className="space-y-3">
               {event.activitySlots.map(slot => {
                 const activeSignups = slot.signups.filter(s => !s.withdrawn);
@@ -161,11 +159,27 @@ export default function CompleteEventDialog({ event, allVolunteers, onComplete, 
                       <p className="text-sm text-gray-600">{slot.activityType.pointValue} points each</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {activeSignups.map((signup, idx) => (
-                        <span key={idx} className="px-2 py-1 bg-gray-100 rounded text-sm">
-                          {signup.volunteer.name}
-                        </span>
-                      ))}
+                      {activeSignups.map((signup) => {
+                        const isExcluded = excludedSignupIds.has(signup.id);
+                        return (
+                          <div
+                            key={signup.id}
+                            className={`px-2 py-1 rounded text-sm flex items-center gap-1 ${
+                              isExcluded ? 'bg-red-100 text-red-700 line-through' : 'bg-green-100 text-green-700'
+                            }`}
+                          >
+                            <span>{signup.volunteer.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => toggleExcludeSignup(signup.id)}
+                              className="hover:bg-red-200 rounded-full p-0.5"
+                              title={isExcluded ? 'Include volunteer' : 'Exclude volunteer (no points)'}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 );
@@ -189,61 +203,28 @@ export default function CompleteEventDialog({ event, allVolunteers, onComplete, 
               </p>
             ) : (
               <div className="space-y-3">
-                {manualVolunteers.map((manual, index) => {
-                  const selectedVolunteer = allVolunteers.find(v => v.id === manual.volunteerId);
-                  
-                  return (
+                {manualVolunteers.map((manual, index) => (
                     <div key={index} className="flex gap-3 items-end p-3 border rounded-lg">
                       <div className="flex-1">
                         <Label>Volunteer</Label>
-                        <Popover open={openPopovers[index]} onOpenChange={(open) => togglePopover(index, open)}>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              aria-expanded={openPopovers[index]}
-                              className="w-full justify-between"
-                            >
-                              {selectedVolunteer ? selectedVolunteer.name : "Select volunteer..."}
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[400px] p-0">
-                            <Command>
-                              <CommandInput placeholder="Search volunteers..." />
-                              <CommandList>
-                                <CommandEmpty>
-                                  {allVolunteers.length === 0 
-                                    ? "No volunteers available. Please ensure volunteers are registered in the system." 
-                                    : "No volunteer found matching search."}
-                                </CommandEmpty>
-                                <CommandGroup>
-                                  {allVolunteers.map((volunteer) => (
-                                    <CommandItem
-                                      key={volunteer.id}
-                                      value={volunteer.name}
-                                      onSelect={() => {
-                                        updateManualVolunteer(index, 'volunteerId', volunteer.id);
-                                        togglePopover(index, false);
-                                      }}
-                                    >
-                                      <Check
-                                        className={cn(
-                                          "mr-2 h-4 w-4",
-                                          manual.volunteerId === volunteer.id ? "opacity-100" : "opacity-0"
-                                        )}
-                                      />
-                                      <div className="flex flex-col">
-                                        <span>{volunteer.name}</span>
-                                        <span className="text-xs text-gray-500">{volunteer.email}</span>
-                                      </div>
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
+                        <Select
+                          value={manual.volunteerId}
+                          onValueChange={(value: string) => updateManualVolunteer(index, 'volunteerId', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select volunteer" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-[300px]">
+                            {allVolunteers.map((volunteer) => (
+                              <SelectItem key={volunteer.id} value={volunteer.id}>
+                                <div className="flex flex-col">
+                                  <span>{volunteer.name}</span>
+                                  <span className="text-xs text-gray-500">{volunteer.email}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
 
                       <div className="flex-1">
@@ -274,8 +255,7 @@ export default function CompleteEventDialog({ event, allVolunteers, onComplete, 
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                  );
-                })}
+                ))}
               </div>
             )}
           </div>

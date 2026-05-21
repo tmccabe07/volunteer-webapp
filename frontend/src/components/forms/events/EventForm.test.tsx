@@ -1083,7 +1083,7 @@ describe('EventForm', () => {
           status: 400,
           data: {
             statusCode: 400,
-            message: { error: 'Event date must be in the future' },
+            message: { error: 'At least one activity slot is required' },
             error: 'Bad Request'
           }
         },
@@ -1110,7 +1110,7 @@ describe('EventForm', () => {
 
       await waitFor(() => {
         // Should show the backend error message, not the generic Axios message
-        expect(screen.getByText(/event date must be in the future/i)).toBeInTheDocument();
+        expect(screen.getByText(/at least one activity slot is required/i)).toBeInTheDocument();
         expect(screen.queryByText(/request failed with status code 400/i)).not.toBeInTheDocument();
       });
     });

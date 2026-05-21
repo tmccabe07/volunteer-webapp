@@ -103,6 +103,7 @@ export const completeEventSchema = z.object({
     volunteerId: z.string(),
     activitySlotId: z.string(),
   })).optional(),
+  excludedSignupIds: z.array(z.string()).optional(),
 });
 
 export type CompleteEventInput = z.infer<typeof completeEventSchema>;

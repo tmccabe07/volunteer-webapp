@@ -331,10 +331,7 @@ import { RankLevel } from '@prisma/client';
 export const createEventSchema = z.object({
   title: z.string().min(3).max(200),
   description: z.string().optional(),
-  eventDate: z.string().datetime().refine(
-    (date) => new Date(date) > new Date(),
-    'Event date must be in the future'
-  ),
+  eventDate: z.string().datetime(),
   eventTime: z.string().max(20).optional(),
   location: z.string().max(200).optional(),
   rankLevel: z.nativeEnum(RankLevel).optional(),

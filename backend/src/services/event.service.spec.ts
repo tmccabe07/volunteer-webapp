@@ -135,25 +135,6 @@ describe('EventService', () => {
       ).rejects.toThrow('At least one activity slot is required');
     });
 
-    it('should throw error when event date is in the past', async () => {
-      const eventData = {
-        title: 'Past Event',
-        description: 'Event in the past',
-        eventDate: new Date('2020-01-01'),
-        isRecurring: false,
-        activitySlots: [
-          {
-            activityTypeId: testActivityType.id,
-            capacity: 10,
-          },
-        ],
-      };
-
-      await expect(
-        service.createEvent(eventData, testVolunteer.id)
-      ).rejects.toThrow('Event date must be in the future');
-    });
-
     it('should throw error when activity type does not exist', async () => {
       const eventData = {
         title: 'Invalid Activity Event',
@@ -330,14 +311,6 @@ describe('EventService', () => {
       await expect(
         service.updateEvent(event.id, { title: 'New Title' })
       ).rejects.toThrow('Cannot modify completed events');
-    });
-
-    it('should throw error when updated event date is in the past', async () => {
-      const event = await createTestEvent(testVolunteer.id);
-
-      await expect(
-        service.updateEvent(event.id, { eventDate: new Date('2020-01-01') })
-      ).rejects.toThrow('Event date must be in the future');
     });
 
     it('should set recurringEndDate when isRecurring changed to true', async () => {
@@ -534,6 +507,62 @@ describe('EventService', () => {
       expect(pointBalance).toBeTruthy();
       expect(pointBalance!.totalPoints).toBe(activitySlot!.activityType.pointValue);
       expect(pointBalance!.currentYearPoints).toBe(activitySlot!.activityType.pointValue);
+    });
+
+    it('should exclude specified signups from receiving points', async () => {
+      const volunteer1 = await createTestVolunteer({ name: 'Volunteer 1' });
+      const volunteer2 = await createTestVolunteer({ name: 'Volunteer 2' });
+      const volunteer3 = await createTestVolunteer({ name: 'Volunteer 3' });
+      
+      const event = await createTestEvent(testVolunteer.id);
+      
+      const activitySlot = await prisma.activitySlot.findFirst({
+        where: { eventId: event.id },
+      });
+
+      // Create three signups
+      const signup1 = await prisma.signup.create({
+        data: {
+          volunteerId: volunteer1.id,
+          activitySlotId: activitySlot!.id,
+          withdrawn: false,
+        },
+      });
+
+      const signup2 = await prisma.signup.create({
+        data: {
+          volunteerId: volunteer2.id,
+          activitySlotId: activitySlot!.id,
+          withdrawn: false,
+        },
+      });
+
+      const signup3 = await prisma.signup.create({
+        data: {
+          volunteerId: volunteer3.id,
+          activitySlotId: activitySlot!.id,
+          withdrawn: false,
+        },
+      });
+
+      // Exclude volunteer 2 (didn't show up)
+      const result = await service.completeEvent(
+        event.id,
+        { excludedSignupIds: [signup2.id] },
+        testVolunteer.id
+      );
+
+      // Should only award points to volunteer 1 and 3
+      expect(result.pointsAwarded).toHaveLength(2);
+      expect(result.pointsAwarded.find(p => p.volunteerName === 'Volunteer 1')).toBeTruthy();
+      expect(result.pointsAwarded.find(p => p.volunteerName === 'Volunteer 2')).toBeUndefined();
+      expect(result.pointsAwarded.find(p => p.volunteerName === 'Volunteer 3')).toBeTruthy();
+
+      // Verify only 2 point events were created
+      const pointEvents = await prisma.pointEvent.findMany({
+        where: { referenceId: event.id },
+      });
+      expect(pointEvents).toHaveLength(2);
     });
 
     it('should throw error when event not found', async () => {

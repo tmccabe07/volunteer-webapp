@@ -8,6 +8,7 @@ import Link from 'next/link';
 import EventDetails from '@/components/shared/events/EventDetails';
 import CompleteEventDialog from '@/components/forms/events/CompleteEventDialog';
 import eventsService from '@/services/events.service';
+import volunteersService from '@/services/volunteers.service';
 import { useAuth } from '@/lib/auth-context';
 
 export default function EventDetailPage() {
@@ -20,6 +21,7 @@ export default function EventDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
+  const [allVolunteers, setAllVolunteers] = useState<Array<{ id: string; name: string; email: string }>>([]);
 
   const canEdit = user?.authTier === 'LEADER' || user?.authTier === 'ADMIN';
   const canComplete = canEdit && event && !event.isComplete;
@@ -79,6 +81,23 @@ export default function EventDetailPage() {
     }
   };
 
+  const loadAllVolunteers = async () => {
+    if (canComplete) {
+      try {
+        const data = await volunteersService.listAllVolunteers();
+        setAllVolunteers(data.volunteers);
+      } catch (err: any) {
+        console.error('Failed to load volunteers:', err);
+        setAllVolunteers([]);
+      }
+    }
+  };
+
+  const handleShowCompleteDialog = () => {
+    setShowCompleteDialog(true);
+    loadAllVolunteers();
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -117,7 +136,7 @@ export default function EventDetailPage() {
 
         <div className="flex gap-2">
           {canComplete && (
-            <Button onClick={() => setShowCompleteDialog(true)}>
+            <Button onClick={handleShowCompleteDialog}>
               <CheckCircle className="h-4 w-4 mr-2" />
               Mark Complete
             </Button>
@@ -143,6 +162,7 @@ export default function EventDetailPage() {
       {showCompleteDialog && (
         <CompleteEventDialog
           event={event}
+          allVolunteers={allVolunteers}
           onComplete={handleComplete}
           onCancel={() => setShowCompleteDialog(false)}
         />

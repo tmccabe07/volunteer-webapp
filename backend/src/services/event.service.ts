@@ -27,12 +27,6 @@ export class EventService {
       throw new Error('At least one activity slot is required');
     }
 
-    // Validate event date is in the future
-    const eventDate = new Date(data.eventDate);
-    if (eventDate < new Date()) {
-      throw new Error('Event date must be in the future');
-    }
-
     // Validate activity types exist
     const activityTypeIds = activitySlots.map(slot => slot.activityTypeId);
     const uniqueActivityTypeIds = [...new Set(activityTypeIds)];
@@ -180,14 +174,6 @@ export class EventService {
       throw new Error('Cannot modify completed events');
     }
 
-    // Validate event date if provided
-    if (data.eventDate) {
-      const eventDate = new Date(data.eventDate);
-      if (eventDate < new Date()) {
-        throw new Error('Event date must be in the future');
-      }
-    }
-
     // Validate time constraints if any time fields are being updated
     if (data.eventTime !== undefined || data.endTime !== undefined || data.fullDay !== undefined) {
       // Merge existing times with updates
@@ -310,9 +296,15 @@ export class EventService {
       activityType: string;
     }> = [];
 
-    // Award points to existing signups (non-withdrawn)
+    // Award points to existing signups (non-withdrawn and not excluded)
+    const excludedIds = data.excludedSignupIds || [];
     for (const slot of event.activitySlots) {
       for (const signup of slot.signups) {
+        // Skip if this signup is in the excluded list
+        if (excludedIds.includes(signup.id)) {
+          continue;
+        }
+        
         await prisma.pointEvent.create({
           data: {
             volunteerId: signup.volunteerId,

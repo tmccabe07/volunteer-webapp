@@ -94,6 +94,39 @@ describe('LeaderboardService', () => {
       expect(entries[2].rank).toBe(3);
     });
 
+    it('should order tied volunteers alphabetically by name', async () => {
+      const volunteerC = await createTestVolunteer({ name: 'Charlie' });
+      const volunteerA = await createTestVolunteer({ name: 'Alice' });
+      const volunteerB = await createTestVolunteer({ name: 'Bob' });
+
+      // Create entries where all three volunteers have the same points
+      await prisma.leaderboardCache.createMany({
+        data: [
+          { volunteerId: volunteerC.id, totalPoints: 100, rank: null, badgeTier: null },
+          { volunteerId: volunteerA.id, totalPoints: 100, rank: null, badgeTier: null },
+          { volunteerId: volunteerB.id, totalPoints: 100, rank: null, badgeTier: null },
+        ],
+      });
+
+      await service.recalculateRanks();
+
+      const entries = await prisma.leaderboardCache.findMany({
+        include: { volunteer: true },
+        orderBy: [
+          { totalPoints: 'desc' },
+          { volunteer: { name: 'asc' } },
+        ],
+      });
+
+      // All should have rank 1, but ordered alphabetically
+      expect(entries[0].volunteer.name).toBe('Alice');
+      expect(entries[0].rank).toBe(1);
+      expect(entries[1].volunteer.name).toBe('Bob');
+      expect(entries[1].rank).toBe(1);
+      expect(entries[2].volunteer.name).toBe('Charlie');
+      expect(entries[2].rank).toBe(1);
+    });
+
     it('should handle multiple tied groups correctly', async () => {
       const v1 = await createTestVolunteer({ name: 'Tied 1st - A' });
       const v2 = await createTestVolunteer({ name: 'Tied 1st - B' });
@@ -213,7 +246,7 @@ describe('LeaderboardService', () => {
       });
     });
 
-    it('should return results ordered by rank ascending', async () => {
+    it('should return results ordered by points descending, then name ascending', async () => {
       const v1 = await createTestVolunteer({ name: 'Third', leaderboardOptIn: true });
       const v2 = await createTestVolunteer({ name: 'First', leaderboardOptIn: true });
       const v3 = await createTestVolunteer({ name: 'Second', leaderboardOptIn: true });
@@ -228,9 +261,35 @@ describe('LeaderboardService', () => {
 
       const result = await service.getLeaderboard(1, 10);
 
+      // Ordered by points desc: 100, 75, 50
       expect(result.leaderboard[0].volunteer.name).toBe('First');
+      expect(result.leaderboard[0].totalPoints).toBe(100);
       expect(result.leaderboard[1].volunteer.name).toBe('Second');
+      expect(result.leaderboard[1].totalPoints).toBe(75);
       expect(result.leaderboard[2].volunteer.name).toBe('Third');
+      expect(result.leaderboard[2].totalPoints).toBe(50);
+    });
+
+    it('should order tied volunteers alphabetically by name in leaderboard', async () => {
+      const v1 = await createTestVolunteer({ name: 'Zoe', leaderboardOptIn: true });
+      const v2 = await createTestVolunteer({ name: 'Alice', leaderboardOptIn: true });
+      const v3 = await createTestVolunteer({ name: 'Mike', leaderboardOptIn: true });
+
+      // All have same points
+      await prisma.leaderboardCache.createMany({
+        data: [
+          { volunteerId: v1.id, totalPoints: 100, rank: 1, badgeTier: null },
+          { volunteerId: v2.id, totalPoints: 100, rank: 1, badgeTier: null },
+          { volunteerId: v3.id, totalPoints: 100, rank: 1, badgeTier: null },
+        ],
+      });
+
+      const result = await service.getLeaderboard(1, 10);
+
+      // Should be alphabetically ordered: Alice, Mike, Zoe
+      expect(result.leaderboard[0].volunteer.name).toBe('Alice');
+      expect(result.leaderboard[1].volunteer.name).toBe('Mike');
+      expect(result.leaderboard[2].volunteer.name).toBe('Zoe');
     });
 
     it('should handle pagination correctly', async () => {
