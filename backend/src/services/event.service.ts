@@ -12,6 +12,21 @@ import type { CreateEventInput, UpdateEventInput, CompleteEventInput } from '../
 import { NotificationService } from './notification.service';
 import { validateEventTimes } from '../utils/time-validation.util';
 
+/**
+ * Determines if an event was created retroactively (after its event date)
+ * @param event Event with createdAt and eventDate timestamps
+ * @returns true if the event was created after its scheduled date
+ * @example
+ * // Event created on May 10 for May 5 → retroactive
+ * isRetroactiveEvent({ createdAt: new Date('2026-05-10'), eventDate: new Date('2026-05-05') }) // true
+ * 
+ * // Event created on May 1 for May 10 → advance planning
+ * isRetroactiveEvent({ createdAt: new Date('2026-05-01'), eventDate: new Date('2026-05-10') }) // false
+ */
+export function isRetroactiveEvent(event: { createdAt: Date; eventDate: Date }): boolean {
+  return event.createdAt > event.eventDate;
+}
+
 @Injectable()
 export class EventService {
   constructor(private readonly notificationService: NotificationService) {}
@@ -27,6 +42,12 @@ export class EventService {
       throw new Error('At least one activity slot is required');
     }
 
+<<<<<<< HEAD
+=======
+    // Removed: "Event date must be in the future" validation
+    // Feature 006: Allow retroactive event creation
+
+>>>>>>> origin/main
     // Validate activity types exist
     const activityTypeIds = activitySlots.map(slot => slot.activityTypeId);
     const uniqueActivityTypeIds = [...new Set(activityTypeIds)];
@@ -174,6 +195,7 @@ export class EventService {
       throw new Error('Cannot modify completed events');
     }
 
+<<<<<<< HEAD
     // Validate time constraints if any time fields are being updated
     if (data.eventTime !== undefined || data.endTime !== undefined || data.fullDay !== undefined) {
       // Merge existing times with updates
@@ -191,6 +213,10 @@ export class EventService {
         throw new Error(result.error || 'Invalid time configuration');
       }
     }
+=======
+    // Removed: "Event date must be in the future" validation
+    // Feature 006: Allow retroactive event updates
+>>>>>>> origin/main
 
     const { activitySlots, ...eventData } = data;
 
@@ -499,7 +525,14 @@ export class EventService {
       },
     });
 
-    return event;
+    if (!event) {
+      return null;
+    }
+
+    return {
+      ...event,
+      isRetroactive: isRetroactiveEvent(event),
+    };
   }
 
   /**
@@ -599,6 +632,7 @@ export class EventService {
     // Add signup counts and current user signup info
     const eventsWithCounts = events.map(event => ({
       ...event,
+      isRetroactive: isRetroactiveEvent(event),
       activitySlots: event.activitySlots.map(slot => {
         const signedUpCount = slot.signups.length;
         const currentUserSignup = currentUserId

@@ -1,5 +1,5 @@
-import { EventService } from './event.service';
 import { NotificationService } from './notification.service';
+import { EventService, isRetroactiveEvent } from './event.service';
 import {
   setupTests,
   teardownTests,
@@ -47,6 +47,41 @@ describe('EventService', () => {
     await prisma.childRank.deleteMany();
     await prisma.volunteerToRole.deleteMany();
     await prisma.volunteer.deleteMany();
+  });
+
+  describe('isRetroactiveEvent', () => {
+    it('should return true when event created after event date', () => {
+      const event = {
+        createdAt: new Date('2026-05-10T10:00:00Z'),
+        eventDate: new Date('2026-05-05T14:00:00Z'),
+      };
+      expect(isRetroactiveEvent(event)).toBe(true);
+    });
+
+    it('should return false when event created before event date', () => {
+      const event = {
+        createdAt: new Date('2026-05-01T10:00:00Z'),
+        eventDate: new Date('2026-05-10T14:00:00Z'),
+      };
+      expect(isRetroactiveEvent(event)).toBe(false);
+    });
+
+    it('should return false when event created on same date', () => {
+      const event = {
+        createdAt: new Date('2026-05-05T10:00:00Z'),
+        eventDate: new Date('2026-05-05T14:00:00Z'),
+      };
+      expect(isRetroactiveEvent(event)).toBe(false);
+    });
+
+    it('should handle same timestamp correctly', () => {
+      const timestamp = new Date('2026-05-05T14:00:00Z');
+      const event = {
+        createdAt: timestamp,
+        eventDate: timestamp,
+      };
+      expect(isRetroactiveEvent(event)).toBe(false);
+    });
   });
 
   describe('createEvent', () => {
@@ -135,6 +170,54 @@ describe('EventService', () => {
       ).rejects.toThrow('At least one activity slot is required');
     });
 
+<<<<<<< HEAD
+=======
+    // User Story 1: Retroactive Events
+    it('should allow creating event with past date', async () => {
+      const pastDate = new Date();
+      pastDate.setDate(pastDate.getDate() - 5);
+
+      const eventData = {
+        title: 'Past Event',
+        description: 'Event that already happened',
+        eventDate: pastDate,
+        isRecurring: false,
+        activitySlots: [
+          {
+            activityTypeId: testActivityType.id,
+            capacity: 10,
+          },
+        ],
+      };
+
+      const event = await service.createEvent(eventData, testVolunteer.id);
+
+      expect(event.title).toBe('Past Event');
+      expect(event.eventDate).toEqual(pastDate);
+    });
+
+    it('should allow creating event with today date', async () => {
+      const today = new Date();
+
+      const eventData = {
+        title: 'Today Event',
+        description: 'Event happening today',
+        eventDate: today,
+        isRecurring: false,
+        activitySlots: [
+          {
+            activityTypeId: testActivityType.id,
+            capacity: 10,
+          },
+        ],
+      };
+
+      const event = await service.createEvent(eventData, testVolunteer.id);
+
+      expect(event.title).toBe('Today Event');
+    });
+
+>>>>>>> origin/main
     it('should throw error when activity type does not exist', async () => {
       const eventData = {
         title: 'Invalid Activity Event',
