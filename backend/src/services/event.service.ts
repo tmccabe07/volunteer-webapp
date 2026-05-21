@@ -10,21 +10,7 @@ import { PointEventType, NotificationType } from '@prisma/client';
 import prisma from '../utils/prisma';
 import type { CreateEventInput, UpdateEventInput, CompleteEventInput } from '../utils/validation/event.schema';
 import { NotificationService } from './notification.service';
-
-/**
- * Determines if an event was created retroactively (after its event date)
- * @param event Event with createdAt and eventDate timestamps
- * @returns true if the event was created after its scheduled date
- * @example
- * // Event created on May 10 for May 5 → retroactive
- * isRetroactiveEvent({ createdAt: new Date('2026-05-10'), eventDate: new Date('2026-05-05') }) // true
- * 
- * // Event created on May 1 for May 10 → advance planning
- * isRetroactiveEvent({ createdAt: new Date('2026-05-01'), eventDate: new Date('2026-05-10') }) // false
- */
-export function isRetroactiveEvent(event: { createdAt: Date; eventDate: Date }): boolean {
-  return event.createdAt > event.eventDate;
-}
+import { validateEventTimes } from '../utils/time-validation.util';
 
 @Injectable()
 export class EventService {
@@ -41,19 +27,17 @@ export class EventService {
       throw new Error('At least one activity slot is required');
     }
 
-    // Removed: "Event date must be in the future" validation
-    // Feature 006: Allow retroactive event creation
-
     // Validate activity types exist
     const activityTypeIds = activitySlots.map(slot => slot.activityTypeId);
+    const uniqueActivityTypeIds = [...new Set(activityTypeIds)];
     const existingActivityTypes = await prisma.activityType.findMany({
       where: {
-        id: { in: activityTypeIds },
+        id: { in: uniqueActivityTypeIds },
         deletedAt: null,
       },
     });
 
-    if (existingActivityTypes.length !== activityTypeIds.length) {
+    if (existingActivityTypes.length !== uniqueActivityTypeIds.length) {
       throw new Error('One or more activity types do not exist');
     }
 
@@ -77,6 +61,13 @@ export class EventService {
           create: activitySlots.map(slot => ({
             activityTypeId: slot.activityTypeId,
             capacity: slot.capacity ?? null,
+            description: slot.description ?? null,
+            steps: slot.steps && slot.steps.length > 0 ? {
+              create: slot.steps.map((step, index) => ({
+                orderIndex: index,
+                stepText: step.stepText,
+              })),
+            } : undefined,
           })),
         },
       },
@@ -84,6 +75,9 @@ export class EventService {
         activitySlots: {
           include: {
             activityType: true,
+            steps: {
+              orderBy: { orderIndex: 'asc' },
+            },
           },
         },
         createdBy: {
@@ -180,22 +174,38 @@ export class EventService {
       throw new Error('Cannot modify completed events');
     }
 
-    // Removed: "Event date must be in the future" validation
-    // Feature 006: Allow retroactive event updates
+    // Validate time constraints if any time fields are being updated
+    if (data.eventTime !== undefined || data.endTime !== undefined || data.fullDay !== undefined) {
+      // Merge existing times with updates
+      const mergedEventTime = data.eventTime !== undefined ? data.eventTime : existingEvent.eventTime;
+      const mergedEndTime = data.endTime !== undefined ? data.endTime : existingEvent.endTime;
+      const mergedFullDay = data.fullDay !== undefined ? data.fullDay : existingEvent.fullDay;
+      
+      const result = validateEventTimes(
+        mergedEventTime,
+        mergedEndTime,
+        mergedFullDay
+      );
+      
+      if (!result.valid) {
+        throw new Error(result.error || 'Invalid time configuration');
+      }
+    }
 
     const { activitySlots, ...eventData } = data;
 
     // If activity slots are being updated, validate them
     if (activitySlots) {
       const activityTypeIds = activitySlots.map(slot => slot.activityTypeId);
+      const uniqueActivityTypeIds = [...new Set(activityTypeIds)];
       const existingActivityTypes = await prisma.activityType.findMany({
         where: {
-          id: { in: activityTypeIds },
+          id: { in: uniqueActivityTypeIds },
           deletedAt: null,
         },
       });
 
-      if (existingActivityTypes.length !== activityTypeIds.length) {
+      if (existingActivityTypes.length !== uniqueActivityTypeIds.length) {
         throw new Error('One or more activity types do not exist');
       }
 
@@ -226,6 +236,7 @@ export class EventService {
             create: activitySlots.map(slot => ({
               activityTypeId: slot.activityTypeId,
               capacity: slot.capacity ?? null,
+              description: slot.description ?? null,
             })),
           },
         }),
@@ -285,9 +296,15 @@ export class EventService {
       activityType: string;
     }> = [];
 
-    // Award points to existing signups (non-withdrawn)
+    // Award points to existing signups (non-withdrawn and not excluded)
+    const excludedIds = data.excludedSignupIds || [];
     for (const slot of event.activitySlots) {
       for (const signup of slot.signups) {
+        // Skip if this signup is in the excluded list
+        if (excludedIds.includes(signup.id)) {
+          continue;
+        }
+        
         await prisma.pointEvent.create({
           data: {
             volunteerId: signup.volunteerId,
@@ -468,6 +485,9 @@ export class EventService {
                 createdAt: 'asc',
               },
             },
+            steps: {
+              orderBy: { orderIndex: 'asc' },
+            },
           },
         },
         createdBy: {
@@ -479,14 +499,7 @@ export class EventService {
       },
     });
 
-    if (!event) {
-      return null;
-    }
-
-    return {
-      ...event,
-      isRetroactive: isRetroactiveEvent(event),
-    };
+    return event;
   }
 
   /**
@@ -569,6 +582,9 @@ export class EventService {
                 volunteerId: true,
               },
             },
+            steps: {
+              orderBy: { orderIndex: 'asc' },
+            },
           },
         },
         createdBy: {
@@ -583,7 +599,6 @@ export class EventService {
     // Add signup counts and current user signup info
     const eventsWithCounts = events.map(event => ({
       ...event,
-      isRetroactive: isRetroactiveEvent(event),
       activitySlots: event.activitySlots.map(slot => {
         const signedUpCount = slot.signups.length;
         const currentUserSignup = currentUserId
@@ -594,6 +609,8 @@ export class EventService {
           id: slot.id,
           activityType: slot.activityType,
           capacity: slot.capacity,
+          description: slot.description,
+          steps: slot.steps,
           signedUpCount,
           currentUserSignup: currentUserSignup
             ? { id: currentUserSignup.id, withdrawn: false }

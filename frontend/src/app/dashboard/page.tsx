@@ -13,12 +13,16 @@ import adminTasksService from '@/services/admin-tasks.service';
 import volunteersService, { VolunteerProfile } from '@/services/volunteers.service';
 import DashboardTaskCard from '@/components/shared/tasks/DashboardTaskCard';
 import QuickSignupDialog from '@/components/shared/events/QuickSignupDialog';
+import { formatEventTime } from '@/lib/time-format.util';
 import { Award, Calendar, CheckSquare, CheckCircle2 } from 'lucide-react';
 
 interface Event {
   id: string;
   title: string;
   eventDate: string;
+  eventTime?: string | null;
+  endTime?: string | null;
+  fullDay?: boolean;
   location?: string;
   rankLevel?: string;
   activitySlots?: Array<{
@@ -494,6 +498,14 @@ export default function DashboardPage() {
                         </div>
                         <div className="text-sm text-gray-600 mt-1">
                           {formatDate(event.eventDate)}
+                          {(() => {
+                            const timeStr = formatEventTime({
+                              eventTime: event.eventTime,
+                              endTime: event.endTime,
+                              fullDay: event.fullDay || false,
+                            });
+                            return timeStr ? ` • ${timeStr}` : '';
+                          })()}
                           {event.location && ` • ${event.location}`}
                         </div>
                         {event.rankLevel && (

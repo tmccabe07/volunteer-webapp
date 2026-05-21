@@ -83,6 +83,8 @@ export default function EditEventPage() {
           description: event.description,
           eventDate: new Date(event.eventDate).toISOString().split('T')[0],
           eventTime: event.eventTime,
+          endTime: event.endTime,
+          fullDay: event.fullDay,
           location: event.location,
           rankLevel: event.rankLevel,
           isRecurring: event.isRecurring,

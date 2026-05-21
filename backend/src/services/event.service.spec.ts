@@ -1,5 +1,5 @@
+import { EventService } from './event.service';
 import { NotificationService } from './notification.service';
-import { EventService, isRetroactiveEvent } from './event.service';
 import {
   setupTests,
   teardownTests,
@@ -47,41 +47,6 @@ describe('EventService', () => {
     await prisma.childRank.deleteMany();
     await prisma.volunteerToRole.deleteMany();
     await prisma.volunteer.deleteMany();
-  });
-
-  describe('isRetroactiveEvent', () => {
-    it('should return true when event created after event date', () => {
-      const event = {
-        createdAt: new Date('2026-05-10T10:00:00Z'),
-        eventDate: new Date('2026-05-05T14:00:00Z'),
-      };
-      expect(isRetroactiveEvent(event)).toBe(true);
-    });
-
-    it('should return false when event created before event date', () => {
-      const event = {
-        createdAt: new Date('2026-05-01T10:00:00Z'),
-        eventDate: new Date('2026-05-10T14:00:00Z'),
-      };
-      expect(isRetroactiveEvent(event)).toBe(false);
-    });
-
-    it('should return false when event created on same date', () => {
-      const event = {
-        createdAt: new Date('2026-05-05T10:00:00Z'),
-        eventDate: new Date('2026-05-05T14:00:00Z'),
-      };
-      expect(isRetroactiveEvent(event)).toBe(false);
-    });
-
-    it('should handle same timestamp correctly', () => {
-      const timestamp = new Date('2026-05-05T14:00:00Z');
-      const event = {
-        createdAt: timestamp,
-        eventDate: timestamp,
-      };
-      expect(isRetroactiveEvent(event)).toBe(false);
-    });
   });
 
   describe('createEvent', () => {
@@ -587,6 +552,62 @@ describe('EventService', () => {
       expect(pointBalance).toBeTruthy();
       expect(pointBalance!.totalPoints).toBe(activitySlot!.activityType.pointValue);
       expect(pointBalance!.currentYearPoints).toBe(activitySlot!.activityType.pointValue);
+    });
+
+    it('should exclude specified signups from receiving points', async () => {
+      const volunteer1 = await createTestVolunteer({ name: 'Volunteer 1' });
+      const volunteer2 = await createTestVolunteer({ name: 'Volunteer 2' });
+      const volunteer3 = await createTestVolunteer({ name: 'Volunteer 3' });
+      
+      const event = await createTestEvent(testVolunteer.id);
+      
+      const activitySlot = await prisma.activitySlot.findFirst({
+        where: { eventId: event.id },
+      });
+
+      // Create three signups
+      const signup1 = await prisma.signup.create({
+        data: {
+          volunteerId: volunteer1.id,
+          activitySlotId: activitySlot!.id,
+          withdrawn: false,
+        },
+      });
+
+      const signup2 = await prisma.signup.create({
+        data: {
+          volunteerId: volunteer2.id,
+          activitySlotId: activitySlot!.id,
+          withdrawn: false,
+        },
+      });
+
+      const signup3 = await prisma.signup.create({
+        data: {
+          volunteerId: volunteer3.id,
+          activitySlotId: activitySlot!.id,
+          withdrawn: false,
+        },
+      });
+
+      // Exclude volunteer 2 (didn't show up)
+      const result = await service.completeEvent(
+        event.id,
+        { excludedSignupIds: [signup2.id] },
+        testVolunteer.id
+      );
+
+      // Should only award points to volunteer 1 and 3
+      expect(result.pointsAwarded).toHaveLength(2);
+      expect(result.pointsAwarded.find(p => p.volunteerName === 'Volunteer 1')).toBeTruthy();
+      expect(result.pointsAwarded.find(p => p.volunteerName === 'Volunteer 2')).toBeUndefined();
+      expect(result.pointsAwarded.find(p => p.volunteerName === 'Volunteer 3')).toBeTruthy();
+
+      // Verify only 2 point events were created
+      const pointEvents = await prisma.pointEvent.findMany({
+        where: { referenceId: event.id },
+      });
+      expect(pointEvents).toHaveLength(2);
     });
 
     it('should throw error when event not found', async () => {

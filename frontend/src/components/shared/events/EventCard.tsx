@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Calendar, MapPin, Users, Award } from 'lucide-react';
+import { formatEventTime } from '@/lib/time-format.util';
 
 interface ActivitySlot {
   id: string;
@@ -27,6 +28,8 @@ interface EventCardProps {
     description: string | null;
     eventDate: string;
     eventTime: string | null;
+    endTime?: string | null;
+    fullDay?: boolean;
     location: string | null;
     rankLevel: string | null;
     isComplete: boolean;
@@ -56,6 +59,13 @@ export default function EventCard({ event }: EventCardProps) {
   // Extract date components for prominent badge
   const month = eventDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
   const day = eventDate.getDate();
+
+  // Format event time (handles start, end, and duration)
+  const formattedTime = formatEventTime({
+    eventTime: event.eventTime,
+    endTime: event.endTime,
+    fullDay: event.fullDay || false,
+  });
 
   const totalCapacity = event.activitySlots.reduce((sum, slot) => {
     return slot.capacity ? sum + slot.capacity : sum;
@@ -101,7 +111,7 @@ export default function EventCard({ event }: EventCardProps) {
           <div className="flex items-center text-sm text-gray-600">
             <Calendar className="h-4 w-4 mr-2" />
             {formattedDate}
-            {event.eventTime && ` at ${event.eventTime}`}
+            {formattedTime && ` at ${formattedTime}`}
           </div>
 
           {event.location && (

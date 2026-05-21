@@ -103,6 +103,21 @@ vi.mock('@/components/ui/select', () => {
 vi.mock('lucide-react', () => ({
   PlusCircle: () => <span data-testid="plus-icon">+</span>,
   Trash2: () => <span data-testid="trash-icon">×</span>,
+  Clock: () => <span data-testid="clock-icon">🕐</span>,
+  Check: () => <span data-testid="check-icon">✓</span>,
+}));
+
+// Mock Checkbox component
+vi.mock('@/components/ui/checkbox', () => ({
+  Checkbox: ({ checked, onCheckedChange, id, ...props }: any) => (
+    <input
+      type="checkbox"
+      id={id}
+      checked={checked}
+      onChange={(e) => onCheckedChange?.(e.target.checked)}
+      {...props}
+    />
+  ),
 }));
 
 describe('EventForm', () => {
@@ -135,9 +150,9 @@ describe('EventForm', () => {
       );
 
       expect(screen.getByLabelText(/event title/i)).toHaveValue('');
-      expect(screen.getByLabelText(/description/i)).toHaveValue('');
+      expect(screen.getByPlaceholderText(/help clean up after the monthly pack meeting/i)).toHaveValue('');
       expect(screen.getByLabelText(/event date/i)).toHaveValue('');
-      expect(screen.getByLabelText(/event time/i)).toHaveValue('');
+      expect(screen.getByLabelText(/start time/i)).toHaveValue('');
       expect(screen.getByLabelText(/location/i)).toHaveValue('');
     });
 
@@ -162,9 +177,9 @@ describe('EventForm', () => {
       );
 
       expect(screen.getByLabelText(/event title/i)).toHaveValue('Pack Meeting');
-      expect(screen.getByLabelText(/description/i)).toHaveValue('Monthly pack meeting');
+      expect(screen.getByPlaceholderText(/help clean up after the monthly pack meeting/i)).toHaveValue('Monthly pack meeting');
       expect(screen.getByLabelText(/event date/i)).toHaveValue('2026-05-15');
-      expect(screen.getByLabelText(/event time/i)).toHaveValue('18:00');
+      expect(screen.getByLabelText(/start time/i)).toHaveValue('18:00');
       expect(screen.getByLabelText(/location/i)).toHaveValue('Church Hall');
     });
 
@@ -267,7 +282,7 @@ describe('EventForm', () => {
         />
       );
 
-      const descriptionInput = screen.getByLabelText(/description/i);
+      const descriptionInput = screen.getByPlaceholderText(/help clean up after the monthly pack meeting/i);
       await user.type(descriptionInput, 'Help clean up after the meeting');
 
       expect(descriptionInput).toHaveValue('Help clean up after the meeting');
@@ -297,7 +312,7 @@ describe('EventForm', () => {
         />
       );
 
-      const timeInput = screen.getByLabelText(/event time/i);
+      const timeInput = screen.getByLabelText(/start time/i);
       await user.type(timeInput, '19:30');
 
       expect(timeInput).toHaveValue('19:30');
@@ -401,6 +416,26 @@ describe('EventForm', () => {
       expect(activityLabels).toHaveLength(2);
     });
 
+    it('should change button text to "Add Another Activity Slot" after first slot is filled', async () => {
+      const user = userEvent.setup();
+      render(
+        <EventForm
+          activityTypes={mockActivityTypes}
+          onSubmit={mockOnSubmit}
+        />
+      );
+
+      // Initially shows "Add Activity Slot"
+      expect(screen.getByRole('button', { name: /add activity slot/i })).toBeInTheDocument();
+
+      // Fill in first slot with activity type using the mocked select
+      const activitySelect = screen.getAllByTestId('select-native')[1]; // Index 1 because rank level is at 0
+      await user.selectOptions(activitySelect, 'activity-1');
+
+      // Button text should change to "Add Another Activity Slot"
+      expect(screen.getByRole('button', { name: /add another activity slot/i })).toBeInTheDocument();
+    });
+
     it('should remove an activity slot when clicking remove button', async () => {
       const user = userEvent.setup();
       render(
@@ -416,16 +451,16 @@ describe('EventForm', () => {
         />
       );
 
-      const removeButtons = screen.getAllByTestId('trash-icon');
+      const removeButtons = screen.getAllByRole('button', { name: /remove/i });
       expect(removeButtons).toHaveLength(2);
 
-      await user.click(removeButtons[1].closest('button')!);
+      await user.click(removeButtons[1]);
 
       const activityLabels = screen.getAllByText(/activity type \*/i);
       expect(activityLabels).toHaveLength(1);
     });
 
-    it('should not remove the last activity slot', async () => {
+    it('should not show remove button when only one activity slot exists', async () => {
       const user = userEvent.setup();
       render(
         <EventForm
@@ -434,23 +469,27 @@ describe('EventForm', () => {
         />
       );
 
-      const removeButton = screen.getByTestId('trash-icon').closest('button')!;
-      expect(removeButton).toBeDisabled();
+      const removeButton = screen.queryByRole('button', { name: /remove/i });
+      expect(removeButton).not.toBeInTheDocument();
     });
 
-    it('should show error when trying to remove the only activity slot', async () => {
+    it('should display numbered headers for each activity slot', async () => {
       const user = userEvent.setup();
       render(
         <EventForm
           activityTypes={mockActivityTypes}
           onSubmit={mockOnSubmit}
+          initialData={{
+            activitySlots: [
+              { activityTypeId: 'activity-1', capacity: 5 },
+              { activityTypeId: 'activity-2', capacity: null },
+            ],
+          }}
         />
       );
 
-      const removeButton = screen.getByTestId('trash-icon').closest('button')!;
-      
-      // Button is disabled, but test the underlying logic
-      expect(removeButton).toBeDisabled();
+      expect(screen.getByText('Activity Slot 1')).toBeInTheDocument();
+      expect(screen.getByText('Activity Slot 2')).toBeInTheDocument();
     });
 
     it('should update activity type in slot', async () => {
@@ -647,9 +686,9 @@ describe('EventForm', () => {
       );
 
       await user.type(screen.getByLabelText(/event title/i), 'Pack Meeting');
-      await user.type(screen.getByLabelText(/description/i), 'Monthly meeting');
+      await user.type(screen.getByPlaceholderText(/help clean up after the monthly pack meeting/i), 'Monthly meeting');
       await user.type(screen.getByLabelText(/event date/i), '2026-05-15');
-      await user.type(screen.getByLabelText(/event time/i), '18:00');
+      await user.type(screen.getByLabelText(/start time/i), '18:00');
       await user.type(screen.getByLabelText(/location/i), 'Church Hall');
 
       // Select rank level
@@ -1044,7 +1083,7 @@ describe('EventForm', () => {
           status: 400,
           data: {
             statusCode: 400,
-            message: { error: 'Event date must be in the future' },
+            message: { error: 'At least one activity slot is required' },
             error: 'Bad Request'
           }
         },
@@ -1071,7 +1110,7 @@ describe('EventForm', () => {
 
       await waitFor(() => {
         // Should show the backend error message, not the generic Axios message
-        expect(screen.getByText(/event date must be in the future/i)).toBeInTheDocument();
+        expect(screen.getByText(/at least one activity slot is required/i)).toBeInTheDocument();
         expect(screen.queryByText(/request failed with status code 400/i)).not.toBeInTheDocument();
       });
     });
@@ -1178,9 +1217,9 @@ describe('EventForm', () => {
       );
 
       expect(screen.getByLabelText(/event title/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/description/i)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/help clean up after the monthly pack meeting/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/event date/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/event time/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/start time/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/location/i)).toBeInTheDocument();
       // Rank Level and Capacity labels exist but aren't programmatically associated (custom components)
       expect(screen.getByText(/^rank level$/i)).toBeInTheDocument();

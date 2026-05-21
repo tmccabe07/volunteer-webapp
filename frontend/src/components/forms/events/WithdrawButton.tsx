@@ -48,7 +48,7 @@ export default function WithdrawButton({
     <div>
       <AlertDialog>
         <AlertDialogTrigger asChild>
-          <Button variant="destructive" size="sm">
+          <Button variant="destructive" size="sm" className="bg-red-600 hover:bg-red-700 text-white">
             <UserMinus className="h-4 w-4 mr-2" />
             Withdraw
           </Button>

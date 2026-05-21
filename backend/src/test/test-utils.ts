@@ -175,6 +175,8 @@ export async function createTestEvent(creatorId: string, data: Partial<Event> = 
       title: data.title || 'Test Event',
       description: data.description || 'A test event',
       eventDate: data.eventDate || new Date('2026-06-01'),
+      eventTime: data.eventTime,
+      endTime: data.endTime,
       rankLevel: data.rankLevel || 'WOLF',
       isRecurring: data.isRecurring || false,
       recurringEndDate: data.recurringEndDate,

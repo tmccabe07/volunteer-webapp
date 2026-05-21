@@ -6,9 +6,17 @@
 
 import axios from '@/lib/axios';
 
+export interface ActivitySlotStep {
+  id?: string;
+  orderIndex: number;
+  stepText: string;
+}
+
 export interface ActivitySlot {
   activityTypeId: string;
   capacity?: number | null;
+  description?: string;
+  steps?: ActivitySlotStep[];
 }
 
 export interface CreateEventData {
@@ -16,6 +24,8 @@ export interface CreateEventData {
   description?: string;
   eventDate: string;
   eventTime?: string;
+  endTime?: string;
+  fullDay?: boolean;
   location?: string;
   rankLevel?: string | null;
   isRecurring?: boolean;
@@ -27,6 +37,8 @@ export interface UpdateEventData {
   description?: string;
   eventDate?: string;
   eventTime?: string;
+  endTime?: string;
+  fullDay?: boolean;
   location?: string;
   rankLevel?: string | null;
   isRecurring?: boolean;
@@ -38,6 +50,7 @@ export interface CompleteEventData {
     volunteerId: string;
     activitySlotId: string;
   }>;
+  excludedSignupIds?: string[];
 }
 
 export interface ListEventsParams {

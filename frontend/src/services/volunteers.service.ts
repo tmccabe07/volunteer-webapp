@@ -69,6 +69,14 @@ export class VolunteersApiService {
     const response = await axios.put<VolunteerProfile>('/volunteers/me/profile', data);
     return response.data;
   }
+
+  /**
+   * List all volunteers (LEADER/ADMIN only)
+   */
+  async listAllVolunteers(): Promise<{ volunteers: Array<{ id: string; name: string; email: string }> }> {
+    const response = await axios.get<{ volunteers: Array<{ id: string; name: string; email: string }> }>('/volunteers');
+    return response.data;
+  }
 }
 
 export const volunteersService = new VolunteersApiService();
