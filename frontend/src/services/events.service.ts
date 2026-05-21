@@ -6,9 +6,17 @@
 
 import axios from '@/lib/axios';
 
+export interface ActivitySlotStep {
+  id?: string;
+  orderIndex: number;
+  stepText: string;
+}
+
 export interface ActivitySlot {
   activityTypeId: string;
   capacity?: number | null;
+  description?: string;
+  steps?: ActivitySlotStep[];
 }
 
 export interface CreateEventData {

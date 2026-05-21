@@ -42,6 +42,10 @@ export const createEventSchema = z.object({
   activitySlots: z.array(z.object({
     activityTypeId: z.string(),
     capacity: z.number().int().positive().nullable().optional(),
+    description: z.string().max(500).optional(),
+    steps: z.array(z.object({
+      stepText: z.string().min(1).max(200).transform(val => val.trim()),
+    })).max(20).optional(),
   })).min(1),
 }).superRefine((data, ctx) => {
   // Validate time constraints using time-validation utility
@@ -81,6 +85,10 @@ export const updateEventSchema = z.object({
   activitySlots: z.array(z.object({
     activityTypeId: z.string(),
     capacity: z.number().int().positive().nullable().optional(),
+    description: z.string().max(500).optional(),
+    steps: z.array(z.object({
+      stepText: z.string().min(1).max(200).transform(val => val.trim()),
+    })).max(20).optional(),
   })).min(1).optional(),
 });
 

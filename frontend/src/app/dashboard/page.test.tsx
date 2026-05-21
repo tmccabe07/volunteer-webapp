@@ -86,6 +86,9 @@ describe('DashboardPage', () => {
       id: 'event-1',
       title: 'Pack Meeting Cleanup',
       eventDate: '2026-05-15T18:00:00Z',
+      eventTime: '18:00',
+      endTime: '20:00',
+      fullDay: false,
       location: 'Church Hall',
       rankLevel: 'PACK_WIDE',
     },
@@ -93,6 +96,9 @@ describe('DashboardPage', () => {
       id: 'event-2',
       title: 'Den Meeting Setup',
       eventDate: '2026-05-20T17:00:00Z',
+      eventTime: '17:00',
+      endTime: null,
+      fullDay: false,
       location: 'Community Center',
       rankLevel: 'WOLF',
     },
@@ -100,6 +106,9 @@ describe('DashboardPage', () => {
       id: 'event-3',
       title: 'Camping Preparation',
       eventDate: '2026-06-01T14:00:00Z',
+      eventTime: null,
+      endTime: null,
+      fullDay: true,
       location: null,
       rankLevel: null,
     },
@@ -578,6 +587,19 @@ describe('DashboardPage', () => {
       await waitFor(() => {
         expect(screen.getByText('PACK_WIDE')).toBeInTheDocument();
         expect(screen.getByText('WOLF')).toBeInTheDocument();
+      });
+    });
+
+    it('should display event times when available', async () => {
+      render(<DashboardPage />);
+
+      await waitFor(() => {
+        // Event with start and end time should show time range
+        expect(screen.getByText(/6:00 PM - 8:00 PM/i)).toBeInTheDocument();
+        // Event with start time only should show start time
+        expect(screen.getByText(/5:00 PM/i)).toBeInTheDocument();
+        // Full day event should show "All Day"
+        expect(screen.getByText(/all day/i)).toBeInTheDocument();
       });
     });
 

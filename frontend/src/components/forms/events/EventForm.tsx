@@ -17,10 +17,14 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlusCircle, Trash2, Clock } from 'lucide-react';
 import { calculateDuration } from '@/lib/time-format.util';
+import StepManager from './StepManager';
+import { ActivitySlotStep } from '@/services/events.service';
 
 interface ActivitySlot {
   activityTypeId: string;
   capacity?: number | null;
+  description?: string;
+  steps?: ActivitySlotStep[];
 }
 
 interface EventFormData {
@@ -72,7 +76,7 @@ export default function EventForm({ initialData, activityTypes, onSubmit, submit
     location: initialData?.location || '',
     rankLevel: initialData?.rankLevel || null,
     isRecurring: initialData?.isRecurring || false,
-    activitySlots: initialData?.activitySlots || [{ activityTypeId: '', capacity: null }],
+    activitySlots: initialData?.activitySlots || [{ activityTypeId: '', capacity: null, description: '', steps: [] }],
   });
 
   // Cache for preserving time values when toggling fullDay
@@ -142,7 +146,7 @@ export default function EventForm({ initialData, activityTypes, onSubmit, submit
   const addActivitySlot = () => {
     setFormData(prev => ({
       ...prev,
-      activitySlots: [...prev.activitySlots, { activityTypeId: '', capacity: null }],
+      activitySlots: [...prev.activitySlots, { activityTypeId: '', capacity: null, description: '', steps: [] }],
     }));
   };
 
@@ -379,54 +383,88 @@ export default function EventForm({ initialData, activityTypes, onSubmit, submit
         </CardHeader>
         <CardContent className="space-y-4">
           {formData.activitySlots.map((slot, index) => (
-            <div key={index} className="flex gap-4 items-end p-4 border rounded-lg">
-              <div className="flex-1">
-                <Label>Activity Type *</Label>
-                <Select
-                  value={slot.activityTypeId}
-                  onValueChange={(value) => handleActivitySlotChange(index, 'activityTypeId', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select activity" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activityTypes.map(type => (
-                      <SelectItem key={type.id} value={type.id}>
-                        {type.name} ({type.pointValue} points)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <div key={index} className="p-4 border rounded-lg space-y-4">
+              <div className="flex justify-between items-center mb-2">
+                <h4 className="font-semibold text-sm text-gray-700">
+                  Activity Slot {index + 1}
+                </h4>
+                {formData.activitySlots.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeActivitySlot(index)}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Remove
+                  </Button>
+                )}
               </div>
 
-              <div className="w-32">
-                <Label>Capacity</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={slot.capacity || ''}
-                  onChange={(e) =>
-                    handleActivitySlotChange(index, 'capacity', e.target.value ? parseInt(e.target.value) : null)
-                  }
-                  placeholder="Unlimited"
+              <div className="flex gap-4 items-end">
+                <div className="flex-1">
+                  <Label>Activity Type *</Label>
+                  <Select
+                    value={slot.activityTypeId}
+                    onValueChange={(value) => handleActivitySlotChange(index, 'activityTypeId', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select activity" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {activityTypes.map(type => (
+                        <SelectItem key={type.id} value={type.id}>
+                          {type.name} ({type.pointValue} points)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="w-32">
+                  <Label>Capacity</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={slot.capacity || ''}
+                    onChange={(e) =>
+                      handleActivitySlotChange(index, 'capacity', e.target.value ? parseInt(e.target.value) : null)
+                    }
+                    placeholder="Unlimited"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor={`description-${index}`}>
+                  Custom Description (optional)
+                </Label>
+                <Textarea
+                  id={`description-${index}`}
+                  value={slot.description || ''}
+                  onChange={(e) => handleActivitySlotChange(index, 'description', e.target.value)}
+                  placeholder="Add specific instructions for this activity slot"
+                  maxLength={500}
+                  rows={2}
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  {(slot.description || '').length} / 500 characters
+                </p>
               </div>
 
-              <Button
-                type="button"
-                variant="destructive"
-                size="icon"
-                onClick={() => removeActivitySlot(index)}
-                disabled={formData.activitySlots.length === 1}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              <StepManager
+                steps={slot.steps || []}
+                onChange={(steps) => handleActivitySlotChange(index, 'steps', steps)}
+              />
             </div>
           ))}
 
           <Button type="button" variant="outline" onClick={addActivitySlot} className="w-full">
             <PlusCircle className="h-4 w-4 mr-2" />
-            Add Activity Slot
+            {formData.activitySlots.length > 0 && formData.activitySlots[0].activityTypeId
+              ? 'Add Another Activity Slot'
+              : 'Add Activity Slot'}
           </Button>
         </CardContent>
       </Card>

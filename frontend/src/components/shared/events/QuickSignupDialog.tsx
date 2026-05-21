@@ -10,11 +10,17 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, MapPin, Trophy, Users, Loader2, ExternalLink } from 'lucide-react';
+import { Calendar, MapPin, Trophy, Users, Loader2, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
 import SignupButton from '@/components/forms/events/SignupButton';
 import WithdrawButton from '@/components/forms/events/WithdrawButton';
 import eventsService from '@/services/events.service';
 import Link from 'next/link';
+
+interface ActivitySlotStep {
+  id: string;
+  orderIndex: number;
+  stepText: string;
+}
 
 interface ActivitySlot {
   id: string;
@@ -25,6 +31,8 @@ interface ActivitySlot {
     category: string;
   };
   capacity: number | null;
+  description?: string | null;
+  steps?: ActivitySlotStep[];
   signups: Array<{
     id: string;
     volunteer: {
@@ -82,6 +90,19 @@ export default function QuickSignupDialog({
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
+
+  const toggleSteps = (slotId: string) => {
+    setExpandedSteps(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(slotId)) {
+        newSet.delete(slotId);
+      } else {
+        newSet.add(slotId);
+      }
+      return newSet;
+    });
+  };
 
   useEffect(() => {
     if (open) {
@@ -197,6 +218,40 @@ export default function QuickSignupDialog({
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
                             <h4 className="font-medium">{slot.activityType.name}</h4>
+                            {slot.description && (
+                              <p className="text-sm text-gray-600 mt-1">{slot.description}</p>
+                            )}
+                            {slot.steps && slot.steps.length > 0 && (
+                              <div className="mt-2">
+                                <button
+                                  onClick={() => toggleSteps(slot.id)}
+                                  className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                                >
+                                  {expandedSteps.has(slot.id) ? (
+                                    <>
+                                      <ChevronUp className="h-4 w-4" />
+                                      Hide Instructions ({slot.steps.length})
+                                    </>
+                                  ) : (
+                                    <>
+                                      <ChevronDown className="h-4 w-4" />
+                                      View Instructions ({slot.steps.length})
+                                    </>
+                                  )}
+                                </button>
+                                {expandedSteps.has(slot.id) && (
+                                  <ol className="list-decimal list-inside space-y-1 mt-2 pl-2">
+                                    {slot.steps
+                                      .sort((a, b) => a.orderIndex - b.orderIndex)
+                                      .map((step) => (
+                                        <li key={step.id} className="text-sm text-gray-700">
+                                          {step.stepText}
+                                        </li>
+                                      ))}
+                                  </ol>
+                                )}
+                              </div>
+                            )}
                             <div className="flex items-center gap-2 mt-1">
                               <Badge className={CATEGORY_COLORS[slot.activityType.category]} variant="secondary">
                                 {slot.activityType.category}

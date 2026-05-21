@@ -163,39 +163,39 @@ This feature is organized into **7 phases** aligned with user stories (P1, P2, P
 
 ### Backend Implementation
 
-- [ ] T075 [US3] Update CreateActivitySlotDto in backend/src/models/activity-slot.dto.ts to include description String?
-- [ ] T076 [US3] Add Zod validation for description (max 500 characters)
-- [ ] T077 [US3] Update UpdateActivitySlotDto to include description field
-- [ ] T078 [US3] Update ActivitySlotService.create() in backend/src/services/activity-slot.service.ts to save description
-- [ ] T079 [US3] Update ActivitySlotService.update() to handle description changes
-- [ ] T080 [US3] Update response mapping to include description in activity slot responses
-- [ ] T081 [US3] Update EventsController to accept description in nested activitySlots array
+- [X] T075 [US3] Update CreateActivitySlotDto in backend/src/models/activity-slot.dto.ts to include description String?
+- [X] T076 [US3] Add Zod validation for description (max 500 characters)
+- [X] T077 [US3] Update UpdateActivitySlotDto to include description field
+- [X] T078 [US3] Update ActivitySlotService.create() in backend/src/services/activity-slot.service.ts to save description
+- [X] T079 [US3] Update ActivitySlotService.update() to handle description changes
+- [X] T080 [US3] Update response mapping to include description in activity slot responses
+- [X] T081 [US3] Update EventsController to accept description in nested activitySlots array
 
 ### Contract Tests (Backend)
 
-- [ ] T082 [US3] Add contract test: Create activity slot with description in backend/tests/contract/activity-slot-api.spec.ts
-- [ ] T083 [US3] Add contract test: Create activity slot without description (null)
-- [ ] T084 [US3] Add contract test: Reject description > 500 chars (400 error)
-- [ ] T085 [US3] Add contract test: Update activity slot description
-- [ ] T086 [US3] Add contract test: Clear description (set to null)
+- [X] T082 [US3] Add contract test: Create activity slot with description in backend/tests/contract/activity-slot-api.spec.ts
+- [X] T083 [US3] Add contract test: Create activity slot without description (null)
+- [X] T084 [US3] Add contract test: Reject description > 500 chars (400 error)
+- [X] T085 [US3] Add contract test: Update activity slot description
+- [X] T086 [US3] Add contract test: Clear description (set to null)
 
 ### Frontend Implementation
 
-- [ ] T087 [P] [US3] Update ActivitySlot interface in frontend/src/services/activity-slots.service.ts to include description?: string
-- [ ] T088 [P] [US3] Create or modify ActivitySlotForm component in frontend/src/components/activity-slot-form.tsx
-- [ ] T089 [P] [US3] Add description textarea field below activity type selector
-- [ ] T090 [P] [US3] Add character counter showing "X / 500 characters"
-- [ ] T091 [P] [US3] Add client-side validation for 500 char limit
-- [ ] T092 [P] [US3] Create formatActivitySlotName() utility in frontend/src/lib/time-format.util.ts
-- [ ] T093 [P] [US3] Update event details page to display activity type + description (if exists)
-- [ ] T094 [P] [US3] Update signup dialog to show full activity slot name with description
+- [X] T087 [P] [US3] Update ActivitySlot interface in frontend/src/services/activity-slots.service.ts to include description?: string
+- [X] T088 [P] [US3] Create or modify ActivitySlotForm component in frontend/src/components/activity-slot-form.tsx
+- [X] T089 [P] [US3] Add description textarea field below activity type selector
+- [X] T090 [P] [US3] Add character counter showing "X / 500 characters"
+- [X] T091 [P] [US3] Add client-side validation for 500 char limit
+- [X] T092 [P] [US3] Create formatActivitySlotName() utility in frontend/src/lib/time-format.util.ts
+- [X] T093 [P] [US3] Update event details page to display activity type + description (if exists)
+- [X] T094 [P] [US3] Update signup dialog to show full activity slot name with description
 
 ### Integration Tests (Frontend)
 
-- [ ] T095 [US3] Add integration test: Add custom description to activity slot in frontend/tests/integration/activity-slot-management.test.tsx
-- [ ] T096 [US3] Add integration test: Character counter updates correctly
-- [ ] T097 [US3] Add integration test: Validation prevents > 500 chars
-- [ ] T098 [US3] Add integration test: Event details display custom description
+- [X] T095 [US3] Add integration test: Add custom description to activity slot in frontend/tests/integration/activity-slot-management.test.tsx
+- [X] T096 [US3] Add integration test: Character counter updates correctly
+- [X] T097 [US3] Add integration test: Validation prevents > 500 chars
+- [X] T098 [US3] Add integration test: Event details display custom description
 
 ---
 
@@ -209,67 +209,67 @@ This feature is organized into **7 phases** aligned with user stories (P1, P2, P
 
 ### Backend Implementation
 
-- [ ] T099 [US4] Create ActivitySlotStepService in backend/src/services/activity-slot-step.service.ts
-- [ ] T100 [US4] Implement addStep(activitySlotId, stepText) method with orderIndex auto-calculation
-- [ ] T101 [US4] Implement removeStep(stepId) method with renumbering logic using transaction
-- [ ] T102 [US4] Implement reorderSteps(activitySlotId, stepIds[]) method with batch update
-- [ ] T103 [US4] Implement getStepsBySlot(activitySlotId) method with orderBy orderIndex ASC
-- [ ] T104 [US4] Add validation: max 20 steps per activity slot
-- [ ] T105 [US4] Add validation: stepText max 200 chars, cannot be empty
-- [ ] T106 [US4] Create CreateActivitySlotStepDto in backend/src/models/activity-slot-step.dto.ts
-- [ ] T107 [US4] Add Zod validation for stepText (required, 1-200 chars)
-- [ ] T108 [US4] Update CreateActivitySlotDto to include optional steps: CreateActivitySlotStepDto[]
-- [ ] T109 [US4] Update ActivitySlotService to create steps when activity slot created
-- [ ] T110 [US4] Create ActivitySlotsStepsController in backend/src/api/activity-slot-steps.controller.ts
-- [ ] T111 [US4] Add POST /activity-slots/:id/steps endpoint (add step)
-- [ ] T112 [US4] Add DELETE /activity-slots/:slotId/steps/:stepId endpoint (remove step)
-- [ ] T113 [US4] Add PATCH /activity-slots/:id/steps/reorder endpoint (reorder steps)
-- [ ] T114 [US4] Update ActivitySlot queries to include steps with orderBy
+- [X] T099 [US4] Create ActivitySlotStepService in backend/src/services/activity-slot-step.service.ts
+- [X] T100 [US4] Implement addStep(activitySlotId, stepText) method with orderIndex auto-calculation
+- [X] T101 [US4] Implement removeStep(stepId) method with renumbering logic using transaction
+- [X] T102 [US4] Implement reorderSteps(activitySlotId, stepIds[]) method with batch update
+- [X] T103 [US4] Implement getStepsBySlot(activitySlotId) method with orderBy orderIndex ASC
+- [X] T104 [US4] Add validation: max 20 steps per activity slot
+- [X] T105 [US4] Add validation: stepText max 200 chars, cannot be empty
+- [X] T106 [US4] Create CreateActivitySlotStepDto in backend/src/models/activity-slot-step.dto.ts
+- [X] T107 [US4] Add Zod validation for stepText (required, 1-200 chars)
+- [X] T108 [US4] Update CreateActivitySlotDto to include optional steps: CreateActivitySlotStepDto[]
+- [X] T109 [US4] Update ActivitySlotService to create steps when activity slot created
+- [X] T110 [US4] Create ActivitySlotsStepsController in backend/src/api/activity-slot-steps.controller.ts
+- [X] T111 [US4] Add POST /activity-slots/:id/steps endpoint (add step)
+- [X] T112 [US4] Add DELETE /activity-slots/:slotId/steps/:stepId endpoint (remove step)
+- [X] T113 [US4] Add PATCH /activity-slots/:id/steps/reorder endpoint (reorder steps)
+- [X] T114 [US4] Update ActivitySlot queries to include steps with orderBy
 
 ### Unit Tests (Backend)
 
-- [ ] T115 [US4] Create unit tests for ActivitySlotStepService in backend/src/services/activity-slot-step.service.spec.ts
-- [ ] T116 [US4] Test addStep() appends to end with correct orderIndex
-- [ ] T117 [US4] Test removeStep() renumbers remaining steps
-- [ ] T118 [US4] Test reorderSteps() updates all orderIndex values correctly
-- [ ] T119 [US4] Test max 20 steps validation throws error
-- [ ] T120 [US4] Test empty stepText validation throws error
+- [X] T115 [US4] Create unit tests for ActivitySlotStepService in backend/src/services/activity-slot-step.service.spec.ts
+- [X] T116 [US4] Test addStep() appends to end with correct orderIndex
+- [X] T117 [US4] Test removeStep() renumbers remaining steps
+- [X] T118 [US4] Test reorderSteps() updates all orderIndex values correctly
+- [X] T119 [US4] Test max 20 steps validation throws error
+- [X] T120 [US4] Test empty stepText validation throws error
 
 ### Contract Tests (Backend)
 
-- [ ] T121 [US4] Add contract test: Create activity slot with steps in backend/tests/contract/activity-slot-api.spec.ts
-- [ ] T122 [US4] Add contract test: Add step to activity slot (POST)
-- [ ] T123 [US4] Add contract test: Remove step and verify renumbering
-- [ ] T124 [US4] Add contract test: Reorder steps with valid stepIds
-- [ ] T125 [US4] Add contract test: Reject > 20 steps (400 error)
-- [ ] T126 [US4] Add contract test: Reject empty stepText (400 error)
-- [ ] T127 [US4] Add contract test: Reject stepText > 200 chars (400 error)
-- [ ] T128 [US4] Add contract test: GET activity slot returns steps in correct order
+- [X] T121 [US4] Add contract test: Create activity slot with steps in backend/tests/contract/activity-slot-api.spec.ts
+- [X] T122 [US4] Add contract test: Add step to activity slot (POST)
+- [X] T123 [US4] Add contract test: Remove step and verify renumbering
+- [X] T124 [US4] Add contract test: Reorder steps with valid stepIds
+- [X] T125 [US4] Add contract test: Reject > 20 steps (400 error)
+- [X] T126 [US4] Add contract test: Reject empty stepText (400 error)
+- [X] T127 [US4] Add contract test: Reject stepText > 200 chars (400 error)
+- [X] T128 [US4] Add contract test: GET activity slot returns steps in correct order
 
 ### Frontend Implementation
 
-- [ ] T129 [P] [US4] Update ActivitySlot interface to include steps: ActivitySlotStep[]
-- [ ] T130 [P] [US4] Create ActivitySlotStep interface with id, orderIndex, stepText
-- [ ] T131 [P] [US4] Create StepManager component in frontend/src/components/step-manager.tsx
-- [ ] T132 [P] [US4] Implement step list with numbered inputs (1, 2, 3...)
-- [ ] T133 [P] [US4] Add "Add Step" button (disabled if 20 steps reached)
-- [ ] T134 [P] [US4] Add remove button for each step
-- [ ] T135 [P] [US4] Implement character counter per step (X / 200 chars)
-- [ ] T136 [P] [US4] Auto-renumber when step removed (visual update)
-- [ ] T137 [P] [US4] Add empty state: "No steps added. Click 'Add Step'..."
-- [ ] T138 [P] [US4] Add StepManager to ActivitySlotForm component
-- [ ] T139 [P] [US4] Update event create/edit forms to include step management
-- [ ] T140 [P] [US4] Update event details page to display steps as ordered list
-- [ ] T141 [P] [US4] Create renderSteps() utility to display steps in signup dialog
+- [X] T129 [P] [US4] Update ActivitySlot interface to include steps: ActivitySlotStep[]
+- [X] T130 [P] [US4] Create ActivitySlotStep interface with id, orderIndex, stepText
+- [X] T131 [P] [US4] Create StepManager component in frontend/src/components/step-manager.tsx
+- [X] T132 [P] [US4] Implement step list with numbered inputs (1, 2, 3...)
+- [X] T133 [P] [US4] Add "Add Step" button (disabled if 20 steps reached)
+- [X] T134 [P] [US4] Add remove button for each step
+- [X] T135 [P] [US4] Implement character counter per step (X / 200 chars)
+- [X] T136 [P] [US4] Auto-renumber when step removed (visual update)
+- [X] T137 [P] [US4] Add empty state: "No steps added. Click 'Add Step'..."
+- [X] T138 [P] [US4] Add StepManager to ActivitySlotForm component
+- [X] T139 [P] [US4] Update event create/edit forms to include step management
+- [X] T140 [P] [US4] Update event details page to display steps as ordered list
+- [X] T141 [P] [US4] Create progressive disclosure for steps in activity slot list
 
 ### Component Tests (Frontend)
 
-- [ ] T142 [US4] Create unit tests for StepManager in frontend/src/components/step-manager.test.tsx
-- [ ] T143 [US4] Test adding step appends to list
-- [ ] T144 [US4] Test removing step renumbers remaining steps
-- [ ] T145 [US4] Test "Add Step" button disabled at 20 steps
-- [ ] T146 [US4] Test character counter per step
-- [ ] T147 [US4] Test validation prevents empty step text
+- [X] T142 [US4] Create unit tests for StepManager in frontend/src/components/step-manager.test.tsx
+- [X] T143 [US4] Test adding step appends to list
+- [X] T144 [US4] Test removing step renumbers remaining steps
+- [X] T145 [US4] Test "Add Step" button disabled at 20 steps
+- [X] T146 [US4] Test character counter per step
+- [X] T147 [US4] Test validation prevents empty step text
 
 ### Integration Tests (Frontend)
 

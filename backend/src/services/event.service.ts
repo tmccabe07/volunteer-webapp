@@ -35,14 +35,15 @@ export class EventService {
 
     // Validate activity types exist
     const activityTypeIds = activitySlots.map(slot => slot.activityTypeId);
+    const uniqueActivityTypeIds = [...new Set(activityTypeIds)];
     const existingActivityTypes = await prisma.activityType.findMany({
       where: {
-        id: { in: activityTypeIds },
+        id: { in: uniqueActivityTypeIds },
         deletedAt: null,
       },
     });
 
-    if (existingActivityTypes.length !== activityTypeIds.length) {
+    if (existingActivityTypes.length !== uniqueActivityTypeIds.length) {
       throw new Error('One or more activity types do not exist');
     }
 
@@ -66,6 +67,13 @@ export class EventService {
           create: activitySlots.map(slot => ({
             activityTypeId: slot.activityTypeId,
             capacity: slot.capacity ?? null,
+            description: slot.description ?? null,
+            steps: slot.steps && slot.steps.length > 0 ? {
+              create: slot.steps.map((step, index) => ({
+                orderIndex: index,
+                stepText: step.stepText,
+              })),
+            } : undefined,
           })),
         },
       },
@@ -73,6 +81,9 @@ export class EventService {
         activitySlots: {
           include: {
             activityType: true,
+            steps: {
+              orderBy: { orderIndex: 'asc' },
+            },
           },
         },
         createdBy: {
@@ -200,14 +211,15 @@ export class EventService {
     // If activity slots are being updated, validate them
     if (activitySlots) {
       const activityTypeIds = activitySlots.map(slot => slot.activityTypeId);
+      const uniqueActivityTypeIds = [...new Set(activityTypeIds)];
       const existingActivityTypes = await prisma.activityType.findMany({
         where: {
-          id: { in: activityTypeIds },
+          id: { in: uniqueActivityTypeIds },
           deletedAt: null,
         },
       });
 
-      if (existingActivityTypes.length !== activityTypeIds.length) {
+      if (existingActivityTypes.length !== uniqueActivityTypeIds.length) {
         throw new Error('One or more activity types do not exist');
       }
 
@@ -238,6 +250,7 @@ export class EventService {
             create: activitySlots.map(slot => ({
               activityTypeId: slot.activityTypeId,
               capacity: slot.capacity ?? null,
+              description: slot.description ?? null,
             })),
           },
         }),
@@ -480,6 +493,9 @@ export class EventService {
                 createdAt: 'asc',
               },
             },
+            steps: {
+              orderBy: { orderIndex: 'asc' },
+            },
           },
         },
         createdBy: {
@@ -574,6 +590,9 @@ export class EventService {
                 volunteerId: true,
               },
             },
+            steps: {
+              orderBy: { orderIndex: 'asc' },
+            },
           },
         },
         createdBy: {
@@ -598,6 +617,8 @@ export class EventService {
           id: slot.id,
           activityType: slot.activityType,
           capacity: slot.capacity,
+          description: slot.description,
+          steps: slot.steps,
           signedUpCount,
           currentUserSignup: currentUserSignup
             ? { id: currentUserSignup.id, withdrawn: false }

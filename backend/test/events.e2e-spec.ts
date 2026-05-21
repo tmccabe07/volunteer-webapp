@@ -37,6 +37,7 @@ describe('Events API (e2e)', () => {
   });
 
   afterEach(async () => {
+    await prisma.activitySlotStep.deleteMany();
     await prisma.signup.deleteMany();
     await prisma.activitySlot.deleteMany();
     await prisma.event.deleteMany();
@@ -1573,6 +1574,634 @@ describe('Events API (e2e)', () => {
       return request(app.getHttpServer())
         .delete(`/api/events/${event.id}/slots/${activitySlot!.id}/signup`)
         .expect(401);
+    });
+  });
+
+  // Phase 5: User Story 3 - Activity Slot Descriptions
+  describe('Activity Slot Descriptions (US3)', () => {
+    // T082: Create activity slot with description
+    it('should create activity slot with custom description', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const activityType = await createTestActivityType({
+        name: 'Event Volunteer US3',
+        pointValue: 5,
+      });
+
+      const cookies = await loginUser('leader@example.com', password);
+
+      return request(app.getHttpServer())
+        .post('/api/events')
+        .set('Cookie', cookies)
+        .send({
+          title: 'Spring Campout',
+          description: 'Outdoor camping event',
+          eventDate: '2026-07-01T10:00:00Z',
+          activitySlots: [
+            {
+              activityTypeId: activityType.id,
+              capacity: 5,
+              description: 'Run Lion station for safety',
+            },
+          ],
+        })
+        .expect(201)
+        .expect((res) => {
+          expect(res.body.activitySlots).toHaveLength(1);
+          expect(res.body.activitySlots[0].description).toBe('Run Lion station for safety');
+        });
+    });
+
+    // T083: Create activity slot without description (null)
+    it('should create activity slot without description (defaults to null)', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const activityType = await createTestActivityType({
+        name: 'Event Volunteer US3-2',
+        pointValue: 5,
+      });
+
+      const cookies = await loginUser('leader@example.com', password);
+
+      return request(app.getHttpServer())
+        .post('/api/events')
+        .set('Cookie', cookies)
+        .send({
+          title: 'Summer BBQ',
+          eventDate: '2026-08-01T10:00:00Z',
+          activitySlots: [
+            {
+              activityTypeId: activityType.id,
+              capacity: 10,
+              // No description provided
+            },
+          ],
+        })
+        .expect(201)
+        .expect((res) => {
+          expect(res.body.activitySlots).toHaveLength(1);
+          expect(res.body.activitySlots[0].description).toBeNull();
+        });
+    });
+
+    // T084: Reject description > 500 chars
+    it('should reject activity slot description exceeding 500 characters', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const activityType = await createTestActivityType();
+
+      const cookies = await loginUser('leader@example.com', password);
+
+      const longDescription = 'A'.repeat(501); // 501 characters
+
+      return request(app.getHttpServer())
+        .post('/api/events')
+        .set('Cookie', cookies)
+        .send({
+          title: 'Event With Long Description',
+          eventDate: '2026-07-01T10:00:00Z',
+          activitySlots: [
+            {
+              activityTypeId: activityType.id,
+              capacity: 10,
+              description: longDescription,
+            },
+          ],
+        })
+        .expect(400);
+    });
+
+    // T085: Update activity slot description
+    it('should update activity slot description via event update', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      const leader = await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const activityType = await createTestActivityType();
+
+      const event = await createTestEvent(leader.id, {
+        title: 'Event To Update',
+        eventDate: new Date('2026-07-01'),
+      });
+
+      const cookies = await loginUser('leader@example.com', password);
+
+      return request(app.getHttpServer())
+        .put(`/api/events/${event.id}`)
+        .set('Cookie', cookies)
+        .send({
+          title: 'Updated Event',
+          activitySlots: [
+            {
+              activityTypeId: activityType.id,
+              capacity: 5,
+              description: 'Updated: Lead campfire songs and stories',
+            },
+          ],
+        })
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.activitySlots).toHaveLength(1);
+          expect(res.body.activitySlots[0].description).toBe('Updated: Lead campfire songs and stories');
+        });
+    });
+
+    // T086: Clear description (set to null)
+    it('should allow clearing activity slot description', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      const leader = await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const activityType = await createTestActivityType();
+
+      const event = await createTestEvent(leader.id, {
+        title: 'Event With Description',
+        eventDate: new Date('2026-07-01'),
+      });
+
+      const cookies = await loginUser('leader@example.com', password);
+
+      return request(app.getHttpServer())
+        .put(`/api/events/${event.id}`)
+        .set('Cookie', cookies)
+        .send({
+          title: 'Event With Description',
+          activitySlots: [
+            {
+              activityTypeId: activityType.id,
+              capacity: 5,
+              // Don't include description field to clear it
+            },
+          ],
+        })
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.activitySlots).toHaveLength(1);
+          expect(res.body.activitySlots[0].description).toBeNull();
+        });
+    });
+
+    // Verify GET returns description field
+    it('should return description field when retrieving event details', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      const leader = await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const activityType = await createTestActivityType();
+
+      // Create event with description via direct prisma call (simulating complete flow)
+      const event = await prisma.event.create({
+        data: {
+          title: 'Event With Custom Slot Description',
+          eventDate: new Date('2026-07-01'),
+          createdById: leader.id,
+          activitySlots: {
+            create: [
+              {
+                activityTypeId: activityType.id,
+                capacity: 5,
+                description: 'Custom description for this slot',
+              },
+            ],
+          },
+        },
+        include: {
+          activitySlots: true,
+        },
+      });
+
+      await createTestVolunteer({
+        email: 'parent@example.com',
+        passwordHash,
+        authTier: 'PARENT',
+      });
+
+      const cookies = await loginUser('parent@example.com', password);
+
+      return request(app.getHttpServer())
+        .get(`/api/events/${event.id}`)
+        .set('Cookie', cookies)
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.activitySlots).toHaveLength(1);
+          expect(res.body.activitySlots[0]).toHaveProperty('description');
+          expect(res.body.activitySlots[0].description).toBe('Custom description for this slot');
+        });
+    });
+
+    // Regression test: Multiple slots with same activity type but different descriptions
+    it('should allow multiple activity slots with same activity type and different descriptions', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const activityType = await createTestActivityType({
+        name: 'Event Volunteer Multi',
+        pointValue: 5,
+      });
+
+      const cookies = await loginUser('leader@example.com', password);
+
+      return request(app.getHttpServer())
+        .post('/api/events')
+        .set('Cookie', cookies)
+        .send({
+          title: 'Multi-Station Event',
+          description: 'Event with multiple stations using same activity type',
+          eventDate: '2026-09-01T10:00:00Z',
+          activitySlots: [
+            {
+              activityTypeId: activityType.id,
+              capacity: 2,
+              description: 'Station 1: Setup chairs and tables',
+            },
+            {
+              activityTypeId: activityType.id,
+              capacity: 3,
+              description: 'Station 2: Manage registration desk',
+            },
+            {
+              activityTypeId: activityType.id,
+              capacity: 2,
+              description: 'Station 3: Lead cleanup crew',
+            },
+          ],
+        })
+        .expect(201)
+        .expect((res) => {
+          expect(res.body.activitySlots).toHaveLength(3);
+          expect(res.body.activitySlots[0].description).toBe('Station 1: Setup chairs and tables');
+          expect(res.body.activitySlots[0].activityType.name).toBe('Event Volunteer Multi');
+          expect(res.body.activitySlots[1].description).toBe('Station 2: Manage registration desk');
+          expect(res.body.activitySlots[1].activityType.name).toBe('Event Volunteer Multi');
+          expect(res.body.activitySlots[2].description).toBe('Station 3: Lead cleanup crew');
+          expect(res.body.activitySlots[2].activityType.name).toBe('Event Volunteer Multi');
+        });
+    });
+  });
+
+  describe('Activity Slot Steps (US4)', () => {
+    // T121: Create activity slot with steps
+    it('should create event with activity slot containing steps', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      const leader = await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const activityType = await createTestActivityType();
+      const cookies = await loginUser('leader@example.com', password);
+
+      return request(app.getHttpServer())
+        .post('/api/events')
+        .set('Cookie', cookies)
+        .send({
+          title: 'Event with Steps',
+          description: 'Test event with numbered steps',
+          eventDate: '2026-07-15T10:00:00Z',
+          activitySlots: [
+            {
+              activityTypeId: activityType.id,
+              capacity: 5,
+              description: 'Run Lion station for safety',
+              steps: [
+                { stepText: 'Gather the lions in a circle' },
+                { stepText: 'Hand out the role placards' },
+                { stepText: 'Explain the game rules' },
+              ],
+            },
+          ],
+        })
+        .expect(201)
+        .expect((res) => {
+          expect(res.body.activitySlots).toHaveLength(1);
+          const slot = res.body.activitySlots[0];
+          expect(slot.steps).toHaveLength(3);
+          expect(slot.steps[0].stepText).toBe('Gather the lions in a circle');
+          expect(slot.steps[0].orderIndex).toBe(0);
+          expect(slot.steps[1].stepText).toBe('Hand out the role placards');
+          expect(slot.steps[1].orderIndex).toBe(1);
+          expect(slot.steps[2].stepText).toBe('Explain the game rules');
+          expect(slot.steps[2].orderIndex).toBe(2);
+        });
+    });
+
+    // T122: Add step to activity slot (POST)
+    it('should add a step to existing activity slot', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      const leader = await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const activityType = await createTestActivityType();
+      const event = await createTestEvent(leader.id, {
+        title: 'Event with Activity Slot',
+        eventDate: new Date('2026-07-15'),
+      });
+
+      // Get activity slot from event
+      const activitySlot = await prisma.activitySlot.findFirst({
+        where: { eventId: event.id },
+      });
+
+      const cookies = await loginUser('leader@example.com', password);
+
+      return request(app.getHttpServer())
+        .post(`/api/activity-slots/${activitySlot!.id}/steps`)
+        .set('Cookie', cookies)
+        .send({ stepText: 'New step instruction' })
+        .expect(201)
+        .expect((res) => {
+          expect(res.body.step).toBeDefined();
+          expect(res.body.step.stepText).toBe('New step instruction');
+          expect(res.body.step.activitySlotId).toBe(activitySlot!.id);
+          expect(res.body.step.orderIndex).toBe(0);
+        });
+    });
+
+    // T123: Remove step and verify renumbering
+    it('should remove step and renumber remaining steps', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      const leader = await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const activityType = await createTestActivityType();
+      const event = await createTestEvent(leader.id, {
+        title: 'Event with Steps',
+        eventDate: new Date('2026-07-15'),
+      });
+
+      const activitySlot = await prisma.activitySlot.findFirst({
+        where: { eventId: event.id },
+      });
+
+      // Create 3 steps
+      const step1 = await prisma.activitySlotStep.create({
+        data: { activitySlotId: activitySlot!.id, orderIndex: 0, stepText: 'Step 1' },
+      });
+      const step2 = await prisma.activitySlotStep.create({
+        data: { activitySlotId: activitySlot!.id, orderIndex: 1, stepText: 'Step 2' },
+      });
+      const step3 = await prisma.activitySlotStep.create({
+        data: { activitySlotId: activitySlot!.id, orderIndex: 2, stepText: 'Step 3' },
+      });
+
+      const cookies = await loginUser('leader@example.com', password);
+
+      // Delete middle step
+      await request(app.getHttpServer())
+        .delete(`/api/activity-slots/${activitySlot!.id}/steps/${step2.id}`)
+        .set('Cookie', cookies)
+        .expect(204);
+
+      // Verify remaining steps are renumbered
+      const remainingSteps = await prisma.activitySlotStep.findMany({
+        where: { activitySlotId: activitySlot!.id },
+        orderBy: { orderIndex: 'asc' },
+      });
+
+      expect(remainingSteps).toHaveLength(2);
+      expect(remainingSteps[0].id).toBe(step1.id);
+      expect(remainingSteps[0].orderIndex).toBe(0);
+      expect(remainingSteps[1].id).toBe(step3.id);
+      expect(remainingSteps[1].orderIndex).toBe(1); // Renumbered from 2 to 1
+    });
+
+    // T124: Reorder steps with valid stepIds
+    it('should reorder steps correctly', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      const leader = await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const event = await createTestEvent(leader.id, {
+        title: 'Event with Steps',
+        eventDate: new Date('2026-07-15'),
+      });
+
+      const activitySlot = await prisma.activitySlot.findFirst({
+        where: { eventId: event.id },
+      });
+
+      // Create 3 steps
+      const step1 = await prisma.activitySlotStep.create({
+        data: { activitySlotId: activitySlot!.id, orderIndex: 0, stepText: 'Step 1' },
+      });
+      const step2 = await prisma.activitySlotStep.create({
+        data: { activitySlotId: activitySlot!.id, orderIndex: 1, stepText: 'Step 2' },
+      });
+      const step3 = await prisma.activitySlotStep.create({
+        data: { activitySlotId: activitySlot!.id, orderIndex: 2, stepText: 'Step 3' },
+      });
+
+      const cookies = await loginUser('leader@example.com', password);
+
+      // Reorder: [1, 2, 3] -> [3, 1, 2]
+      return request(app.getHttpServer())
+        .patch(`/api/activity-slots/${activitySlot!.id}/steps/reorder`)
+        .set('Cookie', cookies)
+        .send({ stepIds: [step3.id, step1.id, step2.id] })
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.steps).toHaveLength(3);
+          expect(res.body.steps[0].id).toBe(step3.id);
+          expect(res.body.steps[0].orderIndex).toBe(0);
+          expect(res.body.steps[1].id).toBe(step1.id);
+          expect(res.body.steps[1].orderIndex).toBe(1);
+          expect(res.body.steps[2].id).toBe(step2.id);
+          expect(res.body.steps[2].orderIndex).toBe(2);
+        });
+    });
+
+    // T125: Reject > 20 steps (400 error)
+    it('should reject more than 20 steps per activity slot', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      const leader = await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const activityType = await createTestActivityType();
+      const cookies = await loginUser('leader@example.com', password);
+
+      const steps = Array.from({ length: 21 }, (_, i) => ({
+        stepText: `Step ${i + 1}`,
+      }));
+
+      return request(app.getHttpServer())
+        .post('/api/events')
+        .set('Cookie', cookies)
+        .send({
+          title: 'Event with Too Many Steps',
+          eventDate: '2026-07-15T10:00:00Z',
+          activitySlots: [
+            {
+              activityTypeId: activityType.id,
+              capacity: 5,
+              steps,
+            },
+          ],
+        })
+        .expect(400);
+    });
+
+    // T126: Reject empty stepText (400 error)
+    it('should reject empty stepText', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      const leader = await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const event = await createTestEvent(leader.id, {
+        title: 'Event',
+        eventDate: new Date('2026-07-15'),
+      });
+
+      const activitySlot = await prisma.activitySlot.findFirst({
+        where: { eventId: event.id },
+      });
+
+      const cookies = await loginUser('leader@example.com', password);
+
+      return request(app.getHttpServer())
+        .post(`/api/activity-slots/${activitySlot!.id}/steps`)
+        .set('Cookie', cookies)
+        .send({ stepText: '' })
+        .expect(400);
+    });
+
+    // T127: Reject stepText > 200 chars (400 error)
+    it('should reject stepText exceeding 200 characters', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      const leader = await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const event = await createTestEvent(leader.id, {
+        title: 'Event',
+        eventDate: new Date('2026-07-15'),
+      });
+
+      const activitySlot = await prisma.activitySlot.findFirst({
+        where: { eventId: event.id },
+      });
+
+      const cookies = await loginUser('leader@example.com', password);
+
+      const longStepText = 'a'.repeat(201);
+
+      return request(app.getHttpServer())
+        .post(`/api/activity-slots/${activitySlot!.id}/steps`)
+        .set('Cookie', cookies)
+        .send({ stepText: longStepText })
+        .expect(400);
+    });
+
+    // T128: GET activity slot returns steps in correct order
+    it('should return steps in correct order when fetching event', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      const leader = await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const activityType = await createTestActivityType();
+      const cookies = await loginUser('leader@example.com', password);
+
+      // Create event with steps
+      const createRes = await request(app.getHttpServer())
+        .post('/api/events')
+        .set('Cookie', cookies)
+        .send({
+          title: 'Event with Ordered Steps',
+          eventDate: '2026-07-15T10:00:00Z',
+          activitySlots: [
+            {
+              activityTypeId: activityType.id,
+              capacity: 5,
+              steps: [
+                { stepText: 'First step' },
+                { stepText: 'Second step' },
+                { stepText: 'Third step' },
+              ],
+            },
+          ],
+        })
+        .expect(201);
+
+      const eventId = createRes.body.id;
+
+      // Fetch event and verify step order
+      return request(app.getHttpServer())
+        .get(`/api/events/${eventId}`)
+        .set('Cookie', cookies)
+        .expect(200)
+        .expect((res) => {
+          const slot = res.body.activitySlots[0];
+          expect(slot.steps).toHaveLength(3);
+          expect(slot.steps[0].stepText).toBe('First step');
+          expect(slot.steps[0].orderIndex).toBe(0);
+          expect(slot.steps[1].stepText).toBe('Second step');
+          expect(slot.steps[1].orderIndex).toBe(1);
+          expect(slot.steps[2].stepText).toBe('Third step');
+          expect(slot.steps[2].orderIndex).toBe(2);
+        });
     });
   });
 });
