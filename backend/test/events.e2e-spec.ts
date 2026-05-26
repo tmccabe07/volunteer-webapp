@@ -425,6 +425,72 @@ describe('Events API (e2e)', () => {
       expect(response.body.eventDate).toBe('2020-01-01T10:00:00.000Z');
     });
 
+    it('should create event with past date (retroactive)', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const activityType = await createTestActivityType();
+      const cookies = await loginUser('leader@example.com', password);
+
+      // Create event with date 5 days in the past
+      const pastDate = new Date();
+      pastDate.setDate(pastDate.getDate() - 5);
+
+      return request(app.getHttpServer())
+        .post('/api/events')
+        .set('Cookie', cookies)
+        .send({
+          title: 'Past Event',
+          description: 'Event that already happened',
+          eventDate: pastDate.toISOString(),
+          activitySlots: [
+            {
+              activityTypeId: activityType.id,
+              capacity: 10,
+            },
+          ],
+        })
+        .expect(201)
+        .expect((res) => {
+          expect(res.body).toHaveProperty('id');
+          expect(res.body.title).toBe('Past Event');
+        });
+    });
+
+    it('should create event with today date', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const activityType = await createTestActivityType();
+      const cookies = await loginUser('leader@example.com', password);
+
+      return request(app.getHttpServer())
+        .post('/api/events')
+        .set('Cookie', cookies)
+        .send({
+          title: 'Today Event',
+          description: 'Event happening today',
+          eventDate: new Date().toISOString(),
+          activitySlots: [
+            {
+              activityTypeId: activityType.id,
+              capacity: 10,
+            },
+          ],
+        })
+        .expect(201);
+    });
+
     it('should reject event with no activity slots', async () => {
       const password = 'Password123!';
       const passwordHash = await bcrypt.hash(password, 12);
@@ -739,6 +805,101 @@ describe('Events API (e2e)', () => {
         .expect(400)
         .expect((res) => {
           expect(res.body.error).toBe('Invalid input');
+        });
+    });
+  });
+
+  describe('GET /api/events - Retroactive Field', () => {
+    it('should include isRetroactive=true for events created after event date', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      const leader = await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      // Create event with past date (retroactive)
+      const pastDate = new Date();
+      pastDate.setDate(pastDate.getDate() - 5);
+      
+      await createTestEvent(leader.id, {
+        title: 'Past Event',
+        eventDate: pastDate,
+      });
+
+      const cookies = await loginUser('leader@example.com', password);
+
+      return request(app.getHttpServer())
+        .get('/api/events?upcoming=false')
+        .set('Cookie', cookies)
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.events).toHaveLength(1);
+          expect(res.body.events[0]).toHaveProperty('isRetroactive');
+          expect(res.body.events[0].isRetroactive).toBe(true);
+        });
+    });
+
+    it('should include isRetroactive=false for events created before event date', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      const leader = await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      // Create event with future date (planned in advance)
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 10);
+      
+      await createTestEvent(leader.id, {
+        title: 'Future Event',
+        eventDate: futureDate,
+      });
+
+      const cookies = await loginUser('leader@example.com', password);
+
+      return request(app.getHttpServer())
+        .get('/api/events')
+        .set('Cookie', cookies)
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.events).toHaveLength(1);
+          expect(res.body.events[0]).toHaveProperty('isRetroactive');
+          expect(res.body.events[0].isRetroactive).toBe(false);
+        });
+    });
+  });
+
+  describe('GET /api/events/:id - Retroactive Field', () => {
+    it('should include isRetroactive field in event detail', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      const leader = await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const pastDate = new Date();
+      pastDate.setDate(pastDate.getDate() - 3);
+      
+      const event = await createTestEvent(leader.id, {
+        title: 'Past Event',
+        eventDate: pastDate,
+      });
+
+      const cookies = await loginUser('leader@example.com', password);
+
+      return request(app.getHttpServer())
+        .get(`/api/events/${event.id}`)
+        .set('Cookie', cookies)
+        .expect(200)
+        .expect((res) => {
+          expect(res.body).toHaveProperty('isRetroactive');
+          expect(res.body.isRetroactive).toBe(true);
         });
     });
   });
@@ -1213,6 +1374,142 @@ describe('Events API (e2e)', () => {
           expect(res.body.pointsAwarded[0].volunteerId).toBe(manualVolunteer.id);
           expect(res.body.pointsAwarded[0].points).toBe(15);
         });
+    });
+
+    // User Story 2: Retroactive Event with Manual Volunteers
+    it('should complete retroactive event with manual volunteers', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      const leader = await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const manualVolunteer = await createTestVolunteer({
+        email: 'manual@example.com',
+        passwordHash,
+        authTier: 'PARENT',
+      });
+
+      const activityType = await createTestActivityType({
+        name: 'Event Setup',
+        pointValue: 10,
+      });
+
+      // Create retroactive event (past date)
+      const pastDate = new Date();
+      pastDate.setDate(pastDate.getDate() - 7);
+      
+      const event = await createTestEvent(leader.id, {
+        title: 'Past Community Service',
+        eventDate: pastDate,
+      });
+
+      const activitySlot = await prisma.activitySlot.findFirst({
+        where: { eventId: event.id },
+      });
+
+      await prisma.activitySlot.update({
+        where: { id: activitySlot!.id },
+        data: { activityTypeId: activityType.id },
+      });
+
+      const cookies = await loginUser('leader@example.com', password);
+
+      const response = await request(app.getHttpServer())
+        .post(`/api/events/${event.id}/complete`)
+        .set('Cookie', cookies)
+        .send({
+          manualVolunteers: [
+            {
+              volunteerId: manualVolunteer.id,
+              activitySlotId: activitySlot!.id,
+            },
+          ],
+        })
+        .expect(201);
+
+      expect(response.body.pointsAwarded).toHaveLength(1);
+      expect(response.body.pointsAwarded[0].volunteerId).toBe(manualVolunteer.id);
+      expect(response.body.pointsAwarded[0].points).toBe(10);
+
+      // Verify point event was created
+      const pointEvent = await prisma.pointEvent.findFirst({
+        where: {
+          volunteerId: manualVolunteer.id,
+          referenceId: event.id,
+        },
+      });
+
+      expect(pointEvent).toBeTruthy();
+      expect(pointEvent!.points).toBe(10);
+      expect(pointEvent!.reason).toContain('manual');
+    });
+
+    it('should verify point event reason includes manual indicator for retroactive events', async () => {
+      const password = 'Password123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+      const leader = await createTestVolunteer({
+        email: 'leader@example.com',
+        passwordHash,
+        authTier: 'LEADER',
+      });
+
+      const manualVolunteer = await createTestVolunteer({
+        email: 'manual2@example.com',
+        passwordHash,
+        authTier: 'PARENT',
+      });
+
+      const activityType = await createTestActivityType({
+        name: 'Event Cleanup',
+        pointValue: 5,
+      });
+
+      // Create retroactive event
+      const pastDate = new Date();
+      pastDate.setDate(pastDate.getDate() - 3);
+      
+      const event = await createTestEvent(leader.id, {
+        eventDate: pastDate,
+      });
+
+      const activitySlot = await prisma.activitySlot.findFirst({
+        where: { eventId: event.id },
+      });
+
+      await prisma.activitySlot.update({
+        where: { id: activitySlot!.id },
+        data: { activityTypeId: activityType.id },
+      });
+
+      const cookies = await loginUser('leader@example.com', password);
+
+      await request(app.getHttpServer())
+        .post(`/api/events/${event.id}/complete`)
+        .set('Cookie', cookies)
+        .send({
+          manualVolunteers: [
+            {
+              volunteerId: manualVolunteer.id,
+              activitySlotId: activitySlot!.id,
+            },
+          ],
+        })
+        .expect(201);
+
+      // Verify the reason field includes "manual"
+      const pointEvent = await prisma.pointEvent.findFirst({
+        where: {
+          volunteerId: manualVolunteer.id,
+          referenceId: event.id,
+        },
+      });
+
+      expect(pointEvent).toBeTruthy();
+      expect(pointEvent!.reason).toContain('manual');
+      expect(pointEvent!.reason).toContain('Event Cleanup');
     });
 
     it('should exclude specified signups from receiving points', async () => {
