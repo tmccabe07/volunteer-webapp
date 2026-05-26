@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Fragment, useState, useEffect } from 'react';
 import { useRequireTier } from '@/lib/auth-context';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,7 @@ export default function AdminRolesPage() {
       const response = await configService.getVolunteerRoles();
       setRoles(response.roles);
       setError('');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error loading volunteer roles:', err);
       setError('Failed to load volunteer roles');
     } finally {
@@ -42,7 +42,7 @@ export default function AdminRolesPage() {
       await loadRoles();
       setShowForm(false);
       setError('');
-    } catch (err: any) {
+    } catch (err: unknown) {
       throw err; // Let the form handle the error display
     }
   };
@@ -55,7 +55,7 @@ export default function AdminRolesPage() {
       await loadRoles();
       setEditingRole(null);
       setError('');
-    } catch (err: any) {
+    } catch (err: unknown) {
       throw err; // Let the form handle the error display
     }
   };
@@ -75,8 +75,9 @@ export default function AdminRolesPage() {
       await configService.deleteVolunteerRole(roleId);
       await loadRoles();
       setError('');
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.error || 'Failed to delete volunteer role';
+    } catch (err: unknown) {
+      const maybeResponse = (err as { response?: { data?: { error?: string } } }).response;
+      const errorMessage = maybeResponse?.data?.error || 'Failed to delete volunteer role';
       setError(errorMessage);
     } finally {
       setDeletingRoleId(null);
@@ -194,8 +195,8 @@ export default function AdminRolesPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {roles.map(role => (
-                    <>
-                      <tr key={role.id} className="hover:bg-gray-50">
+                    <Fragment key={role.id}>
+                      <tr className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">{role.name}</div>
                           {role.description && (
@@ -264,7 +265,7 @@ export default function AdminRolesPage() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   ))}
                 </tbody>
               </table>

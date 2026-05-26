@@ -26,7 +26,6 @@ export const updateProfileSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   phone: z.string().nullable().optional(),
   leaderboardOptIn: z.boolean().optional(),
-  childrenRanks: z.array(RankLevelEnum).optional(),
 });
 
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
@@ -37,9 +36,20 @@ export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
  */
 export const assignRoleSchema = z.object({
   roleId: z.string().min(1),
+  denIds: z.array(z.string().min(1)).max(20).optional(),
 });
 
 export type AssignRoleInput = z.infer<typeof assignRoleSchema>;
+
+/**
+ * GET /api/volunteers/roles/assignable-dens
+ * List dens available for den-scoped role assignment
+ */
+export const listAssignableDensSchema = z.object({
+  rankLevel: RankLevelEnum.optional(),
+});
+
+export type ListAssignableDensInput = z.infer<typeof listAssignableDensSchema>;
 
 /**
  * GET /api/volunteers

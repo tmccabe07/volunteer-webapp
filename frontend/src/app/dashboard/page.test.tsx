@@ -531,6 +531,7 @@ describe('DashboardPage', () => {
         expect(mockListEvents).toHaveBeenCalledWith({
           upcoming: true,
           limit: 5,
+          scopeType: 'ALL',
         });
       });
     });

@@ -6,7 +6,7 @@
  */
 
 import { Injectable } from '@nestjs/common';
-import { PointEventType, NotificationType } from '@prisma/client';
+import { PointEventType, NotificationType, EventScope, AuthTier, RoleScope } from '@prisma/client';
 import prisma from '../utils/prisma';
 import type { CreateEventInput, UpdateEventInput, CompleteEventInput } from '../utils/validation/event.schema';
 import { NotificationService } from './notification.service';
@@ -15,12 +15,183 @@ import { validateEventTimes } from '../utils/time-validation.util';
 @Injectable()
 export class EventService {
   constructor(private readonly notificationService: NotificationService) {}
+
+  private deriveRankLevels(event: { targetDens?: Array<{ den: { rankLevel: string } }>; rankLevel?: string | null }): string[] {
+    const targetDenRanks = [...new Set((event.targetDens || []).map((target) => target.den.rankLevel))];
+    if (targetDenRanks.length > 0) {
+      return targetDenRanks;
+    }
+    return event.rankLevel ? [event.rankLevel] : [];
+  }
+
+  private async getAccessibleDenIds(userId: string, authTier: string): Promise<string[]> {
+    if (authTier === AuthTier.ADMIN) {
+      const dens = await prisma.den.findMany({
+        where: { isActive: true, deletedAt: null },
+        select: { id: true },
+      });
+      return dens.map((d) => d.id);
+    }
+
+    const assignments = await prisma.volunteerToRole.findMany({
+      where: {
+        volunteerId: userId,
+        removedAt: null,
+        role: {
+          deletedAt: null,
+          grantsTier: {
+            in: [AuthTier.LEADER, AuthTier.ADMIN],
+          },
+        },
+      },
+      include: {
+        role: {
+          select: {
+            scopeType: true,
+            rankLevel: true,
+          },
+        },
+      },
+    });
+
+    if (assignments.some((a) => a.role.scopeType === 'PACK')) {
+      const dens = await prisma.den.findMany({
+        where: { isActive: true, deletedAt: null },
+        select: { id: true },
+      });
+      return dens.map((d) => d.id);
+    }
+
+    const denIds = new Set<string>();
+    const denNumbers = new Set<number>();
+    const rankLevels = new Set<string>();
+
+    for (const assignment of assignments) {
+      if (assignment.denId) {
+        denIds.add(assignment.denId);
+      }
+      if (assignment.denNumber) {
+        denNumbers.add(assignment.denNumber);
+      }
+      if (assignment.role.scopeType === 'RANK' && assignment.role.rankLevel) {
+        rankLevels.add(assignment.role.rankLevel);
+      }
+    }
+
+    const denRows = await prisma.den.findMany({
+      where: {
+        isActive: true,
+        deletedAt: null,
+        OR: [
+          ...(denIds.size > 0 ? [{ id: { in: Array.from(denIds) } }] : []),
+          ...(denNumbers.size > 0 ? [{ denNumber: { in: Array.from(denNumbers) } }] : []),
+          ...(rankLevels.size > 0 ? [{ rankLevel: { in: Array.from(rankLevels) as any } }] : []),
+        ],
+      },
+      select: { id: true },
+    });
+
+    return denRows.map((d) => d.id);
+  }
+
+  private async validateAndResolveDenTargets(
+    scopeType: EventScope,
+    targetDenIds: string[] | undefined,
+    userId: string,
+    authTier: string,
+  ): Promise<string[]> {
+    if (scopeType !== EventScope.DEN) {
+      return [];
+    }
+
+    const accessibleDenIds = await this.getAccessibleDenIds(userId, authTier);
+    if (accessibleDenIds.length === 0) {
+      throw new Error('No accessible dens found for this user');
+    }
+
+    const requestedDenIds = targetDenIds && targetDenIds.length > 0
+      ? [...new Set(targetDenIds)]
+      : accessibleDenIds.length === 1
+      ? [accessibleDenIds[0]]
+      : [];
+
+    if (requestedDenIds.length === 0) {
+      throw new Error('At least one den must be selected for den-scoped events');
+    }
+
+    const invalid = requestedDenIds.filter((id) => !accessibleDenIds.includes(id));
+    if (invalid.length > 0) {
+      throw new Error('One or more selected dens are outside your scope');
+    }
+
+    return requestedDenIds;
+  }
+
+  private async validatePlannedRequirements(
+    requirementIds: string[] | undefined,
+    scopeType: EventScope,
+    targetDenIds: string[],
+  ): Promise<string[]> {
+    const uniqueRequirementIds = [...new Set(requirementIds || [])];
+    if (uniqueRequirementIds.length === 0) {
+      return [];
+    }
+
+    const existingRequirements = await prisma.requirement.findMany({
+      where: { id: { in: uniqueRequirementIds } },
+      select: { id: true },
+    });
+
+    if (existingRequirements.length !== uniqueRequirementIds.length) {
+      throw new Error('One or more planned requirements do not exist');
+    }
+
+    if (scopeType === EventScope.DEN && targetDenIds.length > 0) {
+      const targetDens = await prisma.den.findMany({
+        where: { id: { in: targetDenIds }, deletedAt: null, isActive: true },
+        select: { rankLevel: true },
+      });
+
+      const allowedRanks = new Set(targetDens.map((den) => den.rankLevel));
+
+      const requirementRanks = await prisma.requirement.findMany({
+        where: { id: { in: uniqueRequirementIds } },
+        select: {
+          id: true,
+          adventure: {
+            select: {
+              rank: {
+                select: { rankLevel: true },
+              },
+            },
+          },
+        },
+      });
+
+      const invalidRequirementExists = requirementRanks.some(
+        (requirement) => !allowedRanks.has(requirement.adventure.rank.rankLevel)
+      );
+
+      if (invalidRequirementExists) {
+        throw new Error('Planned requirements must match the selected den rank(s)');
+      }
+    }
+
+    return uniqueRequirementIds;
+  }
+
   /**
    * Create a new event
    * Auto-sets recurringEndDate from PackConfig if isRecurring=true
    */
-  async createEvent(data: CreateEventInput, createdById: string) {
-    const { activitySlots, ...eventData } = data;
+  async createEvent(data: CreateEventInput, createdById: string, creatorTier: string) {
+    const {
+      activitySlots,
+      targetDenIds,
+      plannedRequirementIds,
+      scopeType = EventScope.PACK_WIDE,
+      ...eventData
+    } = data;
 
     // Validate activitySlots exist
     if (!activitySlots || activitySlots.length === 0) {
@@ -41,6 +212,19 @@ export class EventService {
       throw new Error('One or more activity types do not exist');
     }
 
+    const resolvedTargetDenIds = await this.validateAndResolveDenTargets(
+      scopeType,
+      targetDenIds,
+      createdById,
+      creatorTier,
+    );
+
+    const validatedPlannedRequirementIds = await this.validatePlannedRequirements(
+      plannedRequirementIds,
+      scopeType,
+      resolvedTargetDenIds,
+    );
+
     // Get recurring end date from pack config if recurring
     let recurringEndDate: Date | null = null;
     if (data.isRecurring) {
@@ -54,9 +238,22 @@ export class EventService {
     const event = await prisma.event.create({
       data: {
         ...eventData,
+        scopeType,
         rankLevel: eventData.rankLevel || null,
         recurringEndDate,
         createdById,
+        targetDens:
+          resolvedTargetDenIds.length > 0
+            ? {
+                create: resolvedTargetDenIds.map((denId) => ({ denId })),
+              }
+            : undefined,
+        plannedRequirements:
+          validatedPlannedRequirementIds.length > 0
+            ? {
+                create: validatedPlannedRequirementIds.map((requirementId) => ({ requirementId })),
+              }
+            : undefined,
         activitySlots: {
           create: activitySlots.map(slot => ({
             activityTypeId: slot.activityTypeId,
@@ -80,6 +277,37 @@ export class EventService {
             },
           },
         },
+        targetDens: {
+          include: {
+            den: {
+              select: {
+                id: true,
+                name: true,
+                denNumber: true,
+                rankLevel: true,
+              },
+            },
+          },
+        },
+        plannedRequirements: {
+          include: {
+            requirement: {
+              include: {
+                adventure: {
+                  select: {
+                    id: true,
+                    name: true,
+                    rank: {
+                      select: {
+                        rankLevel: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
         createdBy: {
           select: {
             id: true,
@@ -92,13 +320,16 @@ export class EventService {
     // Send notifications to relevant volunteers
     await this.notifyRelevantVolunteers(event);
 
-    return event;
+    return {
+      ...event,
+      derivedRankLevels: this.deriveRankLevels(event),
+    };
   }
 
   /**
    * Send notifications to volunteers who should know about a new event
    * - Pack-wide events: notify all active volunteers
-   * - Rank-specific events: notify volunteers with children in that rank
+    * - Den-scoped events: notify associated den parents and leaders
    */
   private async notifyRelevantVolunteers(event: any) {
     try {
@@ -115,7 +346,7 @@ export class EventService {
 
       let targetVolunteers: string[] = [];
 
-      if (!event.rankLevel) {
+      if (event.scopeType === EventScope.PACK_WIDE) {
         // Pack-wide event: notify all active volunteers
         const volunteers = await prisma.volunteer.findMany({
           where: { deletedAt: null },
@@ -123,15 +354,85 @@ export class EventService {
         });
         targetVolunteers = volunteers.map(v => v.id);
       } else {
-        // Rank-specific event: notify volunteers with children in that rank
-        const childRanks = await prisma.childRank.findMany({
-          where: {
-            rankLevel: event.rankLevel,
-            volunteer: { deletedAt: null },
-          },
-          select: { volunteerId: true },
-        });
-        targetVolunteers = [...new Set(childRanks.map(cr => cr.volunteerId))];
+        // Den-scoped event: notify den-associated parents and leaders.
+        const eventTargetDens: Array<{
+          denId?: string;
+          den?: { id: string; denNumber: number; rankLevel: string };
+        }> = event.targetDens || [];
+
+        const targetDenIds: string[] = [
+          ...new Set(
+            eventTargetDens
+              .map((target) => target.denId || target.den?.id)
+              .filter((denId): denId is string => typeof denId === 'string' && denId.length > 0)
+          ),
+        ];
+
+        const targetDenNumbers: number[] = [
+          ...new Set(
+            eventTargetDens
+              .map((target) => target.den?.denNumber)
+              .filter((denNumber): denNumber is number => typeof denNumber === 'number')
+          ),
+        ];
+
+        const targetDenRanks: string[] = [
+          ...new Set(
+            eventTargetDens
+              .map((target) => target.den?.rankLevel)
+              .filter((rankLevel): rankLevel is string => typeof rankLevel === 'string' && rankLevel.length > 0)
+          ),
+        ];
+
+        if (targetDenIds.length === 0) {
+          return;
+        }
+
+        const [leaderAssignments, parentLinks] = await Promise.all([
+          prisma.volunteerToRole.findMany({
+            where: {
+              removedAt: null,
+              volunteer: { deletedAt: null },
+              role: {
+                deletedAt: null,
+                grantsTier: { in: [AuthTier.LEADER, AuthTier.ADMIN] },
+              },
+              OR: [
+                { denId: { in: targetDenIds } },
+                ...(targetDenNumbers.length > 0 ? [{ denNumber: { in: targetDenNumbers } }] : []),
+                ...(targetDenRanks.length > 0
+                  ? [{ role: { scopeType: RoleScope.RANK, rankLevel: { in: targetDenRanks as any } } }]
+                  : []),
+                { role: { scopeType: RoleScope.PACK } },
+              ],
+            },
+            select: { volunteerId: true },
+          }),
+          prisma.parentChildLink.findMany({
+            where: {
+              status: 'APPROVED',
+              parent: { deletedAt: null },
+              childScout: {
+                deletedAt: null,
+                isActive: true,
+                denMemberships: {
+                  some: {
+                    validTo: null,
+                    denId: { in: targetDenIds },
+                  },
+                },
+              },
+            },
+            select: { parentId: true },
+          }),
+        ]);
+
+        targetVolunteers = [
+          ...new Set([
+            ...leaderAssignments.map((assignment) => assignment.volunteerId),
+            ...parentLinks.map((link) => link.parentId),
+          ]),
+        ];
       }
 
       // Create notifications for all target volunteers (excluding the event creator)
@@ -192,7 +493,35 @@ export class EventService {
       }
     }
 
-    const { activitySlots, ...eventData } = data;
+    const {
+      activitySlots,
+      targetDenIds,
+      scopeType,
+      plannedRequirementIds,
+      ...eventData
+    } = data;
+
+    if (scopeType !== undefined || targetDenIds !== undefined) {
+      throw new Error('Event scope and target dens cannot be changed after creation');
+    }
+
+    const existingTargetDenIds =
+      existingEvent.scopeType === EventScope.DEN
+        ? (
+            await prisma.eventTargetDen.findMany({
+              where: { eventId: existingEvent.id },
+              select: { denId: true },
+            })
+          ).map((entry) => entry.denId)
+        : [];
+
+    const validatedPlannedRequirementIds = plannedRequirementIds
+      ? await this.validatePlannedRequirements(
+          plannedRequirementIds,
+          existingEvent.scopeType,
+          existingTargetDenIds,
+        )
+      : undefined;
 
     // If activity slots are being updated, validate them
     if (activitySlots) {
@@ -231,6 +560,12 @@ export class EventService {
       data: {
         ...eventData,
         ...(recurringEndDate !== undefined && { recurringEndDate }),
+        ...(validatedPlannedRequirementIds && {
+          plannedRequirements: {
+            deleteMany: {},
+            create: validatedPlannedRequirementIds.map((requirementId) => ({ requirementId })),
+          },
+        }),
         ...(activitySlots && {
           activitySlots: {
             create: activitySlots.map(slot => ({
@@ -247,6 +582,37 @@ export class EventService {
             activityType: true,
           },
         },
+        targetDens: {
+          include: {
+            den: {
+              select: {
+                id: true,
+                name: true,
+                denNumber: true,
+                rankLevel: true,
+              },
+            },
+          },
+        },
+        plannedRequirements: {
+          include: {
+            requirement: {
+              include: {
+                adventure: {
+                  select: {
+                    id: true,
+                    name: true,
+                    rank: {
+                      select: {
+                        rankLevel: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
         createdBy: {
           select: {
             id: true,
@@ -256,7 +622,10 @@ export class EventService {
       },
     });
 
-    return event;
+    return {
+      ...event,
+      derivedRankLevels: this.deriveRankLevels(event),
+    };
   }
 
   /**
@@ -490,6 +859,37 @@ export class EventService {
             },
           },
         },
+        targetDens: {
+          include: {
+            den: {
+              select: {
+                id: true,
+                name: true,
+                denNumber: true,
+                rankLevel: true,
+              },
+            },
+          },
+        },
+        plannedRequirements: {
+          include: {
+            requirement: {
+              include: {
+                adventure: {
+                  select: {
+                    id: true,
+                    name: true,
+                    rank: {
+                      select: {
+                        rankLevel: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
         createdBy: {
           select: {
             id: true,
@@ -499,7 +899,14 @@ export class EventService {
       },
     });
 
-    return event;
+    if (!event) {
+      return event;
+    }
+
+    return {
+      ...event,
+      derivedRankLevels: this.deriveRankLevels(event),
+    };
   }
 
   /**
@@ -509,14 +916,53 @@ export class EventService {
     page: number,
     limit: number,
     filters: {
-      rankLevel?: string;
+      scopeType?: 'ALL' | 'PACK_WIDE' | 'DEN';
+      denIds?: string[];
       upcoming?: boolean;
       mySignups?: boolean;
-      userRankLevels?: string[];
     },
     currentUserId?: string,
   ) {
     const skip = (page - 1) * limit;
+
+    const uniqueDenIds = [...new Set(filters.denIds ?? [])];
+    const denRows = uniqueDenIds.length > 0
+      ? await prisma.den.findMany({
+          where: { id: { in: uniqueDenIds }, deletedAt: null, isActive: true },
+          select: { id: true, rankLevel: true },
+        })
+      : [];
+
+    const denRanks = [...new Set(denRows.map((den) => den.rankLevel))];
+    const hasScopeContext =
+      !!filters.scopeType ||
+      uniqueDenIds.length > 0;
+
+    const packWideCondition = {
+      OR: [
+        { scopeType: EventScope.PACK_WIDE },
+        {
+          AND: [
+            { targetDens: { none: {} } },
+            { rankLevel: null },
+          ],
+        },
+      ],
+    };
+
+    const denConditionParts = [
+      ...(uniqueDenIds.length > 0
+        ? [{ targetDens: { some: { denId: { in: uniqueDenIds } } } }]
+        : []),
+      ...(denRanks.length > 0
+        ? [{ targetDens: { some: { den: { rankLevel: { in: denRanks as any } } } } }]
+        : []),
+      ...(denRanks.length > 0
+        ? [{ AND: [{ targetDens: { none: {} } }, { rankLevel: { in: denRanks } }] }]
+        : []),
+    ];
+
+    const denCondition = denConditionParts.length > 0 ? { OR: denConditionParts } : null;
 
     // Build where clause
     const where: any = {
@@ -528,14 +974,20 @@ export class EventService {
       where.eventDate = { gte: new Date() };
     }
 
-    // Filter by rank level
-    if (filters.rankLevel) {
-      where.rankLevel = filters.rankLevel;
-    } else if (filters.userRankLevels && filters.userRankLevels.length > 0) {
-      // Show events for user's children's ranks + pack-wide
-      where.OR = [
-        { rankLevel: { in: filters.userRankLevels } },
-        { rankLevel: null }, // pack-wide events
+    if (hasScopeContext) {
+      const scopeType = filters.scopeType ?? 'ALL';
+      const scopeCondition =
+        scopeType === 'PACK_WIDE'
+          ? packWideCondition
+          : scopeType === 'DEN'
+          ? denCondition ?? { id: { in: [] } }
+          : {
+              OR: [packWideCondition, ...(denCondition ? [denCondition] : [])],
+            };
+
+      where.AND = [
+        { deletedAt: null },
+        scopeCondition,
       ];
     }
 
@@ -587,6 +1039,37 @@ export class EventService {
             },
           },
         },
+        targetDens: {
+          include: {
+            den: {
+              select: {
+                id: true,
+                name: true,
+                denNumber: true,
+                rankLevel: true,
+              },
+            },
+          },
+        },
+        plannedRequirements: {
+          include: {
+            requirement: {
+              include: {
+                adventure: {
+                  select: {
+                    id: true,
+                    name: true,
+                    rank: {
+                      select: {
+                        rankLevel: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
         createdBy: {
           select: {
             id: true,
@@ -597,8 +1080,12 @@ export class EventService {
     });
 
     // Add signup counts and current user signup info
-    const eventsWithCounts = events.map(event => ({
+    const eventsWithCounts = events.map(event => {
+      const derivedRankLevels = this.deriveRankLevels(event);
+
+      return {
       ...event,
+      derivedRankLevels,
       activitySlots: event.activitySlots.map(slot => {
         const signedUpCount = slot.signups.length;
         const currentUserSignup = currentUserId
@@ -617,7 +1104,8 @@ export class EventService {
             : null,
         };
       }),
-    }));
+    };
+    });
 
     return {
       events: eventsWithCounts,

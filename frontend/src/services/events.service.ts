@@ -27,8 +27,11 @@ export interface CreateEventData {
   endTime?: string;
   fullDay?: boolean;
   location?: string;
+  scopeType?: 'PACK_WIDE' | 'DEN';
+  targetDenIds?: string[];
   rankLevel?: string | null;
   isRecurring?: boolean;
+  plannedRequirementIds?: string[];
   activitySlots: ActivitySlot[];
 }
 
@@ -40,8 +43,11 @@ export interface UpdateEventData {
   endTime?: string;
   fullDay?: boolean;
   location?: string;
+  scopeType?: 'PACK_WIDE' | 'DEN';
+  targetDenIds?: string[];
   rankLevel?: string | null;
   isRecurring?: boolean;
+  plannedRequirementIds?: string[];
   activitySlots?: ActivitySlot[];
 }
 
@@ -56,7 +62,8 @@ export interface CompleteEventData {
 export interface ListEventsParams {
   page?: number;
   limit?: number;
-  rankLevel?: string;
+  scopeType?: 'ALL' | 'PACK_WIDE' | 'DEN';
+  denIds?: string[];
   upcoming?: boolean;
   mySignups?: boolean;
 }
@@ -66,7 +73,12 @@ const eventsService = {
    * List events with filters
    */
   async listEvents(params: ListEventsParams = {}) {
-    const response = await axios.get('/events', { params });
+    const query: Record<string, string | number | boolean | undefined> = {
+      ...params,
+      denIds: params.denIds?.length ? params.denIds.join(',') : undefined,
+    };
+
+    const response = await axios.get('/events', { params: query });
     return response.data;
   },
 

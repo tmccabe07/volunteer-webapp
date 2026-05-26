@@ -14,35 +14,37 @@ datasource db {
 // ============================================================================
 
 model Volunteer {
-  id                String    @id @default(cuid())
-  email             String    @unique
-  name              String
-  phone             String?
-  passwordHash      String
-  authTier          AuthTier  @default(PARENT)
-  leaderboardOptIn  Boolean   @default(true)
+  id                 String   @id @default(cuid())
+  email              String   @unique
+  name               String
+  phone              String?
+  passwordHash       String
+  authTier           AuthTier @default(PARENT)
+  leaderboardOptIn   Boolean  @default(true)
   mustChangePassword Boolean  @default(false) // For admin-assisted password reset
-  
+
   // Relationships
-  volunteerRoles    VolunteerToRole[]
-  childrenRanks     ChildRank[]
-  signups           Signup[]
-  pointEvents       PointEvent[]        @relation("PointEventVolunteer")
-  pointEventsCreated PointEvent[]       @relation("PointEventCreator")
-  taskCompletions   TaskCompletion[]
-  eventsCreated     Event[]
-  adminTasksCreated AdminTask[]
-  notifications     Notification[]
-  pointBalance      VolunteerPointBalance?
-  leaderboardEntry  LeaderboardCache?
+  volunteerRoles     VolunteerToRole[]
+  childrenRanks      ChildRank[]
+  signups            Signup[]
+  pointEvents        PointEvent[]           @relation("PointEventVolunteer")
+  pointEventsCreated PointEvent[]           @relation("PointEventCreator")
+  taskCompletions    TaskCompletion[]
+  eventsCreated      Event[]
+  adminTasksCreated  AdminTask[]
+  notifications      Notification[]
+  pointBalance       VolunteerPointBalance?
+  leaderboardEntry   LeaderboardCache?
   leaderboardHistory LeaderboardSnapshot[]
-  tierHistory       BadgeTierHistory[]
-  
+  tierHistory        BadgeTierHistory[]
+  parentChildLinks   ParentChildLink[]      @relation("ParentLinks")
+  linkApprovals      ParentChildLink[]      @relation("LinkApprovals")
+
   // Timestamps
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  deletedAt         DateTime? // Soft delete
-  
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime? // Soft delete
+
   // Indexes
   @@index([email])
   @@index([deletedAt])
@@ -50,19 +52,19 @@ model Volunteer {
 }
 
 enum AuthTier {
-  PARENT    // Tier 1: Parent/guardian volunteer
-  LEADER    // Tier 2: Den leader or committee role
-  ADMIN     // Tier 3: Site admin
+  PARENT // Tier 1: Parent/guardian volunteer
+  LEADER // Tier 2: Den leader or committee role
+  ADMIN // Tier 3: Site admin
 }
 
 model ChildRank {
-  id              String      @id @default(cuid())
-  volunteerId     String
-  volunteer       Volunteer   @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
-  rankLevel       RankLevel
-  
-  createdAt       DateTime    @default(now())
-  
+  id          String    @id @default(cuid())
+  volunteerId String
+  volunteer   Volunteer @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  rankLevel   RankLevel
+
+  createdAt DateTime @default(now())
+
   @@unique([volunteerId, rankLevel]) // Prevent duplicate rank per volunteer
   @@index([volunteerId])
 }
@@ -73,8 +75,8 @@ enum RankLevel {
   WOLF
   BEAR
   WEBELOS
-  AOL              // Arrow of Light
-  PACK_WIDE        // Not a child rank, but used for events/tasks
+  AOL // Arrow of Light
+  PACK_WIDE // Not a child rank, but used for events/tasks
 }
 
 // ============================================================================
@@ -82,23 +84,31 @@ enum RankLevel {
 // ============================================================================
 
 model VolunteerRole {
-  id              String      @id @default(cuid())
-  name            String      @unique
-  description     String?
-  roleType        RoleType
-  specialty       String?     // For committee roles (e.g., "treasurer", "secretary")
-  rankLevel       RankLevel?  // For den leader roles (e.g., WOLF, BEAR)
-  grantsTier      AuthTier    @default(PARENT) // Authorization tier granted by this role
-  
-  volunteers      VolunteerToRole[]
-  adminTasks      AdminTaskToRole[]
-  
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  deletedAt       DateTime?   // Soft delete preserves historical data
-  
+  id          String     @id @default(cuid())
+  name        String     @unique
+  description String?
+  roleType    RoleType
+  specialty   String? // For committee roles (e.g., "treasurer", "secretary")
+  rankLevel   RankLevel? // For den leader roles (e.g., WOLF, BEAR)
+  grantsTier  AuthTier   @default(PARENT) // Authorization tier granted by this role
+  scopeType   RoleScope  @default(DEN) // Authorization scope level
+
+  volunteers VolunteerToRole[]
+  adminTasks AdminTaskToRole[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime? // Soft delete preserves historical data
+
   @@index([deletedAt])
   @@index([roleType])
+  @@index([scopeType, rankLevel])
+}
+
+enum RoleScope {
+  PACK // Can access all ranks and dens
+  RANK // Can access all dens within a rank (requires rankLevel)
+  DEN // Can access specific den only (requires rankLevel + denNumber)
 }
 
 enum RoleType {
@@ -112,18 +122,25 @@ enum RoleType {
 }
 
 model VolunteerToRole {
-  id              String        @id @default(cuid())
-  volunteerId     String
-  volunteer       Volunteer     @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
-  roleId          String
-  role            VolunteerRole @relation(fields: [roleId], references: [id], onDelete: Restrict)
-  
-  assignedAt      DateTime      @default(now())
-  removedAt       DateTime?     // Track when role was removed (soft delete)
-  
-  @@unique([volunteerId, roleId]) // Prevent duplicate role assignments
+  id          String        @id @default(cuid())
+  volunteerId String
+  volunteer   Volunteer     @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  roleId      String
+  role        VolunteerRole @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  // Den scoping for multi-den assignments
+  denNumber Int? // Required if role scope is DEN-level
+  denId     String? // Optional link to Den for scoped roles
+  den       Den?    @relation(fields: [denId], references: [id], onDelete: SetNull)
+
+  assignedAt DateTime  @default(now())
+  removedAt  DateTime? // Track when role was removed (soft delete)
+
+  @@unique([volunteerId, roleId, denNumber]) // Allow same role on different dens
   @@index([volunteerId])
   @@index([roleId])
+  @@index([denNumber])
+  @@index([denId])
 }
 
 // ============================================================================
@@ -131,28 +148,28 @@ model VolunteerToRole {
 // ============================================================================
 
 model ActivityType {
-  id              String        @id @default(cuid())
-  name            String        @unique
-  pointValue      Int
-  category        ActivityCategory
-  description     String?
-  
-  activitySlots   ActivitySlot[]
-  pointEvents     PointEvent[]
-  
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  deletedAt       DateTime?     // Soft delete
-  
+  id          String           @id @default(cuid())
+  name        String           @unique
+  pointValue  Int
+  category    ActivityCategory
+  description String?
+
+  activitySlots ActivitySlot[]
+  pointEvents   PointEvent[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime? // Soft delete
+
   @@index([deletedAt])
   @@index([category])
 }
 
 enum ActivityCategory {
-  LOW       // 2-3 points
-  MEDIUM    // 5-8 points
-  HIGH      // 10-15 points
-  SPECIAL   // 20-25 points
+  LOW // 2-3 points
+  MEDIUM // 5-8 points
+  HIGH // 10-15 points
+  SPECIAL // 20-25 points
 }
 
 // ============================================================================
@@ -160,81 +177,117 @@ enum ActivityCategory {
 // ============================================================================
 
 model Event {
-  id              String        @id @default(cuid())
-  title           String
-  description     String?
-  eventDate       DateTime
-  eventTime       String?       // Start time in HH:mm format (24hr)
-  endTime         String?       // End time in HH:mm format (24hr), optional
-  fullDay         Boolean       @default(false) // If true, times are ignored
-  location        String?
-  rankLevel       RankLevel?    // null = pack-wide
-  isRecurring     Boolean       @default(false)
-  isComplete      Boolean       @default(false)
-  recurringEndDate DateTime?    // Auto-set to year-end from pack config
-  
-  activitySlots   ActivitySlot[]
-  createdById     String
-  createdBy       Volunteer     @relation(fields: [createdById], references: [id])
-  
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  deletedAt       DateTime?
-  
+  id               String     @id @default(cuid())
+  title            String
+  description      String?
+  eventDate        DateTime
+  eventTime        String? // Start time in HH:mm format (24hr)
+  endTime          String? // End time in HH:mm format (24hr), optional
+  fullDay          Boolean    @default(false) // If true, times are ignored
+  location         String?
+  scopeType        EventScope @default(PACK_WIDE)
+  rankLevel        RankLevel? // null = pack-wide
+  isRecurring      Boolean    @default(false)
+  isComplete       Boolean    @default(false)
+  recurringEndDate DateTime? // Auto-set to year-end from pack config
+
+  activitySlots ActivitySlot[]
+  targetDens    EventTargetDen[]
+  plannedRequirements EventPlannedRequirement[]
+  requirementOccurrences RequirementCoverageOccurrence[]
+  createdById   String
+  createdBy     Volunteer      @relation(fields: [createdById], references: [id])
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
   // Strategic indexes for common queries
-  @@index([eventDate, deletedAt])        // "Show upcoming active events"
-  @@index([rankLevel, eventDate])        // "Events for my rank"
-  @@index([isComplete, eventDate])       // "Mark complete workflow"
+  @@index([eventDate, deletedAt]) // "Show upcoming active events"
+  @@index([rankLevel, eventDate]) // "Events for my rank"
+  @@index([isComplete, eventDate]) // "Mark complete workflow"
   @@index([createdById])
+  @@index([scopeType, eventDate])
+}
+
+enum EventScope {
+  PACK_WIDE
+  DEN
+}
+
+model EventTargetDen {
+  id      String @id @default(cuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  denId   String
+  den     Den    @relation(fields: [denId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, denId])
+  @@index([denId])
+}
+
+model EventPlannedRequirement {
+  id            String      @id @default(cuid())
+  eventId       String
+  event         Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  requirementId String
+  requirement   Requirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, requirementId])
+  @@index([requirementId])
 }
 
 model ActivitySlot {
-  id              String        @id @default(cuid())
-  eventId         String
-  event           Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  activityTypeId  String
-  activityType    ActivityType  @relation(fields: [activityTypeId], references: [id], onDelete: Restrict)
-  capacity        Int?          // null = unlimited
-  description     String?       // Custom event-specific description (max 500 chars)
-  
-  signups         Signup[]
-  steps           ActivitySlotStep[] // Numbered step-by-step instructions
-  
-  createdAt       DateTime      @default(now())
-  
+  id             String       @id @default(cuid())
+  eventId        String
+  event          Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  activityTypeId String
+  activityType   ActivityType @relation(fields: [activityTypeId], references: [id], onDelete: Restrict)
+  capacity       Int? // null = unlimited
+  description    String? // Custom event-specific description (max 500 chars)
+
+  signups Signup[]
+  steps   ActivitySlotStep[] // Numbered step-by-step instructions
+
+  createdAt DateTime @default(now())
+
   @@index([eventId])
   @@index([activityTypeId])
 }
 
 model ActivitySlotStep {
-  id              String        @id @default(cuid())
-  activitySlotId  String
-  activitySlot    ActivitySlot  @relation(fields: [activitySlotId], references: [id], onDelete: Cascade)
-  orderIndex      Int           // 0-based ordering (0, 1, 2, ..., 19)
-  stepText        String        // Step instruction text (max 200 chars)
-  
-  createdAt       DateTime      @default(now())
-  
+  id             String       @id @default(cuid())
+  activitySlotId String
+  activitySlot   ActivitySlot @relation(fields: [activitySlotId], references: [id], onDelete: Cascade)
+  orderIndex     Int // 0-based ordering (0, 1, 2, ..., 19)
+  stepText       String // Step instruction text (max 200 chars)
+
+  createdAt DateTime @default(now())
+
   @@unique([activitySlotId, orderIndex]) // Prevent duplicate order within same slot
-  @@index([activitySlotId, orderIndex])  // Optimize ordered retrieval
+  @@index([activitySlotId, orderIndex]) // Optimize ordered retrieval
 }
 
 model Signup {
-  id              String        @id @default(cuid())
-  volunteerId     String
-  volunteer       Volunteer     @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
-  activitySlotId  String
-  activitySlot    ActivitySlot  @relation(fields: [activitySlotId], references: [id], onDelete: Cascade)
-  
-  withdrawn       Boolean       @default(false)
-  withdrawnAt     DateTime?
-  
-  createdAt       DateTime      @default(now())
-  deletedAt       DateTime?
-  
+  id             String       @id @default(cuid())
+  volunteerId    String
+  volunteer      Volunteer    @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  activitySlotId String
+  activitySlot   ActivitySlot @relation(fields: [activitySlotId], references: [id], onDelete: Cascade)
+
+  withdrawn   Boolean   @default(false)
+  withdrawnAt DateTime?
+
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+
   @@unique([volunteerId, activitySlotId]) // Prevent double signup
-  @@index([volunteerId, withdrawn])       // "My active signups"
-  @@index([activitySlotId, withdrawn])    // Check capacity
+  @@index([volunteerId, withdrawn]) // "My active signups"
+  @@index([activitySlotId, withdrawn]) // Check capacity
 }
 
 // ============================================================================
@@ -242,21 +295,21 @@ model Signup {
 // ============================================================================
 
 model PointEvent {
-  id              String        @id @default(cuid())
-  volunteerId     String
-  volunteer       Volunteer     @relation("PointEventVolunteer", fields: [volunteerId], references: [id])
-  points          Int           // positive for awards, negative for revocations
-  eventType       PointEventType
-  referenceId     String?       // links to event/task that triggered points
-  reason          String?       // required for revocations
-  createdById     String
-  createdBy       Volunteer     @relation("PointEventCreator", fields: [createdById], references: [id])
-  activityTypeId  String?
-  activityType    ActivityType? @relation(fields: [activityTypeId], references: [id], onDelete: SetNull)
-  metadata        Json?         // flexible storage for activity-specific data
-  
-  createdAt       DateTime      @default(now())
-  
+  id             String         @id @default(cuid())
+  volunteerId    String
+  volunteer      Volunteer      @relation("PointEventVolunteer", fields: [volunteerId], references: [id])
+  points         Int // positive for awards, negative for revocations
+  eventType      PointEventType
+  referenceId    String? // links to event/task that triggered points
+  reason         String? // required for revocations
+  createdById    String
+  createdBy      Volunteer      @relation("PointEventCreator", fields: [createdById], references: [id])
+  activityTypeId String?
+  activityType   ActivityType?  @relation(fields: [activityTypeId], references: [id], onDelete: SetNull)
+  metadata       Json? // flexible storage for activity-specific data
+
+  createdAt DateTime @default(now())
+
   @@index([volunteerId, createdAt])
   @@index([eventType])
   @@index([createdById])
@@ -265,44 +318,44 @@ model PointEvent {
 enum PointEventType {
   EVENT_PARTICIPATION
   TASK_COMPLETION
-  ROLE_ASSIGNMENT      // 100 points for committee/den leader
+  ROLE_ASSIGNMENT // 100 points for committee/den leader
   ADMIN_REVOCATION
 }
 
 model VolunteerPointBalance {
-  volunteerId     String        @id
-  volunteer       Volunteer     @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
-  totalPoints     Int           @default(0)
-  currentYearPoints Int         @default(0)
-  
-  lastUpdatedAt   DateTime      @updatedAt
-  
+  volunteerId       String    @id
+  volunteer         Volunteer @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  totalPoints       Int       @default(0)
+  currentYearPoints Int       @default(0)
+
+  lastUpdatedAt DateTime @updatedAt
+
   @@index([totalPoints])
   @@index([currentYearPoints])
 }
 
 model LeaderboardCache {
-  volunteerId     String        @id
-  volunteer       Volunteer     @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
-  rank            Int?
-  totalPoints     Int
-  badgeTier       String?
-  
-  lastUpdatedAt   DateTime      @updatedAt
-  
+  volunteerId String    @id
+  volunteer   Volunteer @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  rank        Int?
+  totalPoints Int
+  badgeTier   String?
+
+  lastUpdatedAt DateTime @updatedAt
+
   @@index([rank])
   @@index([totalPoints])
 }
 
 model LeaderboardSnapshot {
-  id              String        @id @default(cuid())
-  snapshotDate    DateTime
-  volunteerId     String
-  volunteer       Volunteer     @relation(fields: [volunteerId], references: [id])
-  rank            Int?
-  totalPoints     Int
-  badgeTier       String?
-  
+  id           String    @id @default(cuid())
+  snapshotDate DateTime
+  volunteerId  String
+  volunteer    Volunteer @relation(fields: [volunteerId], references: [id])
+  rank         Int?
+  totalPoints  Int
+  badgeTier    String?
+
   @@index([snapshotDate, volunteerId])
 }
 
@@ -311,26 +364,26 @@ model LeaderboardSnapshot {
 // ============================================================================
 
 model BadgeTier {
-  id              String        @id @default(cuid())
-  tierName        String        @unique
-  minPoints       Int
-  maxPoints       Int?          // NULL for highest tier
-  displayOrder    Int
-  badgeColor      String        // hex color for UI
-  iconPath        String?
-  
+  id           String  @id @default(cuid())
+  tierName     String  @unique
+  minPoints    Int
+  maxPoints    Int? // NULL for highest tier
+  displayOrder Int
+  badgeColor   String // hex color for UI
+  iconPath     String?
+
   @@index([displayOrder])
 }
 
 model BadgeTierHistory {
-  id              String        @id @default(cuid())
-  volunteerId     String
-  volunteer       Volunteer     @relation(fields: [volunteerId], references: [id])
-  oldTier         String?       // NULL for first tier
-  newTier         String
-  pointsAtChange  Int
-  achievedAt      DateTime      @default(now())
-  
+  id             String    @id @default(cuid())
+  volunteerId    String
+  volunteer      Volunteer @relation(fields: [volunteerId], references: [id])
+  oldTier        String? // NULL for first tier
+  newTier        String
+  pointsAtChange Int
+  achievedAt     DateTime  @default(now())
+
   @@index([volunteerId, achievedAt])
 }
 
@@ -339,53 +392,53 @@ model BadgeTierHistory {
 // ============================================================================
 
 model AdminTask {
-  id              String        @id @default(cuid())
-  name            String
-  description     String?
-  dueDate         DateTime
-  completionSteps String?       // JSON array of steps with URLs
-  isPackWide      Boolean       @default(false)
-  isRecurring     Boolean       @default(false)
-  recurringEndDate DateTime?    // Auto-set to year-end from pack config
-  
-  assignedRoles   AdminTaskToRole[]
-  completions     TaskCompletion[]
-  createdById     String
-  createdBy       Volunteer     @relation(fields: [createdById], references: [id])
-  
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  deletedAt       DateTime?
-  
+  id               String    @id @default(cuid())
+  name             String
+  description      String?
+  dueDate          DateTime
+  completionSteps  String? // JSON array of steps with URLs
+  isPackWide       Boolean   @default(false)
+  isRecurring      Boolean   @default(false)
+  recurringEndDate DateTime? // Auto-set to year-end from pack config
+
+  assignedRoles AdminTaskToRole[]
+  completions   TaskCompletion[]
+  createdById   String
+  createdBy     Volunteer         @relation(fields: [createdById], references: [id])
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
   @@index([dueDate, deletedAt])
   @@index([isPackWide])
   @@index([createdById])
 }
 
 model AdminTaskToRole {
-  id              String        @id @default(cuid())
-  taskId          String
-  task            AdminTask     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  roleId          String
-  role            VolunteerRole @relation(fields: [roleId], references: [id], onDelete:Restrict)
-  
-  assignedAt      DateTime      @default(now())
-  
+  id     String        @id @default(cuid())
+  taskId String
+  task   AdminTask     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  roleId String
+  role   VolunteerRole @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  assignedAt DateTime @default(now())
+
   @@unique([taskId, roleId])
   @@index([taskId])
   @@index([roleId])
 }
 
 model TaskCompletion {
-  id              String        @id @default(cuid())
-  taskId          String
-  task            AdminTask     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  volunteerId     String
-  volunteer       Volunteer     @relation(fields: [volunteerId], references: [id])
-  
-  completedAt     DateTime      @default(now())
-  isComplete      Boolean       @default(true)
-  
+  id          String    @id @default(cuid())
+  taskId      String
+  task        AdminTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  volunteerId String
+  volunteer   Volunteer @relation(fields: [volunteerId], references: [id])
+
+  completedAt DateTime @default(now())
+  isComplete  Boolean  @default(true)
+
   @@unique([taskId, volunteerId]) // One completion per volunteer per task
   @@index([taskId])
   @@index([volunteerId])
@@ -397,15 +450,15 @@ model TaskCompletion {
 // ============================================================================
 
 model PackConfig {
-  id              String        @id @default(cuid())
-  packName        String
-  packNumber      String
-  yearStartDate   DateTime
-  yearEndDate     DateTime
-  activeRanks     Json          // JSON array of active RankLevel enums
-  
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  id            String   @id @default(cuid())
+  packName      String
+  packNumber    String
+  yearStartDate DateTime
+  yearEndDate   DateTime
+  activeRanks   Json // JSON array of active RankLevel enums
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ============================================================================
@@ -413,16 +466,16 @@ model PackConfig {
 // ============================================================================
 
 model Notification {
-  id              String              @id @default(cuid())
-  volunteerId     String
-  volunteer       Volunteer           @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
-  type            NotificationType
-  message         String
-  link            String?             // Optional link to related resource
-  isRead          Boolean             @default(false)
-  
-  createdAt       DateTime            @default(now())
-  
+  id          String           @id @default(cuid())
+  volunteerId String
+  volunteer   Volunteer        @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  type        NotificationType
+  message     String
+  link        String? // Optional link to related resource
+  isRead      Boolean          @default(false)
+
+  createdAt DateTime @default(now())
+
   @@index([volunteerId, isRead])
   @@index([createdAt])
 }
@@ -442,14 +495,14 @@ enum NotificationType {
 // ============================================================================
 
 model PasswordReset {
-  id              String        @id @default(cuid())
-  email           String
-  token           String        @unique // Hashed SHA-256 token
-  expiresAt       DateTime
-  used            Boolean       @default(false)
-  
-  createdAt       DateTime      @default(now())
-  
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique // Hashed SHA-256 token
+  expiresAt DateTime
+  used      Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+
   @@index([email, used])
   @@index([expiresAt])
 }
@@ -459,18 +512,593 @@ model PasswordReset {
 // ============================================================================
 
 model AuditLog {
-  id              String        @id @default(cuid())
-  userId          String?       // Can be null for system actions
-  action          String        // e.g., "ROLE_ASSIGNED", "POINTS_REVOKED", "EVENT_CREATED"
-  entityType      String        // e.g., "VolunteerRole", "PointEvent", "Event"
-  entityId        String
-  changes         Json?         // Before/after values
-  ipAddress       String?
-  userAgent       String?
-  
-  createdAt       DateTime      @default(now())
-  
+  id         String  @id @default(cuid())
+  userId     String? // Can be null for system actions
+  action     String // e.g., "ROLE_ASSIGNED", "POINTS_REVOKED", "EVENT_CREATED"
+  entityType String // e.g., "VolunteerRole", "PointEvent", "Event"
+  entityId   String
+  changes    Json? // Before/after values
+  ipAddress  String?
+  userAgent  String?
+
+  createdAt DateTime @default(now())
+
   @@index([userId, createdAt])
   @@index([entityType, entityId])
   @@index([createdAt])
+}
+
+// ============================================================================
+// Den Advancement Operations (Feature: 010-plan-md-spec)
+// ============================================================================
+
+// Cub Scout child record for attendance and advancement tracking
+model ChildScout {
+  id          String    @id @default(cuid())
+  firstName   String
+  lastName    String
+  currentRank RankLevel
+  isActive    Boolean   @default(true)
+
+  // External system references
+  scoutbookId String? @unique
+
+  // Relationships
+  denMemberships DenMembership[]
+  parentLinks    ParentChildLink[]
+  attendance     ChildAttendance[]
+  requirements   RequirementProgress[]
+  requirementOccurrences RequirementCoverageOccurrence[]
+  awards         AwardItem[]
+  prompts        ScoutbookPrompt[]
+
+  // Audit
+  createdAt DateTime  @default(now())
+  createdBy String // Admin who created record
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime? // Soft delete
+
+  @@index([currentRank, isActive])
+  @@index([lastName, firstName])
+  @@index([deletedAt])
+}
+
+// Persistent den group that advances through ranks over years
+model Den {
+  id        String    @id @default(cuid())
+  name      String // "Den 8" or "Den 8 - Tigers"
+  denNumber Int // 1, 2, 3, etc. - unique within pack, persists across years
+  rankLevel RankLevel // Current rank level (changes during annual rollover)
+  isActive  Boolean   @default(true)
+
+  // Relationships
+  members             DenMembership[]
+  events              DenEvent[] // Den-scoped events
+  targetedByEvents    EventTargetDen[]
+  denChiefAssignments DenChiefAssignment[] // Youth leaders assigned to help
+  leaderAssignments   VolunteerToRole[] // Leaders assigned to this den
+
+  // Audit
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([denNumber, deletedAt]) // Den number unique pack-wide
+  @@index([rankLevel, isActive])
+  @@index([denNumber])
+}
+
+// Time-bounded child-to-den assignment history
+model DenMembership {
+  id           String     @id @default(cuid())
+  denId        String
+  den          Den        @relation(fields: [denId], references: [id], onDelete: Cascade)
+  childScoutId String
+  childScout   ChildScout @relation(fields: [childScoutId], references: [id], onDelete: Cascade)
+
+  // Temporal tracking
+  validFrom DateTime  @default(now())
+  validTo   DateTime? // NULL = current membership
+
+  // Audit trail
+  assignedBy String? // volunteerId who made assignment
+  reason     String? // "Promotion", "New Scout", "Den Restructure", "Transfer"
+
+  createdAt DateTime @default(now())
+
+  @@index([childScoutId, validTo]) // Optimize "current membership" queries
+  @@index([denId, validTo]) // Optimize "current den roster" queries
+  @@index([validFrom, validTo]) // Range queries
+}
+
+// Den Chief youth leader (Scouts BSA member assigned to help with den)
+model DenChief {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  firstName    String
+  lastName     String
+  passwordHash String
+  authTier     AuthTier @default(PARENT) // View-only access
+  isActive     Boolean  @default(true)
+
+  // External system references
+  scoutbookId String? @unique
+
+  // Relationships
+  denAssignments DenChiefAssignment[]
+
+  // Audit
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([email])
+  @@index([isActive])
+}
+
+// Time-bounded Den Chief to Den assignment
+model DenChiefAssignment {
+  id         String   @id @default(cuid())
+  denChiefId String
+  denChief   DenChief @relation(fields: [denChiefId], references: [id], onDelete: Cascade)
+  denId      String
+  den        Den      @relation(fields: [denId], references: [id], onDelete: Cascade)
+
+  // Temporal tracking
+  validFrom DateTime  @default(now())
+  validTo   DateTime? // NULL = current assignment
+
+  // Audit trail
+  assignedBy String // volunteerId who made assignment
+  createdAt  DateTime @default(now())
+
+  @@index([denChiefId, validTo])
+  @@index([denId, validTo])
+}
+
+// Parent-child link with approval workflow
+model ParentChildLink {
+  id               String     @id @default(cuid())
+  parentId         String
+  parent           Volunteer  @relation("ParentLinks", fields: [parentId], references: [id], onDelete: Cascade)
+  childScoutId     String
+  childScout       ChildScout @relation(fields: [childScoutId], references: [id], onDelete: Cascade)
+  status           LinkStatus @default(PENDING)
+  relationshipType String? // "mother", "father", "guardian", etc.
+
+  // Audit trail
+  requestedAt     DateTime   @default(now())
+  requestedBy     String // Usually same as parentId
+  processedAt     DateTime?
+  processedBy     String? // volunteerId who approved/rejected
+  processor       Volunteer? @relation("LinkApprovals", fields: [processedBy], references: [id])
+  rejectionReason String?
+
+  @@unique([parentId, childScoutId, status]) // Prevent duplicate pending
+  @@index([status, requestedAt])
+  @@index([childScoutId])
+  @@index([parentId])
+}
+
+enum LinkStatus {
+  PENDING // Awaiting leader approval
+  APPROVED // Parent has access to child record
+  REJECTED // Request denied
+  REVOKED // Previously approved link removed
+}
+
+// Rank catalog entry
+model Rank {
+  id           String    @id @default(cuid())
+  rankLevel    RankLevel @unique
+  displayName  String // "Tiger", "Wolf", etc.
+  displayOrder Int       @unique
+  description  String?
+
+  // Catalog versioning
+  catalogYear String  @default("2024")
+  isActive    Boolean @default(true)
+
+  // Requirements
+  requiredAdventureCount Int // e.g., 6 required adventures for Wolf
+  electiveAdventureCount Int // e.g., 1 elective adventure minimum
+
+  // Relationships
+  adventures Adventure[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([catalogYear, isActive])
+  @@index([displayOrder])
+}
+
+// Adventure catalog entry under ranks
+model Adventure {
+  id             String        @id @default(cuid())
+  rankId         String
+  rank           Rank          @relation(fields: [rankId], references: [id], onDelete: Cascade)
+  name           String // "Call of the Wild", "Paws on the Path"
+  description    String?
+  classification AdventureType // REQUIRED, ELECTIVE, SPECIAL_ELECTIVE
+  displayOrder   Int // Within the rank
+
+  // Catalog versioning
+  catalogYear String  @default("2024")
+  isActive    Boolean @default(true)
+
+  // Relationships
+  requirements Requirement[]
+  progress     RequirementProgress[] // Child-specific progress
+  occurrences  RequirementCoverageOccurrence[]
+  awardItems   AwardItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([rankId, name, catalogYear])
+  @@index([rankId, classification])
+  @@index([catalogYear, isActive])
+}
+
+enum AdventureType {
+  REQUIRED
+  ELECTIVE
+  SPECIAL_ELECTIVE
+}
+
+// Individual requirement within adventures
+model Requirement {
+  id              String    @id @default(cuid())
+  adventureId     String
+  adventure       Adventure @relation(fields: [adventureId], references: [id], onDelete: Cascade)
+  displayOrder    Int // 1, 2, 3, ... within adventure
+  requirementText String
+
+  // Relationships
+  progress        RequirementProgress[]
+  coveredInEvents ChildAttendance[] // Many-to-many: which events covered this
+  plannedInEvents EventPlannedRequirement[]
+  occurrences     RequirementCoverageOccurrence[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([adventureId, displayOrder])
+  @@index([adventureId, displayOrder])
+}
+
+// Child-specific requirement completion and approval tracking
+model RequirementProgress {
+  id            String      @id @default(cuid())
+  childScoutId  String
+  childScout    ChildScout  @relation(fields: [childScoutId], references: [id], onDelete: Cascade)
+  requirementId String
+  requirement   Requirement @relation(fields: [requirementId], references: [id], onDelete: Restrict)
+  adventureId   String
+  adventure     Adventure   @relation(fields: [adventureId], references: [id], onDelete: Restrict)
+
+  // Completion tracking
+  completedAt    DateTime       @default(now())
+  completedBy    String // volunteerId or parentId
+  completionType CompletionType @default(MEETING)
+  notes          String? // Optional context/evidence
+
+  // Scoutbook reconciliation
+  scoutbookStatus    ReconciliationStatus @default(PENDING)
+  scoutbookEnteredAt DateTime?
+  scoutbookEnteredBy String?
+  scoutbookNotes     String?
+
+  // Conflict resolution
+  version Int @default(1) // Optimistic locking
+
+  @@unique([childScoutId, requirementId])
+  @@index([childScoutId])
+  @@index([requirementId])
+  @@index([adventureId])
+  @@index([scoutbookStatus, completedAt])
+}
+
+model RequirementCoverageOccurrence {
+  id            String         @id @default(cuid())
+  childScoutId  String
+  childScout    ChildScout     @relation(fields: [childScoutId], references: [id], onDelete: Cascade)
+  requirementId String
+  requirement   Requirement    @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  adventureId   String
+  adventure     Adventure      @relation(fields: [adventureId], references: [id], onDelete: Cascade)
+  eventId       String?
+  event         Event?         @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  completionType CompletionType
+  notes         String?
+  recordedBy    String
+  recordedAt    DateTime       @default(now())
+  source        CoverageSource @default(MEETING_ATTENDANCE)
+
+  @@index([childScoutId, recordedAt])
+  @@index([requirementId, recordedAt])
+  @@index([eventId])
+}
+
+enum CoverageSource {
+  MEETING_ATTENDANCE
+  MANUAL_COMPLETION
+}
+
+enum CompletionType {
+  MEETING // Completed during den meeting
+  PARENT_SUBMIT // Parent marked complete outside meeting
+  LEADER_AWARD // Leader awarded directly
+}
+
+enum ReconciliationStatus {
+  PENDING // Needs manual Scoutbook entry
+  ENTERED // Confirmed entered in Scoutbook
+  VERIFIED // Optional: Double-checked in Scoutbook
+}
+
+// Per-event per-child attendance tracking
+model ChildAttendance {
+  id               String           @id @default(cuid())
+  eventId          String
+  event            DenEvent         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  childScoutId     String
+  childScout       ChildScout       @relation(fields: [childScoutId], references: [id], onDelete: Cascade)
+  attendanceStatus AttendanceStatus @default(PRESENT)
+
+  // Covered requirements (marked during event)
+  coveredRequirements Requirement[] // Many-to-many via implicit join table
+
+  // Audit
+  recordedAt DateTime @default(now())
+  recordedBy String // volunteerId who took attendance
+  notes      String?
+
+  @@unique([eventId, childScoutId])
+  @@index([childScoutId, attendanceStatus])
+  @@index([eventId])
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  EXCUSED
+  LATE
+}
+
+// Den-scoped events (extends Event concept)
+model DenEvent {
+  id          String   @id @default(cuid())
+  denId       String? // NULL = pack-wide
+  den         Den?     @relation(fields: [denId], references: [id], onDelete: SetNull)
+  title       String
+  description String?
+  eventDate   DateTime
+  eventTime   String?
+  endTime     String?
+  fullDay     Boolean  @default(false)
+  location    String?
+
+  // Child attendance
+  childAttendance  ChildAttendance[]
+  scoutbookPrompts ScoutbookPrompt[]
+
+  // Post-meeting notifications
+  sendPostMeetingNotification Boolean @default(true)
+
+  // Hours prompt defaults (for event closeout)
+  hourPromptDefaults Json? // { camping: { nights: 1 }, hiking: { miles: 3 } }
+
+  createdById String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([denId, eventDate])
+  @@index([eventDate, deletedAt])
+}
+
+// Child-specific award fulfillment tracking
+model AwardItem {
+  id             String        @id @default(cuid())
+  childScoutId   String
+  childScout     ChildScout    @relation(fields: [childScoutId], references: [id], onDelete: Cascade)
+  adventureId    String?
+  adventure      Adventure?    @relation(fields: [adventureId], references: [id], onDelete: Restrict)
+  specialAwardId String?
+  specialAward   SpecialAward? @relation(fields: [specialAwardId], references: [id], onDelete: Restrict)
+  currentState   AwardState    @default(ELIGIBLE)
+  quantityNeeded Int           @default(1)
+
+  // Relationships
+  history AwardStateHistory[]
+
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([currentState])
+  @@index([childScoutId, currentState])
+  @@index([adventureId])
+  @@index([specialAwardId])
+}
+
+enum AwardState {
+  ELIGIBLE // Meets requirements
+  APPROVED // Leader approved for purchase
+  PURCHASED // Item ordered/bought
+  DISTRIBUTED // Given to child
+  RECONCILED // Entered in Scoutbook
+}
+
+// Audit trail for award state transitions
+model AwardStateHistory {
+  id          String      @id @default(cuid())
+  awardItemId String
+  awardItem   AwardItem   @relation(fields: [awardItemId], references: [id], onDelete: Cascade)
+  fromState   AwardState?
+  toState     AwardState
+  changedBy   String // volunteerId
+  changedAt   DateTime    @default(now())
+  notes       String? // Why transition occurred
+  batchId     String? // For batch operations (mass purchases)
+
+  @@index([awardItemId, changedAt])
+  @@index([batchId])
+}
+
+// Catalog of non-standard awards
+model SpecialAward {
+  id                 String  @id @default(cuid())
+  name               String  @unique
+  description        String?
+  category           String // "Character", "Scouting Skills", "Community Service"
+  requiresNomination Boolean @default(false)
+
+  // Relationships
+  awardItems AwardItem[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([category])
+}
+
+// Stock tracking by rank and award name
+model InventoryItem {
+  id             String     @id @default(cuid())
+  itemName       String // "Tiger Badge", "Wolf Belt Loop"
+  rankLevel      RankLevel? // NULL for rank-agnostic items
+  onHandQuantity Int        @default(0)
+  reorderPoint   Int? // Trigger reorder alert
+  unitCost       Float? // Unit cost in dollars
+
+  // Relationships
+  adjustments InventoryAdjustment[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([itemName, rankLevel])
+  @@index([onHandQuantity, reorderPoint])
+}
+
+model InventoryAdjustment {
+  id              String        @id @default(cuid())
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  quantityChange  Int // Positive = addition, negative = consumption
+  reason          String // "Purchase", "Distribution", "Correction", "Loss"
+  adjustedBy      String // volunteerId
+  adjustedAt      DateTime      @default(now())
+  notes           String?
+  linkedBatchId   String? // Link to AwardStateHistory batchId
+
+  @@index([inventoryItemId, adjustedAt])
+}
+
+// Category-specific prompts for parent Scoutbook hour entry
+model ScoutbookPrompt {
+  id           String         @id @default(cuid())
+  childScoutId String
+  childScout   ChildScout     @relation(fields: [childScoutId], references: [id], onDelete: Cascade)
+  eventId      String
+  event        DenEvent       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  category     PromptCategory
+  categoryData Json // { nights: 2, location: "Camp X" } for CAMPING
+  status       PromptStatus   @default(PENDING)
+
+  // Lifecycle tracking
+  generatedAt    DateTime  @default(now())
+  sentAt         DateTime?
+  acknowledgedAt DateTime?
+  dismissedAt    DateTime?
+  reminderSentAt DateTime?
+
+  @@index([childScoutId, status])
+  @@index([category, status])
+  @@index([eventId])
+}
+
+enum PromptCategory {
+  CAMPING
+  HIKING
+  SERVICE
+}
+
+enum PromptStatus {
+  PENDING // Generated but not yet sent
+  SENT // Notification sent to parent
+  ACKNOWLEDGED // Parent marked as submitted in Scoutbook
+  DISMISSED // Parent dismissed prompt
+}
+
+// CSV import job record for Scoutbook roster export processing
+model ImportBatch {
+  id          String        @id @default(cuid())
+  fileName    String
+  uploadedBy  String
+  uploadedAt  DateTime      @default(now())
+  status      ImportStatus  @default(PROCESSING)
+  totalRows   Int           @default(0)
+  successRows Int           @default(0)
+  failedRows  Int           @default(0)
+  errors      ImportError[]
+
+  @@index([uploadedAt, status])
+}
+
+model ImportError {
+  id           String      @id @default(cuid())
+  batchId      String
+  batch        ImportBatch @relation(fields: [batchId], references: [id])
+  rowNumber    Int
+  fieldName    String?
+  errorMessage String
+  rowData      Json // Original CSV row
+
+  @@index([batchId, rowNumber])
+}
+
+enum ImportStatus {
+  PROCESSING
+  COMPLETED
+  COMPLETED_WITH_ERRORS
+  FAILED
+}
+
+// Annual rollover batch operation
+model RolloverBatch {
+  id                String          @id @default(cuid())
+  executedBy        String
+  executedAt        DateTime        @default(now())
+  targetYear        String // "2025"
+  status            RolloverStatus  @default(PROCESSING)
+  densProcessed     Int             @default(0) // Count of dens advanced to next rank
+  childrenProcessed Int             @default(0)
+  childrenFailed    Int             @default(0)
+  isDryRun          Boolean         @default(false)
+  errors            RolloverError[]
+
+  @@index([targetYear, status])
+}
+
+model RolloverError {
+  id           String        @id @default(cuid())
+  batchId      String
+  batch        RolloverBatch @relation(fields: [batchId], references: [id])
+  childScoutId String
+  errorMessage String
+
+  @@index([batchId])
+}
+
+enum RolloverStatus {
+  PROCESSING
+  COMPLETED
+  COMPLETED_WITH_ERRORS
+  ROLLED_BACK
 }

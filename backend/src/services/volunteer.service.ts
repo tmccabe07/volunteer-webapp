@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { AuthTier, RoleType } from '@prisma/client';
+import { AuthTier, RankLevel, RoleType } from '@prisma/client';
 import prisma from '../utils/prisma';
 import { BadgeTierService } from './badge-tier.service';
 import { PointsService } from './points.service';
@@ -30,6 +30,14 @@ export class VolunteerService {
                 name: true,
                 roleType: true,
                 specialty: true,
+                rankLevel: true,
+              },
+            },
+            den: {
+              select: {
+                id: true,
+                name: true,
+                denNumber: true,
                 rankLevel: true,
               },
             },
@@ -83,6 +91,10 @@ export class VolunteerService {
         roleType: vr.role.roleType,
         specialty: vr.role.specialty,
         rankLevel: vr.role.rankLevel,
+        denId: vr.den?.id ?? null,
+        denName: vr.den?.name ?? null,
+        denNumber: vr.den?.denNumber ?? null,
+        denRankLevel: vr.den?.rankLevel ?? null,
         assignedAt: vr.assignedAt.toISOString(),
       })),
       childrenRanks: volunteer.childrenRanks,
@@ -99,7 +111,7 @@ export class VolunteerService {
   }
 
   /**
-   * Update volunteer profile (name, phone, leaderboardOptIn, childrenRanks)
+   * Update volunteer profile (name, phone, leaderboardOptIn)
    */
   async updateProfile(
     volunteerId: string,
@@ -107,7 +119,6 @@ export class VolunteerService {
       name?: string;
       phone?: string | null;
       leaderboardOptIn?: boolean;
-      childrenRanks?: string[];
     }
   ) {
     const volunteer = await prisma.volunteer.findFirst({
@@ -118,25 +129,6 @@ export class VolunteerService {
       throw new Error('Volunteer not found');
     }
 
-    // Handle children ranks update separately
-    if (data.childrenRanks !== undefined) {
-      // Delete existing ranks
-      await prisma.childRank.deleteMany({
-        where: { volunteerId },
-      });
-
-      // Create new ranks (deduplicate to prevent unique constraint violations)
-      if (data.childrenRanks.length > 0) {
-        const uniqueRanks = [...new Set(data.childrenRanks)];
-        await prisma.childRank.createMany({
-          data: uniqueRanks.map((rankLevel) => ({
-            volunteerId,
-            rankLevel: rankLevel as any,
-          })),
-        });
-      }
-    }
-
     // Update profile fields
     const updatedVolunteer = await prisma.volunteer.update({
       where: { id: volunteerId },
@@ -144,13 +136,6 @@ export class VolunteerService {
         name: data.name,
         phone: data.phone,
         leaderboardOptIn: data.leaderboardOptIn,
-      },
-      include: {
-        childrenRanks: {
-          select: {
-            rankLevel: true,
-          },
-        },
       },
     });
 
@@ -160,7 +145,6 @@ export class VolunteerService {
       name: updatedVolunteer.name,
       phone: updatedVolunteer.phone,
       leaderboardOptIn: updatedVolunteer.leaderboardOptIn,
-      childrenRanks: updatedVolunteer.childrenRanks,
     };
   }
 
@@ -168,7 +152,15 @@ export class VolunteerService {
    * Assign a role to a volunteer
    * Handles tier upgrades and point awards for LEADER roles
    */
-  async assignRole(volunteerId: string, roleId: string) {
+  async assignRole(
+    volunteerId: string,
+    input: {
+      roleId: string;
+      denIds?: string[];
+    }
+  ) {
+    const { roleId, denIds } = input;
+
     // Check if role exists and is active
     const role = await prisma.volunteerRole.findUnique({
       where: { id: roleId, deletedAt: null },
@@ -178,41 +170,141 @@ export class VolunteerService {
       throw new Error('Role not found or has been deleted');
     }
 
-    // Check if already assigned
-    const existingAssignment = await prisma.volunteerToRole.findUnique({
-      where: {
-        volunteerId_roleId: {
-          volunteerId,
-          roleId,
-        },
-      },
-    });
+    const denScopedRoleTypes: RoleType[] = [
+      RoleType.DEN_LEADER,
+      RoleType.ASSISTANT_DEN_LEADER,
+      RoleType.LION_GUIDE,
+    ];
+    const isDenScopedRole = denScopedRoleTypes.includes(role.roleType);
 
-    if (existingAssignment && !existingAssignment.removedAt) {
-      throw new Error('Role already assigned to volunteer');
-    }
+    let assignments: Array<{
+      id: string;
+      roleId: string;
+      roleName: string;
+      denId: string | null;
+      denNumber: number | null;
+      assignedAt: string;
+    }> = [];
 
-    // Create or reactivate role assignment
-    let assignment;
-    if (existingAssignment) {
-      // Reactivate removed role
-      assignment = await prisma.volunteerToRole.update({
-        where: { id: existingAssignment.id },
-        data: {
-          removedAt: null,
-          assignedAt: new Date(),
+    if (isDenScopedRole) {
+      const uniqueDenIds = [...new Set(denIds ?? [])];
+      if (uniqueDenIds.length === 0) {
+        throw new Error('At least one den must be selected for this role');
+      }
+
+      const dens = await prisma.den.findMany({
+        where: {
+          id: { in: uniqueDenIds },
+          isActive: true,
+          deletedAt: null,
         },
-        include: { role: true },
+        select: {
+          id: true,
+          denNumber: true,
+        },
       });
+
+      if (dens.length !== uniqueDenIds.length) {
+        throw new Error('One or more selected dens are invalid or inactive');
+      }
+
+      const byId = new Map(dens.map((d) => [d.id, d]));
+
+      for (const denId of uniqueDenIds) {
+        const den = byId.get(denId)!;
+
+        const existingAssignment = await prisma.volunteerToRole.findFirst({
+          where: {
+            volunteerId,
+            roleId,
+            denNumber: den.denNumber,
+          },
+          include: {
+            role: true,
+          },
+        });
+
+        if (existingAssignment && !existingAssignment.removedAt) {
+          continue;
+        }
+
+        const assignment = existingAssignment
+          ? await prisma.volunteerToRole.update({
+              where: { id: existingAssignment.id },
+              data: {
+                denId,
+                denNumber: den.denNumber,
+                removedAt: null,
+                assignedAt: new Date(),
+              },
+              include: { role: true },
+            })
+          : await prisma.volunteerToRole.create({
+              data: {
+                volunteerId,
+                roleId,
+                denId,
+                denNumber: den.denNumber,
+              },
+              include: { role: true },
+            });
+
+        assignments.push({
+          id: assignment.id,
+          roleId: assignment.roleId,
+          roleName: assignment.role.name,
+          denId: assignment.denId,
+          denNumber: assignment.denNumber,
+          assignedAt: assignment.assignedAt.toISOString(),
+        });
+      }
+
+      if (assignments.length === 0) {
+        throw new Error('Role already assigned to volunteer for selected den(s)');
+      }
     } else {
-      // Create new assignment
-      assignment = await prisma.volunteerToRole.create({
-        data: {
+      // Check if already assigned (pack-wide role, denNumber = null)
+      const existingAssignment = await prisma.volunteerToRole.findFirst({
+        where: {
           volunteerId,
           roleId,
+          denNumber: null,
+          removedAt: null,
         },
-        include: { role: true },
       });
+
+      if (existingAssignment && !existingAssignment.removedAt) {
+        throw new Error('Role already assigned to volunteer');
+      }
+
+      // Create or reactivate role assignment
+      const assignment = existingAssignment
+        ? await prisma.volunteerToRole.update({
+            where: { id: existingAssignment.id },
+            data: {
+              removedAt: null,
+              assignedAt: new Date(),
+            },
+            include: { role: true },
+          })
+        : await prisma.volunteerToRole.create({
+            data: {
+              volunteerId,
+              roleId,
+            },
+            include: { role: true },
+          });
+
+      assignments = [
+        {
+          id: assignment.id,
+          roleId: assignment.roleId,
+          roleName: assignment.role.name,
+          denId: assignment.denId,
+          denNumber: assignment.denNumber,
+          assignedAt: assignment.assignedAt.toISOString(),
+        },
+      ];
     }
 
     // Check for tier upgrade (if role grants LEADER tier)
@@ -234,12 +326,26 @@ export class VolunteerService {
     }
 
     return {
-      id: assignment.id,
-      roleId: assignment.roleId,
-      roleName: assignment.role.name,
-      assignedAt: assignment.assignedAt.toISOString(),
+      assignments,
       tierUpgraded,
     };
+  }
+
+  async getAssignableDens(rankLevel?: RankLevel) {
+    return prisma.den.findMany({
+      where: {
+        isActive: true,
+        deletedAt: null,
+        ...(rankLevel ? { rankLevel } : {}),
+      },
+      select: {
+        id: true,
+        name: true,
+        denNumber: true,
+        rankLevel: true,
+      },
+      orderBy: [{ denNumber: 'asc' }],
+    });
   }
 
   /**

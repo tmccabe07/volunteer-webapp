@@ -10,6 +10,17 @@ import {
 describe('VolunteerService', () => {
   let service: VolunteerService;
 
+  const createWolfDen = async () => {
+    return prisma.den.create({
+      data: {
+        name: `Wolf Den ${Math.floor(Math.random() * 1000)}`,
+        denNumber: Math.floor(Math.random() * 1000) + 1,
+        rankLevel: 'WOLF',
+        isActive: true,
+      },
+    });
+  };
+
   beforeAll(async () => {
     await setupTests();
   });
@@ -19,8 +30,19 @@ describe('VolunteerService', () => {
   });
 
   beforeEach(() => {
-    // VolunteerService doesn't use DI, just instantiate directly
-    service = new VolunteerService();
+    // Provide lightweight mocks for injected collaborators
+    service = new VolunteerService(
+      {
+        getBadgeTierInfo: jest.fn().mockResolvedValue(null),
+      } as any,
+      {
+        getProjectedPoints: jest.fn().mockResolvedValue({
+          projected30Days: 0,
+          projectedEndOfYear: 0,
+          confidence: 'LOW',
+        }),
+      } as any
+    );
   });
 
   afterEach(async () => {
@@ -30,6 +52,7 @@ describe('VolunteerService', () => {
     await prisma.volunteerPointBalance.deleteMany();
     await prisma.leaderboardCache.deleteMany();
     await prisma.volunteerToRole.deleteMany();
+    await prisma.den.deleteMany();
     await prisma.event.deleteMany();
     await prisma.volunteer.deleteMany();
   });
@@ -128,24 +151,26 @@ describe('VolunteerService', () => {
   describe('assignRole', () => {
     it('should assign a role to volunteer', async () => {
       const volunteer = await createTestVolunteer();
+      const den = await createWolfDen();
       const role = await prisma.volunteerRole.findFirst({
         where: { name: 'Den Leader - Wolf' },
       });
 
-      const assignment = await service.assignRole(volunteer.id, role!.id);
+      const assignment = await service.assignRole(volunteer.id, { roleId: role!.id, denIds: [den.id] });
 
-      expect(assignment.roleId).toBe(role!.id);
-      expect(assignment.roleName).toBe('Den Leader - Wolf');
-      expect(assignment).toHaveProperty('assignedAt');
+      expect(assignment.assignments[0].roleId).toBe(role!.id);
+      expect(assignment.assignments[0].roleName).toBe('Den Leader - Wolf');
+      expect(assignment.assignments[0]).toHaveProperty('assignedAt');
     });
 
     it('should upgrade volunteer to LEADER tier when assigning leader role', async () => {
       const volunteer = await createTestVolunteer({ authTier: 'PARENT' });
+      const den = await createWolfDen();
       const role = await prisma.volunteerRole.findFirst({
         where: { name: 'Den Leader - Wolf' },
       });
 
-      await service.assignRole(volunteer.id, role!.id);
+      await service.assignRole(volunteer.id, { roleId: role!.id, denIds: [den.id] });
 
       const updated = await prisma.volunteer.findUnique({
         where: { id: volunteer.id },
@@ -160,7 +185,7 @@ describe('VolunteerService', () => {
         where: { name: 'Committee Member - Treasurer' },
       });
 
-      await service.assignRole(volunteer.id, committeeRole!.id);
+      await service.assignRole(volunteer.id, { roleId: committeeRole!.id });
 
       const updated = await prisma.volunteer.findUnique({
         where: { id: volunteer.id },
@@ -173,22 +198,23 @@ describe('VolunteerService', () => {
       const volunteer = await createTestVolunteer();
 
       await expect(
-        service.assignRole(volunteer.id, 'non-existent-role-id')
+        service.assignRole(volunteer.id, { roleId: 'non-existent-role-id' })
       ).rejects.toThrow('Role not found');
     });
 
     it('should throw error if role already assigned', async () => {
       const volunteer = await createTestVolunteer();
+      const den = await createWolfDen();
       const role = await prisma.volunteerRole.findFirst({
         where: { name: 'Den Leader - Wolf' },
       });
 
       // First assignment should succeed
-      await service.assignRole(volunteer.id, role!.id);
+      await service.assignRole(volunteer.id, { roleId: role!.id, denIds: [den.id] });
 
       // Second assignment should fail
       await expect(
-        service.assignRole(volunteer.id, role!.id)
+        service.assignRole(volunteer.id, { roleId: role!.id, denIds: [den.id] })
       ).rejects.toThrow('Role already assigned');
     });
   });

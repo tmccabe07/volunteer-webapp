@@ -32,6 +32,7 @@ interface EventCardProps {
     fullDay?: boolean;
     location: string | null;
     rankLevel: string | null;
+    derivedRankLevels?: string[];
     isComplete: boolean;
     isRetroactive?: boolean;
     activitySlots: ActivitySlot[];
@@ -77,6 +78,11 @@ export default function EventCard({ event }: EventCardProps) {
 
   const hasCapacity = event.activitySlots.some(slot => slot.capacity !== null);
   const isSignedUp = event.activitySlots.some(slot => slot.currentUserSignup !== null);
+  const displayRanks = event.derivedRankLevels && event.derivedRankLevels.length > 0
+    ? event.derivedRankLevels
+    : event.rankLevel
+    ? [event.rankLevel]
+    : [];
 
   return (
     <Link href={`/events/${event.id}`}>
@@ -122,13 +128,14 @@ export default function EventCard({ event }: EventCardProps) {
           )}
 
           <div className="flex items-center gap-2">
-            {event.rankLevel && (
-              <Badge variant="outline">
-                {RANK_LABELS[event.rankLevel] || event.rankLevel}
-              </Badge>
-            )}
-            {!event.rankLevel && (
+            {displayRanks.length === 0 && (
               <Badge variant="outline">Pack-Wide</Badge>
+            )}
+            {displayRanks.length === 1 && (
+              <Badge variant="outline">{RANK_LABELS[displayRanks[0]] || displayRanks[0]}</Badge>
+            )}
+            {displayRanks.length > 1 && (
+              <Badge variant="outline">Multi-Rank</Badge>
             )}
             {isSignedUp && (
               <Badge className="bg-[hsl(var(--success))]/10 text-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/10 border border-[hsl(var(--success))]/20">

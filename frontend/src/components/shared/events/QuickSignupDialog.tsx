@@ -51,7 +51,12 @@ interface EventDetail {
   eventTime: string | null;
   location: string | null;
   rankLevel: string | null;
+  derivedRankLevels?: string[];
   activitySlots: ActivitySlot[];
+}
+
+interface ApiError {
+  message?: string;
 }
 
 interface QuickSignupDialogProps {
@@ -117,8 +122,9 @@ export default function QuickSignupDialog({
     try {
       const data = await eventsService.getEvent(eventId);
       setEvent(data);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load event details');
+    } catch (err: unknown) {
+      const apiError = err as ApiError;
+      setError(apiError.message || 'Failed to load event details');
     } finally {
       setLoading(false);
     }
@@ -129,7 +135,7 @@ export default function QuickSignupDialog({
       await eventsService.signupForActivity(eventId, activitySlotId);
       await loadEvent(); // Reload to show updated signups
       onSignupSuccess?.(); // Notify parent to refresh dashboard
-    } catch (err: any) {
+    } catch (err: unknown) {
       throw err; // Let the SignupButton handle the error display
     }
   };
@@ -139,7 +145,7 @@ export default function QuickSignupDialog({
       await eventsService.withdrawFromActivity(eventId, activitySlotId);
       await loadEvent(); // Reload to show updated signups
       onSignupSuccess?.(); // Notify parent to refresh dashboard
-    } catch (err: any) {
+    } catch (err: unknown) {
       throw err; // Let the WithdrawButton handle the error display
     }
   };
@@ -152,6 +158,16 @@ export default function QuickSignupDialog({
       day: 'numeric',
       year: 'numeric',
     });
+  };
+
+  const getDisplayRanks = () => {
+    if (!event) {
+      return [] as string[];
+    }
+    if (event.derivedRankLevels && event.derivedRankLevels.length > 0) {
+      return event.derivedRankLevels;
+    }
+    return event.rankLevel ? [event.rankLevel] : [];
   };
 
   return (
@@ -189,9 +205,14 @@ export default function QuickSignupDialog({
                 </div>
               )}
 
-              {event.rankLevel && (
+              {getDisplayRanks().length === 1 && (
                 <div className="text-sm">
-                  <Badge variant="outline">{RANK_LABELS[event.rankLevel]}</Badge>
+                  <Badge variant="outline">{RANK_LABELS[getDisplayRanks()[0]] || getDisplayRanks()[0]}</Badge>
+                </div>
+              )}
+              {getDisplayRanks().length > 1 && (
+                <div className="text-sm">
+                  <Badge variant="outline">Multi-Rank</Badge>
                 </div>
               )}
             </div>

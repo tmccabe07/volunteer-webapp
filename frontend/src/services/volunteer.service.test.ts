@@ -43,6 +43,10 @@ describe('VolunteerApiService', () => {
             roleType: 'DEN_LEADER',
             specialty: null,
             rankLevel: 'WOLF',
+            denId: 'den-1',
+            denName: 'Wolf Den 1',
+            denNumber: 8,
+            denRankLevel: 'WOLF',
             assignedAt: '2024-01-15T10:00:00Z',
           },
         ],
@@ -141,18 +145,26 @@ describe('VolunteerApiService', () => {
   describe('assignRole', () => {
     it('should assign a role successfully', async () => {
       const mockAssignment: RoleAssignment = {
-        id: 'assign-1',
-        roleId: 'role-1',
-        roleName: 'Den Leader',
-        assignedAt: '2024-01-15T10:00:00Z',
+        assignments: [
+          {
+            id: 'assign-1',
+            roleId: 'role-1',
+            roleName: 'Den Leader',
+            denId: 'den-1',
+            denNumber: 8,
+            assignedAt: '2024-01-15T10:00:00Z',
+          },
+        ],
+        tierUpgraded: true,
       };
 
       mockAxios.post.mockResolvedValue({ data: mockAssignment });
 
-      const result = await service.assignRole('role-1');
+      const result = await service.assignRole({ roleId: 'role-1', denIds: ['den-1'] });
 
       expect(mockAxios.post).toHaveBeenCalledWith('/volunteers/me/roles', {
         roleId: 'role-1',
+        denIds: ['den-1'],
       });
       expect(result).toEqual(mockAssignment);
     });
@@ -165,7 +177,7 @@ describe('VolunteerApiService', () => {
         },
       });
 
-      await expect(service.assignRole('role-1')).rejects.toMatchObject({
+      await expect(service.assignRole({ roleId: 'role-1' })).rejects.toMatchObject({
         response: { status: 409 },
       });
     });
@@ -178,9 +190,31 @@ describe('VolunteerApiService', () => {
         },
       });
 
-      await expect(service.assignRole('invalid-role')).rejects.toMatchObject({
+      await expect(service.assignRole({ roleId: 'invalid-role' })).rejects.toMatchObject({
         response: { status: 404 },
       });
+    });
+  });
+
+  describe('getAssignableDens', () => {
+    it('should fetch assignable dens with rank filter', async () => {
+      const mockDens = [
+        {
+          id: 'den-1',
+          name: 'Wolf Den 1',
+          denNumber: 8,
+          rankLevel: 'WOLF',
+        },
+      ];
+
+      mockAxios.get.mockResolvedValue({ data: mockDens });
+
+      const result = await service.getAssignableDens({ rankLevel: 'WOLF' });
+
+      expect(mockAxios.get).toHaveBeenCalledWith('/volunteers/roles/assignable-dens', {
+        params: { rankLevel: 'WOLF' },
+      });
+      expect(result).toEqual(mockDens);
     });
   });
 

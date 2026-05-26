@@ -1,27 +1,47 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import type { ComponentProps } from 'react';
+import { useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Edit, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 import EventDetails from '@/components/shared/events/EventDetails';
-import CompleteEventDialog from '@/components/forms/events/CompleteEventDialog';
 import eventsService from '@/services/events.service';
-import volunteersService from '@/services/volunteers.service';
+import { attendanceService } from '@/services/attendance.service';
 import { useAuth } from '@/lib/auth-context';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 export default function EventDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const { user } = useAuth();
   const eventId = params.id as string;
 
-  const [event, setEvent] = useState<any | null>(null);
+  type EventDetailsData = ComponentProps<typeof EventDetails>['event'];
+  type EventPageData = EventDetailsData;
+
+  interface ApiError {
+    message?: string;
+  }
+
+  const [event, setEvent] = useState<EventPageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showCompleteDialog, setShowCompleteDialog] = useState(false);
-  const [allVolunteers, setAllVolunteers] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<Array<{
+    child: {
+      id: string;
+      firstName: string;
+      lastName: string;
+    };
+    attendanceStatus: 'PRESENT' | 'ABSENT' | 'EXCUSED' | 'LATE';
+    coveredRequirements: Array<{
+      id: string;
+      adventureName: string;
+      requirementText: string;
+    }>;
+    notes?: string | null;
+  }>>([]);
 
   const canEdit = user?.authTier === 'LEADER' || user?.authTier === 'ADMIN';
   const canComplete = canEdit && event && !event.isComplete;
@@ -37,8 +57,18 @@ export default function EventDetailPage() {
     try {
       const data = await eventsService.getEvent(eventId);
       setEvent(data);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load event');
+
+      if (canEdit) {
+        try {
+          const attendance = await attendanceService.getEventAttendance(eventId);
+          setAttendanceRecords(attendance.attendance || []);
+        } catch {
+          setAttendanceRecords([]);
+        }
+      }
+    } catch (err: unknown) {
+      const apiError = err as ApiError;
+      setError(apiError.message || 'Failed to load event');
     } finally {
       setLoading(false);
     }
@@ -51,7 +81,7 @@ export default function EventDetailPage() {
       
       // Notify header to refresh points (for projected points)
       window.dispatchEvent(new Event('pointsUpdated'));
-    } catch (err: any) {
+    } catch (err: unknown) {
       throw err; // Let the component handle the error display
     }
   };
@@ -63,39 +93,9 @@ export default function EventDetailPage() {
       
       // Notify header to refresh points (for projected points)
       window.dispatchEvent(new Event('pointsUpdated'));
-    } catch (err: any) {
+    } catch (err: unknown) {
       throw err; // Let the component handle the error display
     }
-  };
-
-  const handleComplete = async (data: any) => {
-    try {
-      await eventsService.completeEvent(eventId, data);
-      setShowCompleteDialog(false);
-      await loadEvent(); // Reload to show completed status
-      
-      // Notify header to refresh points (for awarded points)
-      window.dispatchEvent(new Event('pointsUpdated'));
-    } catch (err: any) {
-      throw err; // Let the dialog handle the error display
-    }
-  };
-
-  const loadAllVolunteers = async () => {
-    if (canComplete) {
-      try {
-        const data = await volunteersService.listAllVolunteers();
-        setAllVolunteers(data.volunteers);
-      } catch (err: any) {
-        console.error('Failed to load volunteers:', err);
-        setAllVolunteers([]);
-      }
-    }
-  };
-
-  const handleShowCompleteDialog = () => {
-    setShowCompleteDialog(true);
-    loadAllVolunteers();
   };
 
   if (loading) {
@@ -136,10 +136,12 @@ export default function EventDetailPage() {
 
         <div className="flex gap-2">
           {canComplete && (
-            <Button onClick={handleShowCompleteDialog}>
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Mark Complete
-            </Button>
+            <Link href={`/events/${eventId}/complete`}>
+              <Button>
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Mark Complete
+              </Button>
+            </Link>
           )}
           {canEdit && !event.isComplete && (
             <Link href={`/events/${eventId}/edit`}>
@@ -159,14 +161,53 @@ export default function EventDetailPage() {
         onWithdraw={handleWithdraw}
       />
 
-      {showCompleteDialog && (
-        <CompleteEventDialog
-          event={event}
-          allVolunteers={allVolunteers}
-          onComplete={handleComplete}
-          onCancel={() => setShowCompleteDialog(false)}
-        />
+      {canEdit && (
+        <Card className="mt-6 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Attendance</h2>
+            <Link href={`/events/${eventId}/attendance`}>
+              <Button variant="outline" size="sm">Record / Edit Attendance</Button>
+            </Link>
+          </div>
+
+          {attendanceRecords.length === 0 ? (
+            <p className="text-sm text-gray-600">No attendance recorded for this event yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {attendanceRecords.map((record) => (
+                <div key={record.child.id} className="border rounded-md p-3 flex items-center justify-between gap-3">
+                  <div>
+                    <Link href={`/cubs/${record.child.id}`} className="font-medium hover:underline">
+                      {record.child.firstName} {record.child.lastName}
+                    </Link>
+                    {record.coveredRequirements.length > 0 && (
+                      <p className="text-xs text-gray-600 mt-1">
+                        Requirements covered: {record.coveredRequirements.length}
+                      </p>
+                    )}
+                    {record.notes && (
+                      <p className="text-xs text-gray-600 mt-1">Notes: {record.notes}</p>
+                    )}
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className={
+                      record.attendanceStatus === 'PRESENT'
+                        ? 'border-green-300 text-green-700'
+                        : record.attendanceStatus === 'ABSENT'
+                        ? 'border-red-300 text-red-700'
+                        : 'border-amber-300 text-amber-700'
+                    }
+                  >
+                    {record.attendanceStatus}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
       )}
+
     </div>
   );
 }

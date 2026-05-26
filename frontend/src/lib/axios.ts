@@ -64,6 +64,7 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean;
+      _forbiddenRetry?: boolean;
     };
 
     // Handle 401 Unauthorized errors
@@ -118,6 +119,18 @@ apiClient.interceptors.response.use(
     }
 
     // Handle 403 Forbidden errors
+    if (error.response?.status === 403 && originalRequest && !originalRequest._forbiddenRetry) {
+      originalRequest._forbiddenRetry = true;
+
+      try {
+        // Refresh once in case user tier changed after login and access token is stale
+        await apiClient.post('/auth/refresh');
+        return apiClient(originalRequest);
+      } catch {
+        // Fall through to unauthorized redirect below
+      }
+    }
+
     if (error.response?.status === 403) {
       // Insufficient permissions - redirect to unauthorized page
       if (typeof window !== 'undefined') {

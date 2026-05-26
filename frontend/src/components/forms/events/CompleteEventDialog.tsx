@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { PlusCircle, Trash2, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface ManualVolunteer {
   volunteerId: string;
@@ -30,6 +30,12 @@ interface CompleteEventDialogProps {
   event: {
     id: string;
     title: string;
+    plannedRequirements?: Array<{
+      requirementId: string;
+      requirement?: {
+        requirementText: string;
+      };
+    }>;
     activitySlots: Array<{
       id: string;
       activityType: {
@@ -51,15 +57,31 @@ interface CompleteEventDialogProps {
     name: string;
     email: string;
   }>;
-  onComplete: (data: { manualVolunteers?: ManualVolunteer[]; excludedSignupIds?: string[] }) => Promise<void>;
+  attendanceCount?: number;
+  onRecordAttendance?: () => void;
+  onComplete: (data: {
+    manualVolunteers?: ManualVolunteer[];
+    excludedSignupIds?: string[];
+    applyPlannedRequirementsToPresent?: boolean;
+  }) => Promise<void>;
   onCancel: () => void;
 }
 
-export default function CompleteEventDialog({ event, allVolunteers, onComplete, onCancel }: CompleteEventDialogProps) {
+export default function CompleteEventDialog({
+  event,
+  allVolunteers,
+  attendanceCount = 0,
+  onRecordAttendance,
+  onComplete,
+  onCancel,
+}: CompleteEventDialogProps) {
   const [manualVolunteers, setManualVolunteers] = useState<ManualVolunteer[]>([]);
   const [excludedSignupIds, setExcludedSignupIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [applyPlannedRequirementsToPresent, setApplyPlannedRequirementsToPresent] = useState(false);
+
+  const plannedRequirements = event.plannedRequirements || [];
 
   const addManualVolunteer = () => {
     setManualVolunteers(prev => [
@@ -105,9 +127,11 @@ export default function CompleteEventDialog({ event, allVolunteers, onComplete, 
       await onComplete({
         manualVolunteers: validManuals.length > 0 ? validManuals : undefined,
         excludedSignupIds: excludedSignupIds.size > 0 ? Array.from(excludedSignupIds) : undefined,
+        applyPlannedRequirementsToPresent,
       });
-    } catch (err: any) {
-      setError(err.message || 'Failed to complete event');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to complete event';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -129,11 +153,54 @@ export default function CompleteEventDialog({ event, allVolunteers, onComplete, 
         <DialogHeader>
           <DialogTitle>Mark Event Complete</DialogTitle>
           <DialogDescription>
-            Award points to all volunteers who participated in this event. You can also add volunteers who participated but didn't sign up.
+            Award points to all volunteers who participated in this event. You can also add volunteers who participated but didn&apos;t sign up.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Attendance Context */}
+          <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+            <h4 className="font-semibold mb-2">Cub Attendance</h4>
+            <p className="text-sm text-amber-900">
+              {attendanceCount > 0
+                ? `${attendanceCount} Cub Scout attendance record${attendanceCount === 1 ? '' : 's'} recorded for this event.`
+                : 'No Cub Scout attendance recorded yet for this event.'}
+            </p>
+            {onRecordAttendance && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                onClick={onRecordAttendance}
+              >
+                Record / Review Attendance
+              </Button>
+            )}
+            {plannedRequirements.length > 0 && (
+              <div className="mt-3 p-3 bg-white rounded border border-amber-200 space-y-2">
+                <p className="text-sm font-medium text-amber-900">
+                  Planned requirements: {plannedRequirements.length}
+                </p>
+                <label className="flex items-start gap-2 cursor-pointer text-sm text-amber-900">
+                  <Checkbox
+                    checked={applyPlannedRequirementsToPresent}
+                    onCheckedChange={(checked) => setApplyPlannedRequirementsToPresent(Boolean(checked))}
+                    disabled={attendanceCount === 0 || loading}
+                  />
+                  <span>
+                    Apply planned requirements to all PRESENT Cub Scouts before marking complete.
+                  </span>
+                </label>
+                {attendanceCount === 0 && (
+                  <p className="text-xs text-amber-800">
+                    Add attendance records first to use bulk apply.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Summary */}
           <div className="p-4 bg-blue-50 rounded-lg">
             <h4 className="font-semibold mb-2">Event Summary</h4>
@@ -146,7 +213,7 @@ export default function CompleteEventDialog({ event, allVolunteers, onComplete, 
           {/* Activity Slots with Signups */}
           <div>
             <h4 className="font-semibold mb-2">Signed Up Volunteers</h4>
-            <p className="text-sm text-gray-600 mb-3">Click the X to exclude volunteers who didn't show up</p>
+            <p className="text-sm text-gray-600 mb-3">Click the X to exclude volunteers who didn&apos;t show up</p>
             <div className="space-y-3">
               {event.activitySlots.map(slot => {
                 const activeSignups = slot.signups.filter(s => !s.withdrawn);
@@ -199,7 +266,7 @@ export default function CompleteEventDialog({ event, allVolunteers, onComplete, 
 
             {manualVolunteers.length === 0 ? (
               <p className="text-sm text-gray-500 p-4 border rounded-lg text-center">
-                No manual volunteers added. Click "Add Volunteer" to include someone who participated without signing up.
+                No manual volunteers added. Click &quot;Add Volunteer&quot; to include someone who participated without signing up.
               </p>
             ) : (
               <div className="space-y-3">

@@ -18,10 +18,9 @@ import {
   Bell, 
   User, 
   Users, 
+  PawPrint,
   FileText, 
   Settings,
-  Shield,
-  Award,
   LucideIcon
 } from 'lucide-react';
 
@@ -32,7 +31,7 @@ interface NavLink {
   minTier: number; // Minimum tier required to see this link
 }
 
-const navLinks: NavLink[] = [
+const baseNavLinks: NavLink[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, minTier: 1 },
   { href: '/events', label: 'Events', icon: Calendar, minTier: 1 },
   { href: '/tasks', label: 'Tasks', icon: CheckSquare, minTier: 1 },
@@ -41,17 +40,30 @@ const navLinks: NavLink[] = [
   { href: '/profile', label: 'Profile', icon: User, minTier: 1 },
   { href: '/volunteers', label: 'Volunteers', icon: Users, minTier: 2 },
   { href: '/reports', label: 'Reports', icon: FileText, minTier: 2 },
-  { href: '/admin/config', label: 'Pack Config', icon: Settings, minTier: 3 },
-  { href: '/admin/roles', label: 'Roles', icon: Shield, minTier: 3 },
-  { href: '/admin/activities', label: 'Activities', icon: Award, minTier: 3 },
+  { href: '/admin/config', label: 'My Pack', icon: Settings, minTier: 3 },
 ];
 
 interface NavigationProps {
   userTier?: number; // Current user's tier (1-3)
+  userAuthTier?: 'PARENT' | 'LEADER' | 'ADMIN';
 }
 
 export function Navigation({ userTier = 1 }: NavigationProps) {
   const pathname = usePathname();
+
+  const roleSpecificLinks: NavLink[] = [
+    { href: '/my-cub-scouts', label: 'My Cub Scouts', icon: PawPrint, minTier: 1 },
+  ];
+
+  if (userTier >= 2) {
+    roleSpecificLinks.push({ href: '/my-dens', label: 'My Dens', icon: PawPrint, minTier: 2 });
+  }
+
+  const navLinks = [
+    ...baseNavLinks.slice(0, 5),
+    ...roleSpecificLinks,
+    ...baseNavLinks.slice(5),
+  ];
 
   // Filter links based on user tier
   const visibleLinks = navLinks.filter((link) => userTier >= link.minTier);

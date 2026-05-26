@@ -8,6 +8,7 @@
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException, ForbiddenException, SetMetadata } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import * as jwt from 'jsonwebtoken';
+import prisma from '../utils/prisma';
 
 /**
  * JWT Payload structure
@@ -82,7 +83,7 @@ export class AuthGuard implements CanActivate {
 export class TierGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const requiredTier = this.reflector.getAllAndOverride<string>(TIER_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -105,7 +106,27 @@ export class TierGuard implements CanActivate {
     const requiredLevel = tierLevels[requiredTier as keyof typeof tierLevels] || 0;
 
     if (userLevel < requiredLevel) {
-      throw new ForbiddenException('Insufficient permissions');
+      // Fallback to DB tier to handle stale access tokens after role/tier changes.
+      const currentVolunteer = await prisma.volunteer.findFirst({
+        where: {
+          id: user.userId,
+          deletedAt: null,
+        },
+        select: {
+          authTier: true,
+        },
+      });
+
+      const currentLevel = currentVolunteer
+        ? tierLevels[currentVolunteer.authTier as keyof typeof tierLevels] || 0
+        : 0;
+
+      if (currentLevel < requiredLevel) {
+        throw new ForbiddenException('Insufficient permissions');
+      }
+
+      // Keep request user tier in sync for downstream logic in this request.
+      user.authTier = currentVolunteer!.authTier;
     }
 
     return true;

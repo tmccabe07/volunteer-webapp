@@ -15,6 +15,31 @@ import {
 export class ReportsService {
   private prisma: PrismaClient = prisma;
 
+  private getEventDerivedRanks(event: {
+    targetDens?: Array<{ den: { rankLevel: string } }>;
+    rankLevel?: string | null;
+  }): string[] {
+    const ranks = [...new Set((event.targetDens || []).map((target) => target.den.rankLevel))];
+    if (ranks.length > 0) {
+      return ranks;
+    }
+    return event.rankLevel ? [event.rankLevel] : [];
+  }
+
+  private getEventRankBucket(event: {
+    targetDens?: Array<{ den: { rankLevel: string } }>;
+    rankLevel?: string | null;
+  }): string {
+    const ranks = this.getEventDerivedRanks(event);
+    if (ranks.length === 0) {
+      return 'PACK_WIDE';
+    }
+    if (ranks.length === 1) {
+      return ranks[0];
+    }
+    return 'MULTI';
+  }
+
   /**
    * Generate participation report showing volunteer event participation and points earned
    * @param query Report filter parameters (date range, rank level, format)
@@ -41,13 +66,38 @@ export class ReportsService {
     };
 
     if (query.rankLevel && query.rankLevel !== 'PACK_WIDE') {
-      eventFilter.rankLevel = query.rankLevel;
+      eventFilter.OR = [
+        {
+          targetDens: {
+            some: {
+              den: {
+                rankLevel: query.rankLevel,
+              },
+            },
+          },
+        },
+        {
+          AND: [
+            { targetDens: { none: {} } },
+            { rankLevel: query.rankLevel },
+          ],
+        },
+      ];
     }
 
     // Fetch events in date range
     const events = await this.prisma.event.findMany({
       where: eventFilter,
       include: {
+        targetDens: {
+          include: {
+            den: {
+              select: {
+                rankLevel: true,
+              },
+            },
+          },
+        },
         activitySlots: {
           include: {
             activityType: true,
@@ -162,7 +212,7 @@ export class ReportsService {
     // Participation by rank
     const rankStats = new Map<string, { eventsHeld: number; totalSignups: number }>();
     for (const event of events) {
-      const rankLevel = event.rankLevel || 'PACK_WIDE';
+      const rankLevel = this.getEventRankBucket(event);
       if (!rankStats.has(rankLevel)) {
         rankStats.set(rankLevel, { eventsHeld: 0, totalSignups: 0 });
       }
@@ -538,7 +588,23 @@ export class ReportsService {
     };
 
     if (query.rankLevel && query.rankLevel !== 'PACK_WIDE') {
-      eventFilter.rankLevel = query.rankLevel;
+      eventFilter.OR = [
+        {
+          targetDens: {
+            some: {
+              den: {
+                rankLevel: query.rankLevel,
+              },
+            },
+          },
+        },
+        {
+          AND: [
+            { targetDens: { none: {} } },
+            { rankLevel: query.rankLevel },
+          ],
+        },
+      ];
     }
 
     // Fetch upcoming events
@@ -546,6 +612,15 @@ export class ReportsService {
       where: eventFilter,
       orderBy: { eventDate: 'asc' },
       include: {
+        targetDens: {
+          include: {
+            den: {
+              select: {
+                rankLevel: true,
+              },
+            },
+          },
+        },
         activitySlots: {
           include: {
             activityType: true,
@@ -603,7 +678,7 @@ export class ReportsService {
         description: event.description,
         eventDate: event.eventDate.toISOString(),
         location: event.location,
-        rankLevel: event.rankLevel || 'PACK_WIDE',
+        rankLevel: this.getEventRankBucket(event),
         activitySlots,
         totalSignups,
       };

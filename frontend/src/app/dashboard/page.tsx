@@ -7,10 +7,12 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import eventsService from '@/services/events.service';
 import adminTasksService from '@/services/admin-tasks.service';
 import volunteersService, { VolunteerProfile } from '@/services/volunteers.service';
+import { volunteerApi } from '@/services/volunteer.service';
+import { parentLinkService, RequestableCubScoutItem } from '@/services/parentLinkService';
 import DashboardTaskCard from '@/components/shared/tasks/DashboardTaskCard';
 import QuickSignupDialog from '@/components/shared/events/QuickSignupDialog';
 import { formatEventTime } from '@/lib/time-format.util';
@@ -48,7 +50,7 @@ export default function DashboardPage() {
   const { user, isLoading } = useRequireAuth();
   const router = useRouter();
   const [profile, setProfile] = useState<VolunteerProfile | null>(null);
-  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [linkedCubs, setLinkedCubs] = useState<RequestableCubScoutItem[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [upcomingTasks, setUpcomingTasks] = useState<Task[]>([]);
@@ -56,14 +58,6 @@ export default function DashboardPage() {
   const [taskError, setTaskError] = useState<string | null>(null);
   const [signupDialogOpen, setSignupDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<{ id: string; title: string } | null>(null);
-
-  useEffect(() => {
-    if (user) {
-      loadProfile();
-      loadUpcomingEvents();
-      loadUpcomingTasks();
-    }
-  }, [user]);
 
   /**
    * Load volunteer profile with badge tier and projected points
@@ -74,25 +68,87 @@ export default function DashboardPage() {
       setProfile(data);
     } catch (error) {
       console.error('Failed to load profile:', error);
-    } finally {
-      setLoadingProfile(false);
     }
   };
 
+  const loadLinkedCubs = useCallback(async () => {
+    if (!user || user.authTier !== 'PARENT') {
+      setLinkedCubs([]);
+      return;
+    }
+
+    try {
+      const response = await parentLinkService.getMyLinkedCubScouts();
+      setLinkedCubs(response.data || []);
+    } catch (error) {
+      console.error('Failed to load linked cub scouts:', error);
+      setLinkedCubs([]);
+    }
+  }, [user]);
+
   /**
    * Load upcoming events for display in the dashboard
-   * Fetches events with `upcoming: true` filter and limits to 5 results
+   * Fetches events with `upcoming: true` and the user's associated dens when available
    */
-  const loadUpcomingEvents = async () => {
+  const getAssociatedDenIds = useCallback(async (): Promise<string[]> => {
+    if (!user) {
+      return [];
+    }
+
+    if (user.authTier === 'ADMIN') {
+      return [];
+    }
+
+    if (user.authTier === 'LEADER') {
+      const profile = await volunteerApi.getMyProfile();
+      return Array.from(
+        new Set(
+          profile.roles
+            .filter((role) => !!role.denId)
+            .map((role) => role.denId as string)
+        )
+      );
+    }
+
+    if (user.authTier === 'PARENT') {
+      const response = await parentLinkService.getMyLinkedCubScouts();
+      return Array.from(
+        new Set(
+          response.data
+            .map((child) => child.currentDen?.id)
+            .filter((denId): denId is string => !!denId)
+        )
+      );
+    }
+
+    return [];
+  }, [user]);
+
+  const loadUpcomingEvents = useCallback(async () => {
     try {
-      const data = await eventsService.listEvents({ upcoming: true, limit: 5 });
+      const denIds = await getAssociatedDenIds();
+      const data = await eventsService.listEvents({
+        upcoming: true,
+        limit: 5,
+        scopeType: 'ALL',
+        denIds: denIds.length > 0 ? denIds : undefined,
+      });
       setUpcomingEvents(data.events || []);
     } catch (error) {
       console.error('Failed to load events:', error);
     } finally {
       setLoadingEvents(false);
     }
-  };
+  }, [getAssociatedDenIds]);
+
+  useEffect(() => {
+    if (user) {
+      loadProfile();
+      loadLinkedCubs();
+      loadUpcomingEvents();
+      loadUpcomingTasks();
+    }
+  }, [user, loadLinkedCubs, loadUpcomingEvents]);
 
   /**
    * Load tasks assigned to the current user
@@ -344,16 +400,17 @@ export default function DashboardPage() {
                   {user.authTier}
                 </span>
               </div>
-              {profile?.childrenRanks && profile.childrenRanks.length > 0 && (
+              {user.authTier === 'PARENT' && linkedCubs.length > 0 && (
                 <div>
                   <span className="font-medium">Rank(s):</span>{' '}
                   <div className="flex flex-wrap gap-1 mt-1">
-                    {profile.childrenRanks.map((rank) => (
+                    {linkedCubs.map((cub) => (
                       <span
-                        key={rank.id}
+                        key={cub.id}
                         className="inline-block px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-semibold"
                       >
-                        {rank.rankLevel}
+                        {cub.currentRank}
+                        {cub.currentDen?.denNumber ? ` • Den #${cub.currentDen.denNumber}` : ''}
                       </span>
                     ))}
                   </div>

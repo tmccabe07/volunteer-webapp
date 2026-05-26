@@ -31,6 +31,9 @@ import {
   type ChangePasswordInput
 } from '../utils/validation/auth.schema';
 
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const THROTTLE_DISABLED = process.env.DISABLE_THROTTLE === 'true';
+
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -104,7 +107,7 @@ export class AuthController {
   @Post('login')
   @Throttle({ 
     default: { 
-      limit: process.env.NODE_ENV === 'development' ? 100 : 5, 
+      limit: THROTTLE_DISABLED ? 1_000_000 : IS_PRODUCTION ? 5 : 100,
       ttl: 15 * 60 * 1000 
     } 
   })
@@ -243,7 +246,7 @@ export class AuthController {
   @Post('request-reset')
   @Throttle({ 
     default: { 
-      limit: process.env.NODE_ENV === 'development' ? 50 : 3, 
+      limit: THROTTLE_DISABLED ? 1_000_000 : IS_PRODUCTION ? 3 : 50,
       ttl: 60 * 60 * 1000 
     } 
   })
