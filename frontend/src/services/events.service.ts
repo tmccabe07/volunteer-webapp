@@ -23,6 +23,7 @@ export interface CreateEventData {
   title: string;
   description?: string;
   eventDate: string;
+  eventEndDate?: string;
   eventTime?: string;
   endTime?: string;
   fullDay?: boolean;
@@ -32,6 +33,11 @@ export interface CreateEventData {
   rankLevel?: string | null;
   isRecurring?: boolean;
   plannedRequirementIds?: string[];
+  plannedHourActivities?: {
+    camping?: { enabled: boolean; nights?: number };
+    hiking?: { enabled: boolean; miles?: number };
+    service?: { enabled: boolean; hours?: number };
+  };
   activitySlots: ActivitySlot[];
 }
 
@@ -39,6 +45,7 @@ export interface UpdateEventData {
   title?: string;
   description?: string;
   eventDate?: string;
+  eventEndDate?: string | null;
   eventTime?: string;
   endTime?: string;
   fullDay?: boolean;
@@ -48,6 +55,11 @@ export interface UpdateEventData {
   rankLevel?: string | null;
   isRecurring?: boolean;
   plannedRequirementIds?: string[];
+  plannedHourActivities?: {
+    camping?: { enabled: boolean; nights?: number };
+    hiking?: { enabled: boolean; miles?: number };
+    service?: { enabled: boolean; hours?: number };
+  };
   activitySlots?: ActivitySlot[];
 }
 
@@ -57,6 +69,21 @@ export interface CompleteEventData {
     activitySlotId: string;
   }>;
   excludedSignupIds?: string[];
+}
+
+export interface PromptRequirementParentsResponse {
+  eventId: string;
+  promptedRequirementProgress: number;
+  promptedParents: number;
+}
+
+export interface GeneratePromptsData {
+  categoryPrompts: Array<{
+    category: 'CAMPING' | 'HIKING' | 'SERVICE';
+    categoryData?: Record<string, unknown>;
+    childScoutIds: string[];
+  }>;
+  syncMode?: 'ADD_ONLY' | 'SYNC_REMOVE';
 }
 
 export interface ListEventsParams {
@@ -111,6 +138,22 @@ const eventsService = {
    */
   async completeEvent(eventId: string, data: CompleteEventData = {}) {
     const response = await axios.post(`/events/${eventId}/complete`, data);
+    return response.data;
+  },
+
+  /**
+   * Prompt linked parents to update Scoutbook for event-covered requirements.
+   */
+  async promptRequirementParents(eventId: string, data?: { message?: string }) {
+    const response = await axios.post<PromptRequirementParentsResponse>(
+      `/events/${eventId}/prompt-requirements`,
+      data || {},
+    );
+    return response.data;
+  },
+
+  async generateHourPrompts(eventId: string, data: GeneratePromptsData) {
+    const response = await axios.post(`/events/${eventId}/generate-prompts`, data);
     return response.data;
   },
 

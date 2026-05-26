@@ -368,46 +368,46 @@
 
 ### Contract Tests for User Story 5
 
-- [ ] T195 [P] [US5] Contract test for POST /events/:id/generate-prompts in backend/test/scoutbook-prompts.e2e-spec.ts
-- [ ] T196 [P] [US5] Contract test for GET /scoutbook-prompts in backend/test/scoutbook-prompts.e2e-spec.ts
-- [ ] T197 [P] [US5] Contract test for PATCH /scoutbook-prompts/:id/acknowledge in backend/test/scoutbook-prompts.e2e-spec.ts
-- [ ] T198 [P] [US5] Contract test for PATCH /scoutbook-prompts/:id/dismiss in backend/test/scoutbook-prompts.e2e-spec.ts
+- [X] T195 [P] [US5] Contract test for POST /events/:id/generate-prompts in backend/test/scoutbook-prompts.e2e-spec.ts
+- [X] T196 [P] [US5] Contract test for GET /scoutbook-prompts in backend/test/scoutbook-prompts.e2e-spec.ts
+- [X] T197 [P] [US5] Contract test for PATCH /scoutbook-prompts/:id/acknowledge in backend/test/scoutbook-prompts.e2e-spec.ts
+- [X] T198 [P] [US5] Contract test for PATCH /scoutbook-prompts/:id/dismiss in backend/test/scoutbook-prompts.e2e-spec.ts
 
 ### Backend Implementation for User Story 5
 
 #### Hours Prompt Generation
 
-- [ ] T199 [P] [US5] Create GeneratePromptsDto in backend/src/models/hours-prompt/generate-prompts.dto.ts with category-specific data schemas
-- [ ] T200 [P] [US5] Create ScoutbookPromptResponseDto in backend/src/models/hours-prompt/prompt-response.dto.ts
-- [ ] T201 [P] [US5] Create UpdatePromptDto in backend/src/models/hours-prompt/update-prompt.dto.ts
-- [ ] T202 [US5] Create ScoutbookPromptService in backend/src/services/hours-prompt/scoutbook-prompt.service.ts
-- [ ] T203 [US5] Implement category-specific prompt generation using strategy pattern in ScoutbookPromptService
-- [ ] T204 [US5] Implement event-type default value prefill logic in ScoutbookPromptService
-- [ ] T205 [US5] Implement reminder notification scheduling in ScoutbookPromptService for unacknowledged prompts
-- [ ] T206 [US5] Create ScoutbookPromptController in backend/src/api/scoutbook-prompt.controller.ts with POST /events/:id/generate-prompts, GET /scoutbook-prompts, PATCH /:id/acknowledge, PATCH /:id/dismiss
-- [ ] T207 [US5] Add ScoutbookPromptService unit tests in backend/src/services/hours-prompt/scoutbook-prompt.service.spec.ts
+- [X] T199 [P] [US5] Create GeneratePromptsDto in backend/src/models/hours-prompt/generate-prompts.dto.ts with category-specific data schemas
+- [X] T200 [P] [US5] Create ScoutbookPromptResponseDto in backend/src/models/hours-prompt/prompt-response.dto.ts
+- [X] T201 [P] [US5] Create UpdatePromptDto in backend/src/models/hours-prompt/update-prompt.dto.ts
+- [X] T202 [US5] Create ScoutbookPromptService in backend/src/services/hours-prompt/scoutbook-prompt.service.ts
+- [X] T203 [US5] Implement category-specific prompt generation using strategy pattern in ScoutbookPromptService
+- [X] T204 [US5] Implement event-type default value prefill logic in ScoutbookPromptService
+- [X] T205 [US5] Implement reminder notification scheduling in ScoutbookPromptService for unacknowledged prompts
+- [X] T206 [US5] Create ScoutbookPromptController in backend/src/api/scoutbook-prompt.controller.ts with POST /events/:id/generate-prompts, GET /scoutbook-prompts, PATCH /:id/acknowledge, PATCH /:id/dismiss
+- [X] T207 [US5] Add ScoutbookPromptService unit tests in backend/src/services/hours-prompt/scoutbook-prompt.service.spec.ts
 
 ### Frontend Implementation for User Story 5
 
 #### Event Closeout with Prompts
 
-- [ ] T208 [P] [US5] Create HoursPromptConfig component in frontend/src/components/den/HoursPromptConfig.tsx for leader event closeout
-- [ ] T209 [P] [US5] Create CategoryPromptForm component in frontend/src/components/den/CategoryPromptForm.tsx for Camping/Hiking/Service
-- [ ] T210 [US5] Extend event closeout page with hours prompt configuration in frontend/src/app/events/[id]/closeout/page.tsx
+- [X] T208 [P] [US5] Create HoursPromptConfig component in frontend/src/components/den/HoursPromptConfig.tsx for leader event closeout
+- [X] T209 [P] [US5] Create CategoryPromptForm component in frontend/src/components/den/CategoryPromptForm.tsx for Camping/Hiking/Service
+- [X] T210 [US5] Extend event closeout page with hours prompt configuration in frontend/src/app/events/[id]/closeout/page.tsx
 
 #### Parent Prompt Dashboard
 
-- [ ] T211 [P] [US5] Create ParentPromptsList component in frontend/src/components/parent/ParentPromptsList.tsx
-- [ ] T212 [P] [US5] Create PromptDetailCard component in frontend/src/components/parent/PromptDetailCard.tsx with suggested values
-- [ ] T213 [P] [US5] Create AcknowledgePromptDialog component in frontend/src/components/parent/AcknowledgePromptDialog.tsx
-- [ ] T214 [US5] Create parent prompts page in frontend/src/app/parent/scoutbook-prompts/page.tsx
-- [ ] T215 [US5] Create hoursPromptService API client in frontend/src/services/hoursPromptService.ts
+- [X] T211 [P] [US5] Create ParentPromptsList component in frontend/src/components/parent/ParentPromptsList.tsx
+- [X] T212 [P] [US5] Create PromptDetailCard component in frontend/src/components/parent/PromptDetailCard.tsx with suggested values
+- [X] T213 [P] [US5] Create AcknowledgePromptDialog component in frontend/src/components/parent/AcknowledgePromptDialog.tsx
+- [X] T214 [US5] Create parent prompts page in frontend/src/app/parent/scoutbook-prompts/page.tsx
+- [X] T215 [US5] Create hoursPromptService API client in frontend/src/services/hoursPromptService.ts
 
 #### Tests
 
-- [ ] T216 [P] [US5] Unit test for HoursPromptConfig component in frontend/src/components/den/HoursPromptConfig.test.tsx
-- [ ] T217 [P] [US5] Unit test for ParentPromptsList component in frontend/src/components/parent/ParentPromptsList.test.tsx
-- [ ] T218 [US5] Integration test for hours prompt flow in frontend/src/test/integration/hours-prompt-flow.test.tsx
+- [X] T216 [P] [US5] Unit test for HoursPromptConfig component in frontend/src/components/den/HoursPromptConfig.test.tsx
+- [X] T217 [P] [US5] Unit test for ParentPromptsList component in frontend/src/components/parent/ParentPromptsList.test.tsx
+- [X] T218 [US5] Integration test for hours prompt flow in frontend/src/test/integration/hours-prompt-flow.test.tsx
 
 **Checkpoint**: At this point, User Stories 1, 2, 3, AND 5 should all work independently - parents receive category-specific prompts after events
 

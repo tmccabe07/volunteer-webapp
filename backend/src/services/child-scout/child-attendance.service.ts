@@ -1,10 +1,12 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { AttendanceStatus, CompletionType, CoverageSource, ReconciliationStatus } from '@prisma/client';
+import { AttendanceStatus, CompletionType, CoverageSource, Prisma, ReconciliationStatus } from '@prisma/client';
 import prisma from '../../utils/prisma';
+import { RequirementProgressService } from '../advancement/requirement-progress.service';
 import type {
   RecordAttendanceDto,
   AttendanceRecord,
 } from '../../models/attendance/record-attendance.dto';
+import type { PromptParentForRequirementDto } from '../../models/advancement/prompt-parent.dto';
 
 /**
  * ChildAttendanceService handles child attendance and requirement tracking
@@ -18,6 +20,8 @@ import type {
  */
 @Injectable()
 export class ChildAttendanceService {
+  constructor(private readonly requirementProgressService: RequirementProgressService) {}
+
   /**
    * ChildAttendance currently references DenEvent in Prisma schema.
    * Attendance endpoints are event-id based, so ensure a matching DenEvent
@@ -31,10 +35,12 @@ export class ChildAttendanceService {
         title: true,
         description: true,
         eventDate: true,
+        eventEndDate: true,
         eventTime: true,
         endTime: true,
         fullDay: true,
         location: true,
+        plannedHourActivities: true,
         createdById: true,
       },
     });
@@ -55,10 +61,14 @@ export class ChildAttendanceService {
           title: event.title,
           description: event.description,
           eventDate: event.eventDate,
+          eventEndDate: event.eventEndDate,
           eventTime: event.eventTime,
           endTime: event.endTime,
           fullDay: event.fullDay,
           location: event.location,
+          hourPromptDefaults: event.plannedHourActivities
+            ? (event.plannedHourActivities as Prisma.InputJsonValue)
+            : Prisma.DbNull,
           denId: null,
           createdById: event.createdById,
         },
@@ -352,6 +362,78 @@ export class ChildAttendanceService {
       })),
       recordedAt: attendance.recordedAt!.toISOString(),
       recordedBy: attendance.recordedBy!,
+    };
+  }
+
+  async promptParentsForEventRequirements(
+    eventId: string,
+    userId: string,
+    authTier: string,
+    input: PromptParentForRequirementDto,
+  ) {
+    await this.ensureAttendanceEvent(eventId);
+
+    const occurrences = await prisma.requirementCoverageOccurrence.findMany({
+      where: {
+        eventId,
+        source: CoverageSource.MEETING_ATTENDANCE,
+      },
+      select: {
+        childScoutId: true,
+        requirementId: true,
+      },
+    });
+
+    const uniquePairs = new Set<string>();
+    const pairRows: Array<{ childScoutId: string; requirementId: string }> = [];
+    for (const occurrence of occurrences) {
+      const key = `${occurrence.childScoutId}:${occurrence.requirementId}`;
+      if (!uniquePairs.has(key)) {
+        uniquePairs.add(key);
+        pairRows.push({
+          childScoutId: occurrence.childScoutId,
+          requirementId: occurrence.requirementId,
+        });
+      }
+    }
+
+    if (pairRows.length === 0) {
+      return {
+        eventId,
+        promptedRequirementProgress: 0,
+        promptedParents: 0,
+      };
+    }
+
+    const pendingProgressRows = await prisma.requirementProgress.findMany({
+      where: {
+        scoutbookStatus: ReconciliationStatus.PENDING,
+        OR: pairRows.map((pair) => ({
+          childScoutId: pair.childScoutId,
+          requirementId: pair.requirementId,
+        })),
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    let promptedParents = 0;
+
+    for (const progress of pendingProgressRows) {
+      const result = await this.requirementProgressService.promptParentsForRequirement(
+        progress.id,
+        userId,
+        authTier,
+        input,
+      );
+      promptedParents += result.promptedParents;
+    }
+
+    return {
+      eventId,
+      promptedRequirementProgress: pendingProgressRows.length,
+      promptedParents,
     };
   }
 }

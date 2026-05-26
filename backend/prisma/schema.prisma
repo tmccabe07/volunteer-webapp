@@ -181,6 +181,7 @@ model Event {
   title            String
   description      String?
   eventDate        DateTime
+  eventEndDate     DateTime?
   eventTime        String? // Start time in HH:mm format (24hr)
   endTime          String? // End time in HH:mm format (24hr), optional
   fullDay          Boolean    @default(false) // If true, times are ignored
@@ -194,6 +195,7 @@ model Event {
   activitySlots ActivitySlot[]
   targetDens    EventTargetDen[]
   plannedRequirements EventPlannedRequirement[]
+  plannedHourActivities Json? // { camping: { enabled, nights }, hiking: { enabled, miles }, service: { enabled, hours } }
   requirementOccurrences RequirementCoverageOccurrence[]
   createdById   String
   createdBy     Volunteer      @relation(fields: [createdById], references: [id])
@@ -875,6 +877,7 @@ model DenEvent {
   title       String
   description String?
   eventDate   DateTime
+  eventEndDate DateTime?
   eventTime   String?
   endTime     String?
   fullDay     Boolean  @default(false)
@@ -1027,6 +1030,7 @@ enum PromptCategory {
   CAMPING
   HIKING
   SERVICE
+  REQUIREMENT
 }
 
 enum PromptStatus {

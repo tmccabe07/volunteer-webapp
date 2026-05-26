@@ -62,6 +62,11 @@ interface EventDetailsProps {
         };
       };
     }>;
+    plannedHourActivities?: {
+      camping?: { enabled: boolean; nights?: number };
+      hiking?: { enabled: boolean; miles?: number };
+      service?: { enabled: boolean; hours?: number };
+    } | null;
     childAttendance?: Array<{
       coveredRequirements: Array<{
         id: string;
@@ -122,6 +127,35 @@ export default function EventDetails({ event, currentUserId, onSignup, onWithdra
     : event.rankLevel
     ? [event.rankLevel]
     : [];
+
+  const plannedHourActivityItems: Array<{ key: string; title: string; detail: string }> = [];
+
+  if (event.plannedHourActivities?.camping?.enabled) {
+    const nights = event.plannedHourActivities.camping.nights;
+    plannedHourActivityItems.push({
+      key: 'camping',
+      title: 'Campout',
+      detail: nights !== undefined ? `${nights} night${nights === 1 ? '' : 's'}` : 'Nights to be entered',
+    });
+  }
+
+  if (event.plannedHourActivities?.hiking?.enabled) {
+    const miles = event.plannedHourActivities.hiking.miles;
+    plannedHourActivityItems.push({
+      key: 'hiking',
+      title: 'Hike',
+      detail: miles !== undefined ? `${miles} mile${miles === 1 ? '' : 's'}` : 'Miles to be entered',
+    });
+  }
+
+  if (event.plannedHourActivities?.service?.enabled) {
+    const hours = event.plannedHourActivities.service.hours;
+    plannedHourActivityItems.push({
+      key: 'service',
+      title: 'Service Project',
+      detail: hours !== undefined ? `${hours} hour${hours === 1 ? '' : 's'}` : 'Hours to be entered',
+    });
+  }
 
   return (
     <div className="space-y-6">
@@ -246,6 +280,27 @@ export default function EventDetails({ event, currentUserId, onSignup, onWithdra
                 <div key={planned.requirementId} className="border rounded-md p-3">
                   <p className="text-sm font-medium">{planned.requirement.adventure.name}</p>
                   <p className="text-sm text-gray-700">{planned.requirement.requirementText}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {plannedHourActivityItems.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Planned Activities</CardTitle>
+            <CardDescription>
+              Planned camping, hiking, and service work for this event.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {plannedHourActivityItems.map((item) => (
+                <div key={item.key} className="border rounded-md p-3">
+                  <p className="text-sm font-medium">{item.title}</p>
+                  <p className="text-sm text-gray-700">{item.detail}</p>
                 </div>
               ))}
             </div>

@@ -5,8 +5,10 @@ import { AdvancementService } from '../services/advancement.service';
 import { RequirementProgressService } from '../services/advancement/requirement-progress.service';
 import { AdvancementProgressService } from '../services/advancement/advancement-progress.service';
 import { AuthorizationService } from '../services/role-scope/authorization.service';
+import { NotificationsModule } from './notifications.module';
 
 @Module({
+  imports: [NotificationsModule],
   controllers: [AdvancementController, AdvancementWorkflowController],
   providers: [
     AdvancementService,

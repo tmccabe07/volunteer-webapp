@@ -5,14 +5,23 @@ import { EventService } from '../services/event.service';
 import { SignupService } from '../services/signup.service';
 import { ActivitySlotStepService } from '../services/activity-slot-step.service';
 import { ChildAttendanceService } from '../services/child-scout/child-attendance.service';
+import { ScoutbookPromptService } from '../services/hours-prompt/scoutbook-prompt.service';
+import { ScoutbookPromptController } from '../api/scoutbook-prompt.controller';
 import { AuthModule } from './auth.module';
 import { PointsModule } from './points.module';
 import { NotificationsModule } from './notifications.module';
+import { AdvancementModule } from './advancement.module';
 
 @Module({
-  imports: [AuthModule, PointsModule, NotificationsModule],
-  controllers: [EventsController, ActivitySlotStepsController],
-  providers: [EventService, SignupService, ActivitySlotStepService, ChildAttendanceService],
+  imports: [AuthModule, PointsModule, NotificationsModule, AdvancementModule],
+  controllers: [EventsController, ActivitySlotStepsController, ScoutbookPromptController],
+  providers: [
+    EventService,
+    SignupService,
+    ActivitySlotStepService,
+    ChildAttendanceService,
+    ScoutbookPromptService,
+  ],
   exports: [EventService, SignupService, ActivitySlotStepService],
 })
 export class EventsModule {}

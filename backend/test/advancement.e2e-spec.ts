@@ -67,6 +67,7 @@ describe('Advancement API (e2e)', () => {
   });
 
   afterEach(async () => {
+    await prisma.notification.deleteMany();
     await prisma.awardStateHistory.deleteMany();
     await prisma.awardItem.deleteMany();
     await prisma.requirementProgress.deleteMany();
@@ -264,5 +265,48 @@ describe('Advancement API (e2e)', () => {
         expect(res.body.rankProgress).toBeDefined();
         expect(Array.isArray(res.body.adventures)).toBe(true);
       });
+  });
+
+  it('should prompt linked parents for Scoutbook update on requirement progress', async () => {
+    const { adventure, requirement } = await seedRankAdventureRequirement();
+    const { cubScout, parent } = await seedCubScoutAndApprovedParentLink();
+    const admin = await prisma.volunteer.findFirstOrThrow({
+      where: { email: 'adv-admin@test.com' },
+    });
+
+    const progress = await prisma.requirementProgress.create({
+      data: {
+        childScoutId: cubScout.id,
+        requirementId: requirement.id,
+        adventureId: adventure.id,
+        completionType: CompletionType.MEETING,
+        completedBy: admin.id,
+        scoutbookStatus: ReconciliationStatus.PENDING,
+      },
+    });
+
+    await request(app.getHttpServer())
+      .post(`/api/requirement-progress/${progress.id}/prompt-parents`)
+      .set('Cookie', adminCookies)
+      .send({ message: 'Please update Scoutbook when convenient.' })
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.requirementProgressId).toBe(progress.id);
+        expect(res.body.promptedParents).toBe(1);
+        expect(res.body.scoutbookStatus).toBe(ReconciliationStatus.PENDING);
+      });
+
+    const notifications = await prisma.notification.findMany({
+      where: {
+        volunteerId: parent.id,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: 1,
+    });
+
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0].message).toContain('Please update Scoutbook when convenient.');
   });
 });

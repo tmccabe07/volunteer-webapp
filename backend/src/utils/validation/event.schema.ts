@@ -25,6 +25,29 @@ const timeFormat = z.string().regex(/^([0-1][0-9]|2[0-3]):([0-5][0-9])$/, {
   message: 'Time must be in HH:mm format (24-hour, e.g., 14:30)',
 });
 
+const plannedHourActivitiesSchema = z
+  .object({
+    camping: z
+      .object({
+        enabled: z.boolean().default(false),
+        nights: z.number().min(0).max(30).optional(),
+      })
+      .optional(),
+    hiking: z
+      .object({
+        enabled: z.boolean().default(false),
+        miles: z.number().min(0).max(100).optional(),
+      })
+      .optional(),
+    service: z
+      .object({
+        enabled: z.boolean().default(false),
+        hours: z.number().min(0).max(100).optional(),
+      })
+      .optional(),
+  })
+  .optional();
+
 /**
  * Schema for creating a new event
  * POST /api/events
@@ -33,6 +56,7 @@ export const createEventSchema = z.object({
   title: z.string().min(3).max(200),
   description: z.string().optional(),
   eventDate: z.string().datetime(), // ISO 8601
+  eventEndDate: z.string().datetime().optional(),
   eventTime: z.string().optional(),
   endTime: timeFormat.optional(),
   fullDay: z.boolean().optional().default(false),
@@ -42,6 +66,7 @@ export const createEventSchema = z.object({
   rankLevel: z.nativeEnum(RankLevel).nullable().optional(), // null = PACK_WIDE
   isRecurring: z.boolean().optional().default(false),
   plannedRequirementIds: z.array(z.string()).optional().default([]),
+  plannedHourActivities: plannedHourActivitiesSchema,
   activitySlots: z.array(z.object({
     activityTypeId: z.string(),
     capacity: z.number().int().positive().nullable().optional(),
@@ -73,6 +98,18 @@ export const createEventSchema = z.object({
       path: ['targetDenIds'],
     });
   }
+
+  if (data.eventEndDate) {
+    const start = new Date(data.eventDate);
+    const end = new Date(data.eventEndDate);
+    if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime()) && end < start) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Event end date cannot be earlier than event date',
+        path: ['eventEndDate'],
+      });
+    }
+  }
 });
 
 export type CreateEventInput = z.infer<typeof createEventSchema>;
@@ -87,6 +124,7 @@ export const updateEventSchema = z.object({
   title: z.string().min(3).max(200).optional(),
   description: z.string().optional(),
   eventDate: z.string().datetime().optional(),
+  eventEndDate: z.string().datetime().nullable().optional(),
   eventTime: z.string().nullable().optional(),
   endTime: timeFormat.nullable().optional(),
   fullDay: z.boolean().optional(),
@@ -96,6 +134,7 @@ export const updateEventSchema = z.object({
   rankLevel: z.nativeEnum(RankLevel).optional().nullable(),
   isRecurring: z.boolean().optional(),
   plannedRequirementIds: z.array(z.string()).optional(),
+  plannedHourActivities: plannedHourActivitiesSchema,
   activitySlots: z.array(z.object({
     activityTypeId: z.string(),
     capacity: z.number().int().positive().nullable().optional(),

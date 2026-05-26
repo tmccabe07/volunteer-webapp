@@ -61,7 +61,9 @@ export default function ReconcileRequirementDialog({
 }: ReconcileRequirementDialogProps) {
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPrompting, setIsPrompting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [conflictCurrentState, setConflictCurrentState] = useState<ReconcileConflictState | null>(
     null,
   );
@@ -70,9 +72,38 @@ export default function ReconcileRequirementDialog({
     if (open) {
       setNotes('');
       setError(null);
+      setSuccessMessage(null);
       setConflictCurrentState(null);
     }
   }, [open, item?.id]);
+
+  const handlePromptParents = async () => {
+    if (!item) {
+      return;
+    }
+
+    try {
+      setIsPrompting(true);
+      setError(null);
+      setSuccessMessage(null);
+
+      const result = await advancementService.promptParentsForRequirement(item.id, {
+        message: notes.trim() || undefined,
+      });
+
+      if (result.promptedParents === 0) {
+        setSuccessMessage('No linked parents were found for this Cub Scout.');
+      } else {
+        setSuccessMessage(
+          `Parent reminder sent to ${result.promptedParents} linked parent${result.promptedParents === 1 ? '' : 's'}.`,
+        );
+      }
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Failed to prompt parent'));
+    } finally {
+      setIsPrompting(false);
+    }
+  };
 
   const handleReconcile = async () => {
     if (!item) {
@@ -169,6 +200,12 @@ export default function ReconcileRequirementDialog({
           </div>
         )}
 
+        {successMessage && (
+          <div className="p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-800">
+            {successMessage}
+          </div>
+        )}
+
         {conflictCurrentState && (
           <div className="p-3 bg-amber-50 border border-amber-200 rounded-md text-sm text-amber-900">
             <p className="font-medium">Current record state:</p>
@@ -186,9 +223,18 @@ export default function ReconcileRequirementDialog({
               Refresh Queue
             </Button>
           ) : (
-            <Button onClick={handleReconcile} disabled={isSubmitting || !item}>
-              {isSubmitting ? 'Saving...' : 'Mark as Entered'}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={handlePromptParents}
+                disabled={isSubmitting || isPrompting || !item}
+              >
+                {isPrompting ? 'Prompting...' : 'Prompt Parent'}
+              </Button>
+              <Button onClick={handleReconcile} disabled={isSubmitting || isPrompting || !item}>
+                {isSubmitting ? 'Saving...' : 'Mark as Entered'}
+              </Button>
+            </div>
           )}
         </DialogFooter>
       </DialogContent>

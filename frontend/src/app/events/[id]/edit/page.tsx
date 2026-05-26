@@ -28,6 +28,7 @@ interface EventDetails {
   title: string;
   description: string | null;
   eventDate: string;
+  eventEndDate?: string | null;
   eventTime: string | null;
   endTime: string | null;
   fullDay: boolean;
@@ -37,6 +38,11 @@ interface EventDetails {
   rankLevel?: string | null;
   isRecurring: boolean;
   plannedRequirements?: Array<{ requirementId: string }>;
+  plannedHourActivities?: {
+    camping?: { enabled: boolean; nights?: number };
+    hiking?: { enabled: boolean; miles?: number };
+    service?: { enabled: boolean; hours?: number };
+  } | null;
   activitySlots: Array<{
     activityType: { id: string };
     capacity: number | null;
@@ -149,6 +155,7 @@ export default function EditEventPage() {
           title: event.title,
           description: event.description || undefined,
           eventDate: new Date(event.eventDate).toISOString().split('T')[0],
+          eventEndDate: event.eventEndDate ? new Date(event.eventEndDate).toISOString().split('T')[0] : undefined,
           eventTime: event.eventTime || undefined,
           endTime: event.endTime || undefined,
           fullDay: event.fullDay,
@@ -157,6 +164,7 @@ export default function EditEventPage() {
           targetDenIds: (event.targetDens || []).map((target) => target.denId),
           isRecurring: event.isRecurring,
           plannedRequirementIds: (event.plannedRequirements || []).map((planned) => planned.requirementId),
+          plannedHourActivities: event.plannedHourActivities || undefined,
           activitySlots: event.activitySlots.map((slot) => ({
             activityTypeId: slot.activityType.id,
             capacity: slot.capacity,

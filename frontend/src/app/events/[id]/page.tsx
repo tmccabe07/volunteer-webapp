@@ -136,7 +136,7 @@ export default function EventDetailPage() {
 
         <div className="flex gap-2">
           {canComplete && (
-            <Link href={`/events/${eventId}/complete`}>
+            <Link href={`/events/${eventId}/closeout`}>
               <Button>
                 <CheckCircle className="h-4 w-4 mr-2" />
                 Mark Complete

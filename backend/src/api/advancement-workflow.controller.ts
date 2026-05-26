@@ -24,6 +24,10 @@ import {
   ReconcileRequirementSchema,
   type ReconcileRequirementDto,
 } from '../models/advancement/reconcile-requirement.dto';
+import {
+  PromptParentForRequirementSchema,
+  type PromptParentForRequirementDto,
+} from '../models/advancement/prompt-parent.dto';
 import { RequirementProgressService } from '../services/advancement/requirement-progress.service';
 import { AdvancementProgressService } from '../services/advancement/advancement-progress.service';
 
@@ -115,6 +119,33 @@ export class AdvancementWorkflowController {
       }
       if (error instanceof ConflictException) {
         throw error;
+      }
+      throw error;
+    }
+  }
+
+  @Post('requirement-progress/:id/prompt-parents')
+  @RequireTier('LEADER')
+  @HttpCode(HttpStatus.OK)
+  async promptParentsForRequirement(
+    @Param('id') progressId: string,
+    @Body() body: PromptParentForRequirementDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    try {
+      const validated = PromptParentForRequirementSchema.parse(body || {});
+      return await this.requirementProgressService.promptParentsForRequirement(
+        progressId,
+        req.user!.userId,
+        req.user!.authTier,
+        validated,
+      );
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        throw new BadRequestException({
+          error: 'Invalid input',
+          details: error.issues?.map((e: any) => e.message) || [],
+        });
       }
       throw error;
     }
