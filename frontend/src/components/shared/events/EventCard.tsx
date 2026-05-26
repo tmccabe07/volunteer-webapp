@@ -34,6 +34,7 @@ interface EventCardProps {
     rankLevel: string | null;
     derivedRankLevels?: string[];
     isComplete: boolean;
+    isRetroactive?: boolean;
     activitySlots: ActivitySlot[];
   };
 }
@@ -95,7 +96,14 @@ export default function EventCard({ event }: EventCardProps) {
         <CardHeader className="pr-24">
           <div className="flex justify-between items-start">
             <div className="flex-1">
-              <CardTitle className="text-xl">{event.title}</CardTitle>
+              <CardTitle className="text-xl flex items-center gap-2">
+                {event.title}
+                {event.isRetroactive && (
+                  <Badge variant="secondary" className="text-xs">
+                    Retroactive
+                  </Badge>
+                )}
+              </CardTitle>
               <CardDescription className="mt-1">
                 {event.description || 'No description provided'}
               </CardDescription>

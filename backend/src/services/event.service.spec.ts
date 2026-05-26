@@ -135,6 +135,51 @@ describe('EventService', () => {
       ).rejects.toThrow('At least one activity slot is required');
     });
 
+    // User Story 1: Retroactive Events
+    it('should allow creating event with past date', async () => {
+      const pastDate = new Date();
+      pastDate.setDate(pastDate.getDate() - 5);
+
+      const eventData = {
+        title: 'Past Event',
+        description: 'Event that already happened',
+        eventDate: pastDate,
+        isRecurring: false,
+        activitySlots: [
+          {
+            activityTypeId: testActivityType.id,
+            capacity: 10,
+          },
+        ],
+      };
+
+      const event = await service.createEvent(eventData, testVolunteer.id);
+
+      expect(event.title).toBe('Past Event');
+      expect(event.eventDate).toEqual(pastDate);
+    });
+
+    it('should allow creating event with today date', async () => {
+      const today = new Date();
+
+      const eventData = {
+        title: 'Today Event',
+        description: 'Event happening today',
+        eventDate: today,
+        isRecurring: false,
+        activitySlots: [
+          {
+            activityTypeId: testActivityType.id,
+            capacity: 10,
+          },
+        ],
+      };
+
+      const event = await service.createEvent(eventData, testVolunteer.id);
+
+      expect(event.title).toBe('Today Event');
+    });
+
     it('should throw error when activity type does not exist', async () => {
       const eventData = {
         title: 'Invalid Activity Event',
