@@ -64,7 +64,6 @@ export class VolunteersApiService {
     name?: string;
     phone?: string | null;
     leaderboardOptIn?: boolean;
-    childrenRanks?: string[];
   }): Promise<VolunteerProfile> {
     const response = await axios.put<VolunteerProfile>('/volunteers/me/profile', data);
     return response.data;

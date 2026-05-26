@@ -216,24 +216,106 @@ describe('EventService', () => {
       expect(notifications[0].link).toBe(`/events/${event.id}`);
     });
 
-    it('should send notifications only to volunteers with children in the specified rank', async () => {
-      // Create volunteers with different rank children
-      const wolfParent = await createTestVolunteer({ email: 'wolf@test.com' });
-      const bearParent = await createTestVolunteer({ email: 'bear@test.com' });
-
-      // Add child ranks
-      await prisma.childRank.create({
-        data: { volunteerId: wolfParent.id, rankLevel: 'WOLF' },
+    it('should notify parents and leaders associated with targeted dens for den-scoped events', async () => {
+      const targetDen = await prisma.den.create({
+        data: {
+          name: 'Den 8 - Wolf',
+          denNumber: 8,
+          rankLevel: 'WOLF',
+          isActive: true,
+        },
       });
-      await prisma.childRank.create({
-        data: { volunteerId: bearParent.id, rankLevel: 'BEAR' },
+
+      const otherDen = await prisma.den.create({
+        data: {
+          name: 'Den 9 - Bear',
+          denNumber: 9,
+          rankLevel: 'BEAR',
+          isActive: true,
+        },
+      });
+
+      const targetParent = await createTestVolunteer({ email: 'target-parent@test.com' });
+      const otherParent = await createTestVolunteer({ email: 'other-parent@test.com' });
+      const denLeader = await createTestVolunteer({ email: 'den-leader@test.com', authTier: 'LEADER' });
+
+      const denLeaderRole = await prisma.volunteerRole.findFirstOrThrow({
+        where: {
+          deletedAt: null,
+          grantsTier: 'LEADER',
+          scopeType: 'DEN',
+        },
+      });
+
+      await prisma.volunteerToRole.create({
+        data: {
+          volunteerId: denLeader.id,
+          roleId: denLeaderRole.id,
+          denId: targetDen.id,
+          denNumber: targetDen.denNumber,
+        },
+      });
+
+      const targetChild = await prisma.childScout.create({
+        data: {
+          firstName: 'Target',
+          lastName: 'Scout',
+          currentRank: 'WOLF',
+          isActive: true,
+          createdBy: testVolunteer.id,
+        },
+      });
+
+      const otherChild = await prisma.childScout.create({
+        data: {
+          firstName: 'Other',
+          lastName: 'Scout',
+          currentRank: 'BEAR',
+          isActive: true,
+          createdBy: testVolunteer.id,
+        },
+      });
+
+      await prisma.denMembership.create({
+        data: {
+          denId: targetDen.id,
+          childScoutId: targetChild.id,
+          validFrom: new Date('2026-01-01'),
+        },
+      });
+
+      await prisma.denMembership.create({
+        data: {
+          denId: otherDen.id,
+          childScoutId: otherChild.id,
+          validFrom: new Date('2026-01-01'),
+        },
+      });
+
+      await prisma.parentChildLink.create({
+        data: {
+          parentId: targetParent.id,
+          childScoutId: targetChild.id,
+          status: 'APPROVED',
+          requestedBy: targetParent.id,
+        },
+      });
+
+      await prisma.parentChildLink.create({
+        data: {
+          parentId: otherParent.id,
+          childScoutId: otherChild.id,
+          status: 'APPROVED',
+          requestedBy: otherParent.id,
+        },
       });
 
       const eventData = {
-        title: 'Wolf Den Meeting',
-        description: 'Wolf rank only',
+        title: 'Targeted Den Meeting',
+        description: 'Only one den should be notified',
         eventDate: new Date('2026-07-15'),
-        rankLevel: 'WOLF',
+        scopeType: 'DEN' as const,
+        targetDenIds: [targetDen.id],
         isRecurring: false,
         activitySlots: [
           {
@@ -243,19 +325,16 @@ describe('EventService', () => {
         ],
       };
 
-      const event = await service.createEvent(eventData, testVolunteer.id);
+      const event = await service.createEvent(eventData, testVolunteer.id, 'ADMIN');
 
-      // Check that only wolf parent received notification
       const notifications = await prisma.notification.findMany({
-        where: { type: 'NEW_EVENT' },
+        where: { type: 'NEW_EVENT', link: `/events/${event.id}` },
       });
 
-      const wolfNotifications = notifications.filter(n => n.volunteerId === wolfParent.id);
-      const bearNotifications = notifications.filter(n => n.volunteerId === bearParent.id);
-
-      expect(wolfNotifications.length).toBe(1);
-      expect(bearNotifications.length).toBe(0);
-      expect(wolfNotifications[0].message).toContain('Wolf Den Meeting');
+      expect(notifications.some((n) => n.volunteerId === targetParent.id)).toBe(true);
+      expect(notifications.some((n) => n.volunteerId === denLeader.id)).toBe(true);
+      expect(notifications.some((n) => n.volunteerId === otherParent.id)).toBe(false);
+      expect(notifications.some((n) => n.volunteerId === testVolunteer.id)).toBe(false);
     });
   });
 
@@ -678,29 +757,83 @@ describe('EventService', () => {
       });
     });
 
-    it('should filter by rank level', async () => {
-      await createTestEvent(testVolunteer.id, { rankLevel: 'WOLF' });
-      await createTestEvent(testVolunteer.id, { rankLevel: 'BEAR' });
-      await createTestEvent(testVolunteer.id, { rankLevel: 'TIGER' });
+    it('should filter den-scoped events by selected den IDs', async () => {
+      const baseDenNumber = Math.floor(Date.now() % 100000);
+      const denOne = await prisma.den.create({
+        data: { name: 'Den 11', denNumber: baseDenNumber + 1, rankLevel: 'WOLF', isActive: true },
+      });
+      const denTwo = await prisma.den.create({
+        data: { name: 'Den 12', denNumber: baseDenNumber + 2, rankLevel: 'BEAR', isActive: true },
+      });
 
-      const result = await service.listEvents(1, 10, { rankLevel: 'WOLF' });
+      const activitySlot = await prisma.activityType.findFirst();
+
+      await prisma.event.create({
+        data: {
+          title: 'Den 11 Event',
+          description: 'Den one',
+          eventDate: new Date('2026-06-12'),
+          scopeType: 'DEN',
+          isRecurring: false,
+          createdById: testVolunteer.id,
+          targetDens: { create: [{ denId: denOne.id }] },
+          activitySlots: {
+            create: [
+              {
+                activityTypeId: activitySlot!.id,
+                capacity: 10,
+              },
+            ],
+          },
+        },
+      });
+
+      await prisma.event.create({
+        data: {
+          title: 'Den 12 Event',
+          description: 'Den two',
+          eventDate: new Date('2026-06-13'),
+          scopeType: 'DEN',
+          isRecurring: false,
+          createdById: testVolunteer.id,
+          targetDens: { create: [{ denId: denTwo.id }] },
+          activitySlots: {
+            create: [
+              {
+                activityTypeId: activitySlot!.id,
+                capacity: 10,
+              },
+            ],
+          },
+        },
+      });
+
+      const result = await service.listEvents(1, 10, {
+        scopeType: 'DEN',
+        denIds: [denOne.id],
+      });
 
       expect(result.events).toHaveLength(1);
-      expect(result.events[0].rankLevel).toBe('WOLF');
+      expect(result.events[0].title).toBe('Den 11 Event');
     });
 
-    it('should filter by user rank levels including pack-wide events', async () => {
-      await createTestEvent(testVolunteer.id, { rankLevel: 'WOLF' });
-      await createTestEvent(testVolunteer.id, { rankLevel: 'BEAR' });
-      
-      // Create pack-wide event (rankLevel: null) manually
+    it('should include pack-wide plus selected den events for ALL scope', async () => {
+      const baseDenNumber = Math.floor(Date.now() % 100000) + 1000;
+      const denOne = await prisma.den.create({
+        data: { name: 'Den 21', denNumber: baseDenNumber + 1, rankLevel: 'WOLF', isActive: true },
+      });
+      const denTwo = await prisma.den.create({
+        data: { name: 'Den 22', denNumber: baseDenNumber + 2, rankLevel: 'BEAR', isActive: true },
+      });
+
       const activitySlot = await prisma.activityType.findFirst();
+
       await prisma.event.create({
         data: {
           title: 'Pack-wide Event',
-          description: 'Event for all ranks',
+          description: 'All',
           eventDate: new Date('2026-06-20'),
-          rankLevel: null,
+          scopeType: 'PACK_WIDE',
           isRecurring: false,
           createdById: testVolunteer.id,
           activitySlots: {
@@ -714,12 +847,56 @@ describe('EventService', () => {
         },
       });
 
-      const result = await service.listEvents(1, 10, { userRankLevels: ['WOLF'] });
+      await prisma.event.create({
+        data: {
+          title: 'Selected Den Event',
+          description: 'Selected den only',
+          eventDate: new Date('2026-06-21'),
+          scopeType: 'DEN',
+          isRecurring: false,
+          createdById: testVolunteer.id,
+          targetDens: { create: [{ denId: denOne.id }] },
+          activitySlots: {
+            create: [
+              {
+                activityTypeId: activitySlot!.id,
+                capacity: 10,
+              },
+            ],
+          },
+        },
+      });
+
+      await prisma.event.create({
+        data: {
+          title: 'Other Den Event',
+          description: 'Other den',
+          eventDate: new Date('2026-06-22'),
+          scopeType: 'DEN',
+          isRecurring: false,
+          createdById: testVolunteer.id,
+          targetDens: { create: [{ denId: denTwo.id }] },
+          activitySlots: {
+            create: [
+              {
+                activityTypeId: activitySlot!.id,
+                capacity: 10,
+              },
+            ],
+          },
+        },
+      });
+
+      const result = await service.listEvents(1, 10, {
+        scopeType: 'ALL',
+        denIds: [denOne.id],
+      });
 
       expect(result.events).toHaveLength(2);
-      const rankLevels = result.events.map(e => e.rankLevel);
-      expect(rankLevels).toContain('WOLF');
-      expect(rankLevels).toContain(null);
+      const titles = result.events.map((e) => e.title);
+      expect(titles).toContain('Pack-wide Event');
+      expect(titles).toContain('Selected Den Event');
+      expect(titles).not.toContain('Other Den Event');
     });
 
     it('should filter by user signups', async () => {

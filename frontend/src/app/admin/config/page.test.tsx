@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import AdminConfigPage from './page';
 import configService from '@/services/config.service';
 import type { PackConfig } from '@/services/config.service';
+import type { PackConfigData } from '@/components/forms/config/PackConfigForm';
 
 // Mock dependencies
 const mockUser = {
@@ -28,7 +29,7 @@ vi.mock('@/services/config.service', () => ({
 }));
 
 vi.mock('@/components/forms/config/PackConfigForm', () => ({
-  PackConfigForm: ({ initialData, onSubmit }: any) => (
+  PackConfigForm: ({ initialData, onSubmit }: { initialData?: PackConfigData; onSubmit: (data: Partial<PackConfigData>) => void }) => (
     <div data-testid="pack-config-form">
       <div>Pack: {initialData?.packName}</div>
       <button onClick={() => onSubmit({ packName: 'Updated Pack' })}>
@@ -121,6 +122,6 @@ describe('AdminConfigPage', () => {
     });
 
     // Component should render nothing when packConfig is null
-    expect(container.firstChild).toBeEmptyDOMElement();
+    expect(container.firstChild).toBeNull();
   });
 });

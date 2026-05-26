@@ -6,7 +6,7 @@
  */
 
 import { z } from 'zod';
-import { RankLevel } from '@prisma/client';
+import { EventScope, RankLevel } from '@prisma/client';
 import { validateEventTimes } from '../time-validation.util';
 
 /**
@@ -37,8 +37,11 @@ export const createEventSchema = z.object({
   endTime: timeFormat.optional(),
   fullDay: z.boolean().optional().default(false),
   location: z.string().optional(),
+  scopeType: z.nativeEnum(EventScope).optional().default(EventScope.PACK_WIDE),
+  targetDenIds: z.array(z.string()).optional().default([]),
   rankLevel: z.nativeEnum(RankLevel).nullable().optional(), // null = PACK_WIDE
   isRecurring: z.boolean().optional().default(false),
+  plannedRequirementIds: z.array(z.string()).optional().default([]),
   activitySlots: z.array(z.object({
     activityTypeId: z.string(),
     capacity: z.number().int().positive().nullable().optional(),
@@ -62,6 +65,14 @@ export const createEventSchema = z.object({
       path: result.error?.includes('full-day') ? ['fullDay'] : ['endTime'],
     });
   }
+
+  if (data.scopeType === EventScope.DEN && (!data.targetDenIds || data.targetDenIds.length === 0)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'At least one target den is required for den-scoped events',
+      path: ['targetDenIds'],
+    });
+  }
 });
 
 export type CreateEventInput = z.infer<typeof createEventSchema>;
@@ -80,8 +91,11 @@ export const updateEventSchema = z.object({
   endTime: timeFormat.nullable().optional(),
   fullDay: z.boolean().optional(),
   location: z.string().optional(),
+  scopeType: z.nativeEnum(EventScope).optional(),
+  targetDenIds: z.array(z.string()).optional(),
   rankLevel: z.nativeEnum(RankLevel).optional().nullable(),
   isRecurring: z.boolean().optional(),
+  plannedRequirementIds: z.array(z.string()).optional(),
   activitySlots: z.array(z.object({
     activityTypeId: z.string(),
     capacity: z.number().int().positive().nullable().optional(),
@@ -115,7 +129,8 @@ export type CompleteEventInput = z.infer<typeof completeEventSchema>;
 export const listEventsSchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().positive().max(100).optional().default(20),
-  rankLevel: z.nativeEnum(RankLevel).optional(),
+  scopeType: z.enum(['ALL', 'PACK_WIDE', 'DEN']).optional().default('ALL'),
+  denIds: z.string().optional(),
   upcoming: booleanString.optional().default(true),
   mySignups: booleanString.optional().default(false),
 });

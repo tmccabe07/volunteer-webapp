@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,8 +35,10 @@ interface EventFormData {
   endTime?: string;
   fullDay?: boolean;
   location?: string;
-  rankLevel?: string | null;
+  scopeType?: 'PACK_WIDE' | 'DEN';
+  targetDenIds?: string[];
   isRecurring?: boolean;
+  plannedRequirementIds?: string[];
   activitySlots: ActivitySlot[];
 }
 
@@ -47,24 +49,53 @@ interface ActivityType {
   category: string;
 }
 
+interface DenOption {
+  id: string;
+  name: string;
+  denNumber: number;
+  rankLevel: string;
+}
+
+interface RequirementOption {
+  id: string;
+  adventureName: string;
+  rankLevel: string;
+  requirementText: string;
+}
+
 interface EventFormProps {
   initialData?: Partial<EventFormData>;
   activityTypes: ActivityType[];
+  availableDens?: DenOption[];
+  availableRequirements?: RequirementOption[];
   onSubmit: (data: EventFormData) => Promise<void>;
   submitLabel?: string;
 }
 
-const RANK_LEVELS = [
-  { value: 'LION', label: 'Lion' },
-  { value: 'TIGER', label: 'Tiger' },
-  { value: 'WOLF', label: 'Wolf' },
-  { value: 'BEAR', label: 'Bear' },
-  { value: 'WEBELOS', label: 'Webelos' },
-  { value: 'AOL', label: 'Arrow of Light' },
-  { value: 'PACK_WIDE', label: 'Pack-Wide' },
-];
+interface ApiValidationError {
+  error?: string;
+  details?: string[];
+}
 
-export default function EventForm({ initialData, activityTypes, onSubmit, submitLabel = 'Create Event' }: EventFormProps) {
+interface ApiErrorShape {
+  response?: {
+    data?: {
+      message?: string | ApiValidationError;
+      error?: string;
+      details?: string[];
+    } | string;
+  };
+  message?: string;
+}
+
+export default function EventForm({
+  initialData,
+  activityTypes,
+  availableDens = [],
+  availableRequirements = [],
+  onSubmit,
+  submitLabel = 'Create Event',
+}: EventFormProps) {
   const router = useRouter();
   const [formData, setFormData] = useState<EventFormData>({
     title: initialData?.title || '',
@@ -74,8 +105,10 @@ export default function EventForm({ initialData, activityTypes, onSubmit, submit
     endTime: initialData?.endTime || '',
     fullDay: initialData?.fullDay || false,
     location: initialData?.location || '',
-    rankLevel: initialData?.rankLevel || null,
+    scopeType: initialData?.scopeType || 'PACK_WIDE',
+    targetDenIds: initialData?.targetDenIds || [],
     isRecurring: initialData?.isRecurring || false,
+    plannedRequirementIds: initialData?.plannedRequirementIds || [],
     activitySlots: initialData?.activitySlots || [{ activityTypeId: '', capacity: null, description: '', steps: [] }],
   });
 
@@ -87,6 +120,56 @@ export default function EventForm({ initialData, activityTypes, onSubmit, submit
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (
+      formData.scopeType === 'DEN' &&
+      availableDens.length === 1 &&
+      (formData.targetDenIds || []).length === 0
+    ) {
+      setFormData((prev) => ({ ...prev, targetDenIds: [availableDens[0].id] }));
+    }
+  }, [formData.scopeType, formData.targetDenIds, availableDens]);
+
+  const groupedRequirements = useMemo(() => {
+    const selectedDenRanks = new Set(
+      availableDens
+        .filter((den) => (formData.targetDenIds || []).includes(den.id))
+        .map((den) => den.rankLevel)
+    );
+
+    const filteredRequirements =
+      formData.scopeType === 'DEN'
+        ? availableRequirements.filter((requirement) => selectedDenRanks.has(requirement.rankLevel))
+        : availableRequirements;
+
+    const groups = new Map<string, RequirementOption[]>();
+    for (const requirement of filteredRequirements) {
+      const key = `${requirement.rankLevel}::${requirement.adventureName}`;
+      if (!groups.has(key)) {
+        groups.set(key, []);
+      }
+      groups.get(key)!.push(requirement);
+    }
+    return Array.from(groups.entries());
+  }, [availableDens, availableRequirements, formData.scopeType, formData.targetDenIds]);
+
+  useEffect(() => {
+    if (formData.scopeType !== 'DEN') {
+      return;
+    }
+
+    const visibleRequirementIds = new Set(
+      groupedRequirements.flatMap(([, requirements]) => requirements.map((requirement) => requirement.id))
+    );
+
+    const currentlySelected = formData.plannedRequirementIds || [];
+    const nextSelected = currentlySelected.filter((id) => visibleRequirementIds.has(id));
+
+    if (nextSelected.length !== currentlySelected.length) {
+      setFormData((prev) => ({ ...prev, plannedRequirementIds: nextSelected }));
+    }
+  }, [formData.scopeType, formData.plannedRequirementIds, groupedRequirements]);
 
   // Calculate duration for display
   const duration = useMemo(() => {
@@ -108,7 +191,7 @@ export default function EventForm({ initialData, activityTypes, onSubmit, submit
     return null;
   }, [formData.fullDay, formData.eventTime, formData.endTime]);
 
-  const handleChange = (field: keyof EventFormData, value: any) => {
+  const handleChange = <K extends keyof EventFormData>(field: K, value: EventFormData[K]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -137,10 +220,38 @@ export default function EventForm({ initialData, activityTypes, onSubmit, submit
     }
   };
 
-  const handleActivitySlotChange = (index: number, field: keyof ActivitySlot, value: any) => {
+  const handleActivitySlotChange = <K extends keyof ActivitySlot>(
+    index: number,
+    field: K,
+    value: ActivitySlot[K],
+  ) => {
     const newSlots = [...formData.activitySlots];
     newSlots[index] = { ...newSlots[index], [field]: value };
     setFormData(prev => ({ ...prev, activitySlots: newSlots }));
+  };
+
+  const toggleTargetDen = (denId: string) => {
+    setFormData((prev) => {
+      const selected = new Set(prev.targetDenIds || []);
+      if (selected.has(denId)) {
+        selected.delete(denId);
+      } else {
+        selected.add(denId);
+      }
+      return { ...prev, targetDenIds: Array.from(selected) };
+    });
+  };
+
+  const togglePlannedRequirement = (requirementId: string) => {
+    setFormData((prev) => {
+      const selected = new Set(prev.plannedRequirementIds || []);
+      if (selected.has(requirementId)) {
+        selected.delete(requirementId);
+      } else {
+        selected.add(requirementId);
+      }
+      return { ...prev, plannedRequirementIds: Array.from(selected) };
+    });
   };
 
   const addActivitySlot = () => {
@@ -179,6 +290,10 @@ export default function EventForm({ initialData, activityTypes, onSubmit, submit
         }
       }
 
+      if (formData.scopeType === 'DEN' && (formData.targetDenIds || []).length === 0) {
+        throw new Error('Select at least one den for den-scoped events');
+      }
+
       // Convert eventDate and eventTime to ISO 8601
       let eventDateTime: Date;
       if (formData.fullDay || !formData.eventTime) {
@@ -198,7 +313,6 @@ export default function EventForm({ initialData, activityTypes, onSubmit, submit
       const submissionData: EventFormData = {
         ...formData,
         eventDate: eventDateTime.toISOString(),
-        rankLevel: formData.rankLevel === '' ? null : formData.rankLevel,
         // Ensure empty strings become undefined for proper API handling
         eventTime: formData.eventTime || undefined,
         endTime: formData.endTime || undefined,
@@ -206,12 +320,16 @@ export default function EventForm({ initialData, activityTypes, onSubmit, submit
 
       await onSubmit(submissionData);
       router.push('/events');
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Extract error message from API response
       let errorMessage = 'Failed to save event';
+
+      const apiError = err as ApiErrorShape;
       
       // NestJS wraps BadRequestException objects in a message field
-      const responseData = err.response?.data?.message || err.response?.data;
+      const responseData = apiError.response?.data && typeof apiError.response.data === 'object'
+        ? apiError.response.data.message || apiError.response.data
+        : apiError.response?.data;
       
       if (typeof responseData === 'object' && responseData.error) {
         // Backend returned a structured error { error: "message", details?: [] }
@@ -224,9 +342,9 @@ export default function EventForm({ initialData, activityTypes, onSubmit, submit
       } else if (typeof responseData === 'string') {
         // Backend returned a simple string message
         errorMessage = responseData;
-      } else if (err.message) {
+      } else if (apiError.message) {
         // Fallback to error message
-        errorMessage = err.message;
+        errorMessage = apiError.message;
       }
       
       setError(errorMessage);
@@ -341,23 +459,45 @@ export default function EventForm({ initialData, activityTypes, onSubmit, submit
           </div>
 
           <div>
-            <Label htmlFor="rankLevel">Rank Level</Label>
+            <Label htmlFor="scopeType">Event Scope</Label>
             <Select
-              value={formData.rankLevel || 'PACK_WIDE'}
-              onValueChange={(value) => handleChange('rankLevel', value === 'PACK_WIDE' ? null : value)}
+              value={formData.scopeType || 'PACK_WIDE'}
+              onValueChange={(value: 'PACK_WIDE' | 'DEN') => handleChange('scopeType', value)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select rank level" />
+                <SelectValue placeholder="Select event scope" />
               </SelectTrigger>
               <SelectContent>
-                {RANK_LEVELS.map(rank => (
-                  <SelectItem key={rank.value} value={rank.value}>
-                    {rank.label}
-                  </SelectItem>
-                ))}
+                <SelectItem value="PACK_WIDE">Pack-Wide</SelectItem>
+                <SelectItem value="DEN">Den-Scoped</SelectItem>
               </SelectContent>
             </Select>
           </div>
+
+          {formData.scopeType === 'DEN' && (
+            <div>
+              <Label>Target Dens</Label>
+              <div className="mt-2 space-y-2 max-h-44 overflow-y-auto border rounded-md p-3">
+                {availableDens.length === 0 ? (
+                  <p className="text-sm text-gray-600">No dens available in your scope.</p>
+                ) : (
+                  availableDens.map((den) => {
+                    const checked = (formData.targetDenIds || []).includes(den.id);
+                    return (
+                      <label key={den.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={() => toggleTargetDen(den.id)}
+                        />
+                        <span>{den.name} (#{den.denNumber})</span>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Choose one or more dens for this event.</p>
+            </div>
+          )}
 
           <div className="flex items-center space-x-2">
             <input
@@ -370,6 +510,41 @@ export default function EventForm({ initialData, activityTypes, onSubmit, submit
             <Label htmlFor="isRecurring" className="font-normal">
               Recurring event (repeats until end of scouting year)
             </Label>
+          </div>
+
+          <div>
+            <Label>Planned Adventures & Requirements</Label>
+            <div className="mt-2 max-h-64 overflow-y-auto border rounded-md p-3 space-y-3">
+              {groupedRequirements.length === 0 ? (
+                <p className="text-sm text-gray-600">No requirements available.</p>
+              ) : (
+                groupedRequirements.map(([groupKey, requirements]) => {
+                  const [rankLevel, adventureName] = groupKey.split('::');
+                  return (
+                  <div key={groupKey}>
+                    <p className="text-sm font-medium">{adventureName} <span className="text-gray-500">({rankLevel})</span></p>
+                    <div className="mt-1 space-y-1">
+                      {requirements.map((requirement) => {
+                        const checked = (formData.plannedRequirementIds || []).includes(requirement.id);
+                        return (
+                          <label key={requirement.id} className="flex items-start gap-2 text-sm cursor-pointer">
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={() => togglePlannedRequirement(requirement.id)}
+                            />
+                            <span>{requirement.requirementText}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  );
+                })
+              )}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              These planned requirements can be bulk-applied to present Cub Scouts when completing attendance.
+            </p>
           </div>
         </CardContent>
       </Card>

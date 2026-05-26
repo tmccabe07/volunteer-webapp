@@ -10,6 +10,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Param,
   Query,
@@ -28,6 +29,7 @@ import type { Request } from 'express';
 import { AuthGuard, TierGuard, RequireTier } from '../middleware/auth';
 import { EventService } from '../services/event.service';
 import { SignupService } from '../services/signup.service';
+import { ChildAttendanceService } from '../services/child-scout/child-attendance.service';
 import {
   createEventSchema,
   updateEventSchema,
@@ -38,6 +40,12 @@ import {
   type CompleteEventInput,
   type ListEventsQuery
 } from '../utils/validation/event.schema';
+import {
+  RecordAttendanceSchema,
+  type RecordAttendanceDto,
+} from '../models/attendance/record-attendance.dto';
+import { AttendanceStatus } from '@prisma/client';
+import { z } from 'zod';
 import prisma from '../utils/prisma';
 import { AuthTier } from '@prisma/client';
 import type { JWTPayload } from '../middleware/auth';
@@ -51,7 +59,8 @@ interface AuthenticatedRequest extends Request {
 export class EventsController {
   constructor(
     private readonly eventService: EventService,
-    private readonly signupService: SignupService
+    private readonly signupService: SignupService,
+    private readonly childAttendanceService: ChildAttendanceService,
   ) {}
 
   /**
@@ -69,46 +78,109 @@ export class EventsController {
     try {
       const validatedQuery = listEventsSchema.parse(query);
       const currentUserId = req.user!.userId;
+      const currentUserTier = req.user!.authTier as AuthTier;
 
-      // Get user's children's rank levels for filtering
-      let userRankLevels: string[] = [];
-      if (!validatedQuery.rankLevel) {
-        const volunteer = await prisma.volunteer.findUnique({
-          where: { id: currentUserId },
-          include: {
-            childrenRanks: {
-              select: {
-                rankLevel: true,
-              },
-            },
-          },
-        });
+      const accessibleDenIds = await this.getAccessibleDenIds(currentUserId, currentUserTier);
+      const requestedDenIds = validatedQuery.denIds
+        ? validatedQuery.denIds.split(',').map((denId) => denId.trim()).filter(Boolean)
+        : [];
 
-        userRankLevels = volunteer?.childrenRanks.map(cr => cr.rankLevel) || [];
+      if (requestedDenIds.length > 0) {
+        const invalidDenIds = requestedDenIds.filter((denId) => !accessibleDenIds.includes(denId));
+        if (invalidDenIds.length > 0) {
+          throw new ForbiddenException('One or more selected dens are outside your scope');
+        }
       }
+
+      const denIdsForQuery = requestedDenIds.length > 0 ? requestedDenIds : accessibleDenIds;
 
       const result = await this.eventService.listEvents(
         validatedQuery.page,
         validatedQuery.limit,
         {
-          rankLevel: validatedQuery.rankLevel,
+          scopeType: validatedQuery.scopeType,
+          denIds: denIdsForQuery,
           upcoming: validatedQuery.upcoming,
           mySignups: validatedQuery.mySignups,
-          userRankLevels,
         },
         currentUserId
       );
 
       return result;
-    } catch (error: any) {
-      if (error.name === 'ZodError') {
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'name' in error && (error as { name?: string }).name === 'ZodError') {
+        const zodError = error as z.ZodError;
         throw new BadRequestException({
           error: 'Invalid query parameters',
-          details: error.issues?.map((e: any) => e.message) || []
+          details: zodError.issues?.map((issue) => issue.message) || []
         });
       }
       throw error;
     }
+  }
+
+  private async getAccessibleDenIds(userId: string, authTier: AuthTier): Promise<string[]> {
+    if (authTier === AuthTier.ADMIN) {
+      const dens = await prisma.den.findMany({
+        where: { isActive: true, deletedAt: null },
+        select: { id: true },
+      });
+      return dens.map((den) => den.id);
+    }
+
+    const [volunteer, linkedCubs] = await Promise.all([
+      prisma.volunteer.findFirst({
+        where: { id: userId, deletedAt: null },
+        select: {
+          volunteerRoles: {
+            where: { removedAt: null },
+            select: {
+              denId: true,
+            },
+          },
+        },
+      }),
+      prisma.parentChildLink.findMany({
+        where: {
+          parentId: userId,
+          status: 'APPROVED',
+          childScout: {
+            deletedAt: null,
+            isActive: true,
+          },
+        },
+        select: {
+          childScout: {
+            select: {
+              denMemberships: {
+                where: { validTo: null },
+                take: 1,
+                select: {
+                  denId: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+    ]);
+
+    const denIds = new Set<string>();
+
+    volunteer?.volunteerRoles.forEach((role) => {
+      if (role.denId) {
+        denIds.add(role.denId);
+      }
+    });
+
+    linkedCubs.forEach((link) => {
+      const denId = link.childScout.denMemberships[0]?.denId;
+      if (denId) {
+        denIds.add(denId);
+      }
+    });
+
+    return Array.from(denIds);
   }
 
   /**
@@ -147,8 +219,9 @@ export class EventsController {
     try {
       const validatedData = createEventSchema.parse(body);
       const createdById = req.user!.userId;
+      const creatorTier = req.user!.authTier;
 
-      const event = await this.eventService.createEvent(validatedData, createdById);
+      const event = await this.eventService.createEvent(validatedData, createdById, creatorTier);
 
       return event;
     } catch (error: any) {
@@ -292,6 +365,78 @@ export class EventsController {
     } catch (error: any) {
       if (error.message.includes('not found') || error.message.includes('withdrawn')) {
         throw new NotFoundException(error.message);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * PATCH /api/events/:id/child-attendance
+   * Record child attendance for event
+   * 
+   * Authorization: LEADER with scope or ADMIN
+   */
+  @Patch(':id/child-attendance')
+  @UseGuards(TierGuard)
+  @RequireTier(AuthTier.LEADER)
+  @HttpCode(HttpStatus.OK)
+  async recordChildAttendance(
+    @Param('id') eventId: string,
+    @Body() body: RecordAttendanceDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    try {
+      const validatedData = RecordAttendanceSchema.parse(body);
+      const userId = req.user!.userId;
+      
+      return await this.childAttendanceService.recordAttendance(
+        eventId,
+        validatedData,
+        userId,
+      );
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        throw new BadRequestException({
+          error: 'Invalid input',
+          details: error.issues?.map((e: any) => e.message) || [],
+        });
+      }
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * GET /api/events/:id/child-attendance
+   * Get child attendance for event
+   * 
+   * Authorization: LEADER with scope or ADMIN
+   */
+  @Get(':id/child-attendance')
+  @UseGuards(TierGuard)
+  @RequireTier(AuthTier.LEADER)
+  @HttpCode(HttpStatus.OK)
+  async getChildAttendance(
+    @Param('id') eventId: string,
+    @Query('status') status?: string,
+  ) {
+    try {
+      const statusFilter = status
+        ? (status.toUpperCase() as AttendanceStatus)
+        : undefined;
+      
+      return await this.childAttendanceService.getAttendanceByEvent(
+        eventId,
+        statusFilter,
+      );
+    } catch (error: any) {
+      if (error instanceof NotFoundException) {
+        throw error;
       }
       throw error;
     }

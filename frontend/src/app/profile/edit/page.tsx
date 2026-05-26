@@ -9,14 +9,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 
-const RANK_OPTIONS = [
-  { value: 'LION', label: 'Lion' },
-  { value: 'TIGER', label: 'Tiger' },
-  { value: 'WOLF', label: 'Wolf' },
-  { value: 'BEAR', label: 'Bear' },
-  { value: 'WEBELOS', label: 'Webelos' },
-  { value: 'AOL', label: 'Arrow of Light' },
-];
+function getApiError(error: unknown): { message: string; details: string[] } {
+  if (typeof error === 'object' && error !== null && 'response' in error) {
+    const response = (error as { response?: { data?: { error?: string; details?: string[] } } }).response;
+    return {
+      message: response?.data?.error || 'Request failed',
+      details: response?.data?.details || [],
+    };
+  }
+
+  if (error instanceof Error) {
+    return { message: error.message, details: [] };
+  }
+
+  return { message: 'Request failed', details: [] };
+}
 
 export default function ProfileEditPage() {
   const router = useRouter();
@@ -33,7 +40,6 @@ export default function ProfileEditPage() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [leaderboardOptIn, setLeaderboardOptIn] = useState(false);
-  const [selectedRanks, setSelectedRanks] = useState<string[]>([]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -57,9 +63,9 @@ export default function ProfileEditPage() {
       setName(data.name);
       setPhone(data.phone || '');
       setLeaderboardOptIn(data.leaderboardOptIn);
-      setSelectedRanks(data.childrenRanks.map(r => r.rankLevel));
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to load profile');
+    } catch (err: unknown) {
+      const parsed = getApiError(err);
+      setError(parsed.message || 'Failed to load profile');
     } finally {
       setIsLoading(false);
     }
@@ -69,7 +75,7 @@ export default function ProfileEditPage() {
     try {
       const roles = await volunteerApi.getAvailableRoles();
       setAvailableRoles(roles);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to load available roles:', err);
     }
   };
@@ -98,35 +104,27 @@ export default function ProfileEditPage() {
         name,
         phone,
         leaderboardOptIn,
-        childrenRanks: selectedRanks,
       });
       
       // Refresh user data in auth context to update name everywhere
       await refreshUser();
       
       router.push('/profile');
-    } catch (err: any) {
-      if (err.response?.data?.details) {
-        setErrors({ general: err.response.data.details.join(', ') });
+    } catch (err: unknown) {
+      const parsed = getApiError(err);
+      if (parsed.details.length > 0) {
+        setErrors({ general: parsed.details.join(', ') });
       } else {
-        setErrors({ general: err.response?.data?.error || 'Failed to update profile' });
+        setErrors({ general: parsed.message || 'Failed to update profile' });
       }
     } finally {
       setIsSaving(false);
     }
   };
 
-  const toggleRank = (rank: string) => {
-    if (selectedRanks.includes(rank)) {
-      setSelectedRanks(prev => prev.filter(r => r !== rank));
-    } else {
-      setSelectedRanks(prev => [...prev, rank]);
-    }
-  };
-
-  const handleAssignRole = async (roleId: string) => {
+  const handleAssignRole = async (input: { roleId: string; denIds?: string[] }) => {
     try {
-      const result = await volunteerApi.assignRole(roleId);
+      const result = await volunteerApi.assignRole(input);
       await loadProfile();
       
       // Notify header to refresh points
@@ -136,9 +134,10 @@ export default function ProfileEditPage() {
       if (result.tierUpgraded) {
         alert('🎉 Congratulations! You\'ve been promoted to Leader tier.\n\n⚠️ IMPORTANT: Please save profile, log out and log back in for your new permissions to take effect.');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to assign role:', err);
-      setError(err.response?.data?.error || 'Failed to assign role');
+      const parsed = getApiError(err);
+      setError(parsed.message || 'Failed to assign role');
     }
   };
 
@@ -278,31 +277,6 @@ export default function ProfileEditPage() {
             </div>
           </Card>
 
-          {/* Children's Ranks */}
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-2">Children&apos;s Ranks</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Select the ranks of your children in the pack. This helps us tailor event recommendations.
-            </p>
-            <div className="space-y-2">
-              {RANK_OPTIONS.map(option => (
-                <div key={option.value} className="flex items-center">
-                  <input
-                    id={`rank-${option.value}`}
-                    type="checkbox"
-                    checked={selectedRanks.includes(option.value)}
-                    onChange={() => toggleRank(option.value)}
-                    disabled={isSaving}
-                    className="mr-2"
-                  />
-                  <label htmlFor={`rank-${option.value}`} className="text-sm">
-                    {option.label}
-                  </label>
-                </div>
-              ))}
-            </div>
-          </Card>
-
           {/* Volunteer Roles */}
           <RoleSelectionForm
             availableRoles={availableRoles}
@@ -310,10 +284,19 @@ export default function ProfileEditPage() {
               id: r.id,
               roleId: r.roleId,
               roleName: r.roleName,
+              roleType: r.roleType,
+              rankLevel: r.rankLevel,
+              denId: r.denId,
+              denName: r.denName,
+              denNumber: r.denNumber,
+              denRankLevel: r.denRankLevel,
               assignedAt: r.assignedAt,
             }))}
             onAssignRole={handleAssignRole}
             onRemoveRole={handleRemoveRole}
+            loadAssignableDens={(rankLevel?: string) =>
+              volunteerApi.getAssignableDens(rankLevel ? { rankLevel } : undefined)
+            }
           />
 
           {/* Save Button */}

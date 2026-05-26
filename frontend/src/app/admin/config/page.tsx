@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRequireTier } from '@/lib/auth-context';
 import { PackConfigForm, PackConfigData } from '@/components/forms/config/PackConfigForm';
 import configService from '@/services/config.service';
@@ -23,7 +24,7 @@ export default function AdminConfigPage() {
       const config = await configService.getPackConfig();
       setPackConfig(config);
       setError('');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error loading pack configuration:', err);
       setError('Failed to load pack configuration');
     } finally {
@@ -43,7 +44,7 @@ export default function AdminConfigPage() {
       
       // Clear success message after 5 seconds
       setTimeout(() => setSuccessMessage(''), 5000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       throw err; // Let the form handle the error display
     }
   };
@@ -64,10 +65,48 @@ export default function AdminConfigPage() {
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Pack Configuration</h1>
+          <h1 className="text-3xl font-bold text-gray-900">My Pack</h1>
           <p className="mt-2 text-gray-600">
-            Manage your pack's settings, scouting year dates, and active ranks
+            Manage your pack settings and Cub Scout roster in one place.
           </p>
+        </div>
+
+        <div className="mb-6 bg-white border border-gray-200 rounded-lg p-4 sm:p-5">
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Pack Management</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Manage dens, Cub Scouts, volunteer roles, and activity types for your pack.
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Link
+                href="/dens"
+                className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Manage Dens
+              </Link>
+              <Link
+                href="/cubs"
+                className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Manage Cub Scouts
+              </Link>
+              <Link
+                href="/admin/roles"
+                className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Manage Roles
+              </Link>
+              <Link
+                href="/admin/activities"
+                className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Manage Activities
+              </Link>
+            </div>
+          </div>
         </div>
 
         {successMessage && (

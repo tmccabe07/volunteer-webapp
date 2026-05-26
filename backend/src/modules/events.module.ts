@@ -4,6 +4,7 @@ import { ActivitySlotStepsController } from '../api/activity-slot-steps.controll
 import { EventService } from '../services/event.service';
 import { SignupService } from '../services/signup.service';
 import { ActivitySlotStepService } from '../services/activity-slot-step.service';
+import { ChildAttendanceService } from '../services/child-scout/child-attendance.service';
 import { AuthModule } from './auth.module';
 import { PointsModule } from './points.module';
 import { NotificationsModule } from './notifications.module';
@@ -11,7 +12,7 @@ import { NotificationsModule } from './notifications.module';
 @Module({
   imports: [AuthModule, PointsModule, NotificationsModule],
   controllers: [EventsController, ActivitySlotStepsController],
-  providers: [EventService, SignupService, ActivitySlotStepService],
+  providers: [EventService, SignupService, ActivitySlotStepService, ChildAttendanceService],
   exports: [EventService, SignupService, ActivitySlotStepService],
 })
 export class EventsModule {}

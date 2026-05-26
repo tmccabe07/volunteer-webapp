@@ -20,7 +20,7 @@ interface LayoutWrapperProps {
 }
 
 export function LayoutWrapper({ children }: LayoutWrapperProps) {
-  const { user, isLoading } = useAuth();
+  const { user } = useAuth();
   const pathname = usePathname();
   
   // Check if current path is an auth page
@@ -38,7 +38,7 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
-      {user && <Navigation userTier={userTier} />}
+      {user && <Navigation userTier={userTier} userAuthTier={user.authTier} />}
       
       <main className="flex-1">
         {children}

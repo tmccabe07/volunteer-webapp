@@ -24,9 +24,11 @@ import prisma from '../utils/prisma';
 import {
   updateProfileSchema,
   assignRoleSchema,
+  listAssignableDensSchema,
   listVolunteersSchema,
   type UpdateProfileInput,
   type AssignRoleInput,
+  type ListAssignableDensInput,
   type ListVolunteersInput,
 } from '../utils/validation/volunteer.schema';
 import { AuthTier, RoleType } from '@prisma/client';
@@ -96,10 +98,6 @@ export class VolunteersController {
         throw new NotFoundException('Volunteer not found');
       }
 
-      if (error.message.includes('duplicate') || error.message.includes('Duplicate')) {
-        throw new ConflictException('Duplicate children rank');
-      }
-
       throw error;
     }
   }
@@ -121,7 +119,10 @@ export class VolunteersController {
       const userId = req.user!.userId;
       const result = await this.volunteerService.assignRole(
         userId,
-        validatedData.roleId
+        {
+          roleId: validatedData.roleId,
+          denIds: validatedData.denIds,
+        }
       );
 
       // Award role assignment points only for COMMITTEE or DEN_LEADER roles
@@ -135,7 +136,7 @@ export class VolunteersController {
         try {
           await this.pointsService.awardRoleAssignmentPoints(
             userId,
-            result.id,
+            result.assignments[0].id,
             validatedData.roleId, // Pass roleId to prevent duplicate awards
             userId // Self-assigned
           );
@@ -160,6 +161,18 @@ export class VolunteersController {
 
       if (error.message === 'Role already assigned to volunteer') {
         throw new ConflictException('Role already assigned to volunteer');
+      }
+
+      if (error.message === 'Role already assigned to volunteer for selected den(s)') {
+        throw new ConflictException('Role already assigned to volunteer for selected den(s)');
+      }
+
+      if (error.message === 'At least one den must be selected for this role') {
+        throw new BadRequestException(error.message);
+      }
+
+      if (error.message === 'One or more selected dens are invalid or inactive') {
+        throw new BadRequestException(error.message);
       }
 
       if (error.message === 'Volunteer not found') {
@@ -204,6 +217,27 @@ export class VolunteersController {
     try {
       return await this.volunteerService.getAvailableRoles();
     } catch (error: any) {
+      throw error;
+    }
+  }
+
+  /**
+   * GET /api/volunteers/roles/assignable-dens
+   * List active dens for den-scoped role assignment
+   */
+  @Get('roles/assignable-dens')
+  @HttpCode(HttpStatus.OK)
+  async listAssignableDens(@Query() query: ListAssignableDensInput) {
+    try {
+      const validatedQuery = listAssignableDensSchema.parse(query);
+      return await this.volunteerService.getAssignableDens(validatedQuery.rankLevel);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        throw new BadRequestException({
+          error: 'Invalid query parameters',
+          details: error.issues?.map((e: any) => e.message) || [],
+        });
+      }
       throw error;
     }
   }

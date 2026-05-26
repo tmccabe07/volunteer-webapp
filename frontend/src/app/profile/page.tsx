@@ -6,9 +6,11 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { volunteerApi, type VolunteerProfile } from '@/services/volunteer.service';
+import { childScoutService, type ChildScoutListItem } from '@/services/childScout.service';
 import { useAuth } from '@/lib/auth-context';
 import { AchievementHistory } from '@/components/shared/achievements/AchievementHistory';
 import { BadgeTier } from '@/components/shared/points/BadgeTier';
+import { Users } from 'lucide-react';
 
 // Default badge colors (from BadgeTierService)
 const DEFAULT_BADGE_COLORS: Record<string, string> = {
@@ -19,10 +21,33 @@ const DEFAULT_BADGE_COLORS: Record<string, string> = {
   'Diamond': '#B9F2FF'
 };
 
+const RANK_LABELS: Record<string, string> = {
+  LION: 'Lion',
+  TIGER: 'Tiger',
+  WOLF: 'Wolf',
+  BEAR: 'Bear',
+  WEBELOS: 'Webelos',
+  AOL: 'Arrow of Light',
+};
+
+function getApiErrorMessage(error: unknown, fallback: string): string {
+  if (typeof error === 'object' && error !== null && 'response' in error) {
+    const response = (error as { response?: { data?: { error?: string } } }).response;
+    if (response?.data?.error) {
+      return response.data.error;
+    }
+  }
+
+  return fallback;
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
   const [profile, setProfile] = useState<VolunteerProfile | null>(null);
+  const [linkedCubs, setLinkedCubs] = useState<ChildScoutListItem[]>([]);
+  const [linkedCubsLoading, setLinkedCubsLoading] = useState(false);
+  const [linkedCubsError, setLinkedCubsError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,15 +60,36 @@ export default function ProfilePage() {
     if (user) {
       loadProfile();
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, router]);
 
   const loadProfile = async () => {
     try {
       setIsLoading(true);
       const data = await volunteerApi.getMyProfile();
       setProfile(data);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to load profile');
+
+      if (data.authTier === 'PARENT') {
+        setLinkedCubsLoading(true);
+        setLinkedCubsError(null);
+        try {
+          const response = await childScoutService.listChildScouts({
+            page: 1,
+            limit: 100,
+            isActive: true,
+          });
+          setLinkedCubs(response.data);
+        } catch {
+          setLinkedCubsError('Failed to load linked Cub Scouts');
+          setLinkedCubs([]);
+        } finally {
+          setLinkedCubsLoading(false);
+        }
+      } else {
+        setLinkedCubs([]);
+        setLinkedCubsError(null);
+      }
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Failed to load profile'));
     } finally {
       setIsLoading(false);
     }
@@ -196,35 +242,83 @@ export default function ProfilePage() {
           )}
         </Card>
 
+        {profile.authTier === 'PARENT' && (
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+              <h2 className="text-xl font-semibold">Linked Cub Scouts</h2>
+              <Link href="/my-cub-scouts">
+                <Button variant="outline" size="sm">
+                  <Users className="h-4 w-4 mr-2" />
+                  Open My Cub Scouts
+                </Button>
+              </Link>
+            </div>
+
+            {linkedCubsLoading ? (
+              <p className="text-gray-600">Loading linked Cub Scouts...</p>
+            ) : linkedCubsError ? (
+              <p className="text-red-700">{linkedCubsError}</p>
+            ) : linkedCubs.length > 0 ? (
+              <ul className="space-y-3">
+                {linkedCubs.map((cub) => (
+                  <li key={cub.id} className="border rounded p-3 bg-gray-50">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div>
+                        <p className="font-medium">
+                          {cub.firstName} {cub.lastName}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {RANK_LABELS[cub.currentRank] || cub.currentRank}
+                          {cub.currentDen ? ` • ${cub.currentDen.name}` : ''}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Link href={`/cubs/${cub.id}`}>
+                          <Button variant="outline" size="sm">View Profile</Button>
+                        </Link>
+                        <Link href={`/cubs/${cub.id}/advancement`}>
+                          <Button size="sm">View Advancement</Button>
+                        </Link>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-gray-600">No approved Cub Scout links yet.</p>
+                <Link href="/parent/links">
+                  <Button variant="outline" size="sm">Request Parent Link</Button>
+                </Link>
+              </div>
+            )}
+          </Card>
+        )}
+
         {/* Children's Ranks */}
         <Card className="p-6">
           <h2 className="text-xl font-semibold mb-4">Children&apos;s Ranks</h2>
-          {profile.childrenRanks.length > 0 ? (
-            <ul className="space-y-1">
-              {profile.childrenRanks.map(rank => (
-                <li key={rank.id} className="flex items-center">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
-                  {formatRankLevel(rank.rankLevel)}
-                </li>
+          {profile.authTier !== 'PARENT' ? (
+            <p className="text-gray-600">Rank badges are shown for linked Cub Scouts.</p>
+          ) : linkedCubsLoading ? (
+            <p className="text-gray-600">Loading rank badges...</p>
+          ) : linkedCubs.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {linkedCubs.map((cub) => (
+                <span
+                  key={cub.id}
+                  className="inline-flex items-center rounded-full bg-blue-50 border border-blue-200 px-3 py-1 text-sm text-blue-900"
+                >
+                  {RANK_LABELS[cub.currentRank] || cub.currentRank}
+                  {cub.currentDen?.denNumber ? ` • Den #${cub.currentDen.denNumber}` : ''}
+                </span>
               ))}
-            </ul>
+            </div>
           ) : (
-            <p className="text-gray-600">No children ranks specified</p>
+            <p className="text-gray-600">No linked Cub Scouts yet</p>
           )}
         </Card>
       </div>
     </div>
   );
-}
-
-function formatRankLevel(rank: string): string {
-  const labels: Record<string, string> = {
-    LION: 'Lion',
-    TIGER: 'Tiger',
-    WOLF: 'Wolf',
-    BEAR: 'Bear',
-    WEBELOS: 'Webelos',
-    AOL: 'Arrow of Light',
-  };
-  return labels[rank] || rank;
 }

@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, RankLevel, AdventureType } from '@prisma/client';
 import { PrismaLibSql } from '@prisma/adapter-libsql';
 import * as bcrypt from 'bcrypt';
 
@@ -168,9 +168,10 @@ async function main() {
   if (parentGuardianRole) {
     await prisma.volunteerToRole.upsert({
       where: {
-        volunteerId_roleId: {
+        volunteerId_roleId_denNumber: {
           volunteerId: parent.id,
-          roleId: parentGuardianRole.id
+          roleId: parentGuardianRole.id,
+          denNumber: -1
         }
       },
       update: {},
@@ -181,6 +182,144 @@ async function main() {
     });
   }
   console.log('✓ Test parent volunteer created (parent@example.com / Parent123!)');
+
+  // 7. Create Rank Catalog
+  const ranks = [
+    { rankLevel: RankLevel.LION, displayName: 'Lion', displayOrder: 1, requiredAdventureCount: 5, electiveAdventureCount: 0, description: 'Kindergarten Cub Scouts' },
+    { rankLevel: RankLevel.TIGER, displayName: 'Tiger', displayOrder: 2, requiredAdventureCount: 6, electiveAdventureCount: 1, description: '1st Grade Cub Scouts' },
+    { rankLevel: RankLevel.WOLF, displayName: 'Wolf', displayOrder: 3, requiredAdventureCount: 6, electiveAdventureCount: 1, description: '2nd Grade Cub Scouts' },
+    { rankLevel: RankLevel.BEAR, displayName: 'Bear', displayOrder: 4, requiredAdventureCount: 6, electiveAdventureCount: 1, description: '3rd Grade Cub Scouts' },
+    { rankLevel: RankLevel.WEBELOS, displayName: 'Webelos', displayOrder: 5, requiredAdventureCount: 4, electiveAdventureCount: 2, description: '4th Grade Cub Scouts' },
+    { rankLevel: RankLevel.AOL, displayName: 'Arrow of Light', displayOrder: 6, requiredAdventureCount: 4, electiveAdventureCount: 2, description: '5th Grade Cub Scouts' }
+  ];
+
+  const createdRanks: Record<string, any> = {};
+  for (const rank of ranks) {
+    const created = await prisma.rank.upsert({
+      where: { rankLevel: rank.rankLevel },
+      update: {},
+      create: rank
+    });
+    createdRanks[rank.rankLevel] = created;
+  }
+  console.log('✓ Rank catalog created');
+
+  // 8. Create Adventure Catalog (Sample adventures for each rank)
+  const adventures = [
+    // Lion Adventures
+    { rankLevel: RankLevel.LION, name: 'Lion\'s Honor', classification: AdventureType.REQUIRED, displayOrder: 1, description: 'Explore what it means to be trustworthy' },
+    { rankLevel: RankLevel.LION, name: 'Fun on the Run', classification: AdventureType.REQUIRED, displayOrder: 2, description: 'Learn about being active and healthy' },
+    { rankLevel: RankLevel.LION, name: 'Animal Kingdom', classification: AdventureType.REQUIRED, displayOrder: 3, description: 'Discover animals and their habitats' },
+    
+    // Tiger Adventures
+    { rankLevel: RankLevel.TIGER, name: 'Tigers in the Wild', classification: AdventureType.REQUIRED, displayOrder: 1, description: 'Explore the outdoors' },
+    { rankLevel: RankLevel.TIGER, name: 'My Tiger Jungle', classification: AdventureType.REQUIRED, displayOrder: 2, description: 'Discover your home and community' },
+    { rankLevel: RankLevel.TIGER, name: 'Tiger Tales', classification: AdventureType.ELECTIVE, displayOrder: 3, description: 'Share stories and learn communication' },
+    
+    // Wolf Adventures
+    { rankLevel: RankLevel.WOLF, name: 'Call of the Wild', classification: AdventureType.REQUIRED, displayOrder: 1, description: 'Learn outdoor skills' },
+    { rankLevel: RankLevel.WOLF, name: 'Paws on the Path', classification: AdventureType.REQUIRED, displayOrder: 2, description: 'Hiking and outdoor exploration' },
+    { rankLevel: RankLevel.WOLF, name: 'Finding Your Way', classification: AdventureType.ELECTIVE, displayOrder: 3, description: 'Navigation and map reading' },
+    
+    // Bear Adventures
+    { rankLevel: RankLevel.BEAR, name: 'Bear Claws', classification: AdventureType.REQUIRED, displayOrder: 1, description: 'Learning self-care and responsibility' },
+    { rankLevel: RankLevel.BEAR, name: 'Fur, Feathers, and Ferns', classification: AdventureType.REQUIRED, displayOrder: 2, description: 'Nature and wildlife study' },
+    { rankLevel: RankLevel.BEAR, name: 'Baloo the Builder', classification: AdventureType.ELECTIVE, displayOrder: 3, description: 'Building and construction projects' },
+    
+    // Webelos Adventures
+    { rankLevel: RankLevel.WEBELOS, name: 'Cast Iron Chef', classification: AdventureType.REQUIRED, displayOrder: 1, description: 'Cooking and camp meal preparation' },
+    { rankLevel: RankLevel.WEBELOS, name: 'First Responder', classification: AdventureType.REQUIRED, displayOrder: 2, description: 'First aid and emergency preparedness' },
+    { rankLevel: RankLevel.WEBELOS, name: 'Castaway', classification: AdventureType.ELECTIVE, displayOrder: 3, description: 'Outdoor survival skills' },
+    
+    // Arrow of Light Adventures
+    { rankLevel: RankLevel.AOL, name: 'Building a Better World', classification: AdventureType.REQUIRED, displayOrder: 1, description: 'Service and citizenship' },
+    { rankLevel: RankLevel.AOL, name: 'Duty to God in Action', classification: AdventureType.REQUIRED, displayOrder: 2, description: 'Faith and values' },
+    { rankLevel: RankLevel.AOL, name: 'Scouting Adventure', classification: AdventureType.ELECTIVE, displayOrder: 3, description: 'Preparing for Scouts BSA' }
+  ];
+
+  const createdAdventures: Record<string, any> = {};
+  for (const adventure of adventures) {
+    const rank = createdRanks[adventure.rankLevel];
+    const created = await prisma.adventure.upsert({
+      where: {
+        rankId_name_catalogYear: {
+          rankId: rank.id,
+          name: adventure.name,
+          catalogYear: '2024'
+        }
+      },
+      update: {},
+      create: {
+        rankId: rank.id,
+        name: adventure.name,
+        classification: adventure.classification,
+        displayOrder: adventure.displayOrder,
+        description: adventure.description,
+        catalogYear: '2024',
+        isActive: true
+      }
+    });
+    createdAdventures[`${adventure.rankLevel}-${adventure.name}`] = created;
+  }
+  console.log('✓ Adventure catalog created');
+
+  // 9. Create Requirement Catalog (Sample requirements for each adventure)
+  const requirements = [
+    // Lion's Honor
+    { adventureKey: 'LION-Lion\'s Honor', displayOrder: 1, text: 'Know the Scout Oath, Scout Law, Scout motto, and Scout salute' },
+    { adventureKey: 'LION-Lion\'s Honor', displayOrder: 2, text: 'Show the Cub Scout sign. Tell what it means' },
+    { adventureKey: 'LION-Lion\'s Honor', displayOrder: 3, text: 'Repeat the Scout Law. Explain what it means to be trustworthy' },
+    
+    // Fun on the Run
+    { adventureKey: 'LION-Fun on the Run', displayOrder: 1, text: 'Learn and demonstrate three warm-up exercises' },
+    { adventureKey: 'LION-Fun on the Run', displayOrder: 2, text: 'Have Lions make a food puzzle. Play a game and learn about good snacks' },
+    
+    // Tigers in the Wild
+    { adventureKey: 'TIGER-Tigers in the Wild', displayOrder: 1, text: 'Attend a pack or family campout' },
+    { adventureKey: 'TIGER-Tigers in the Wild', displayOrder: 2, text: 'Demonstrate how to set up a tent' },
+    { adventureKey: 'TIGER-Tigers in the Wild', displayOrder: 3, text: 'Make a list of what you should take on a campout' },
+    
+    // Call of the Wild
+    { adventureKey: 'WOLF-Call of the Wild', displayOrder: 1, text: 'Show you know how to be safe and comfortable while camping' },
+    { adventureKey: 'WOLF-Call of the Wild', displayOrder: 2, text: 'Show how to tie an overhand knot and square knot' },
+    { adventureKey: 'WOLF-Call of the Wild', displayOrder: 3, text: 'Attend a pack or family campout. Participate in a campfire program' },
+    
+    // Bear Claws
+    { adventureKey: 'BEAR-Bear Claws', displayOrder: 1, text: 'Learn about germs. Conduct an investigation' },
+    { adventureKey: 'BEAR-Bear Claws', displayOrder: 2, text: 'Learn about personal safety around others. Practice stranger danger' },
+    { adventureKey: 'BEAR-Bear Claws', displayOrder: 3, text: 'Talk about bullying. Discuss how to be a good friend' },
+    
+    // Cast Iron Chef
+    { adventureKey: 'WEBELOS-Cast Iron Chef', displayOrder: 1, text: 'Plan a menu for a balanced meal for your den or family' },
+    { adventureKey: 'WEBELOS-Cast Iron Chef', displayOrder: 2, text: 'Using a camp stove, cook a hot meal for your den or family' },
+    { adventureKey: 'WEBELOS-Cast Iron Chef', displayOrder: 3, text: 'Demonstrate camp kitchen setup and cleanup procedures' },
+    
+    // Building a Better World
+    { adventureKey: 'AOL-Building a Better World', displayOrder: 1, text: 'Explain the history of the United States flag. Show how to properly display the flag' },
+    { adventureKey: 'AOL-Building a Better World', displayOrder: 2, text: 'Learn about a person who has made a difference in your community' },
+    { adventureKey: 'AOL-Building a Better World', displayOrder: 3, text: 'Complete a service project benefiting your community' }
+  ];
+
+  for (const req of requirements) {
+    const adventure = createdAdventures[req.adventureKey];
+    if (adventure) {
+      await prisma.requirement.upsert({
+        where: {
+          adventureId_displayOrder: {
+            adventureId: adventure.id,
+            displayOrder: req.displayOrder
+          }
+        },
+        update: {},
+        create: {
+          adventureId: adventure.id,
+          displayOrder: req.displayOrder,
+          requirementText: req.text
+        }
+      });
+    }
+  }
+  console.log('✓ Requirement catalog created');
 
   console.log('\n✅ Seeding complete!');
 }

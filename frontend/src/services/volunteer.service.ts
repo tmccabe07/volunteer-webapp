@@ -14,6 +14,10 @@ export interface VolunteerProfile {
     roleType: string;
     specialty: string | null;
     rankLevel: string | null;
+    denId: string | null;
+    denName: string | null;
+    denNumber: number | null;
+    denRankLevel: string | null;
     assignedAt: string;
   }>;
   childrenRanks: Array<{
@@ -54,10 +58,22 @@ export interface VolunteerDetail extends VolunteerProfile {
 }
 
 export interface RoleAssignment {
+  assignments: Array<{
+    id: string;
+    roleId: string;
+    roleName: string;
+    denId: string | null;
+    denNumber: number | null;
+    assignedAt: string;
+  }>;
+  tierUpgraded: boolean;
+}
+
+export interface AssignableDen {
   id: string;
-  roleId: string;
-  roleName: string;
-  assignedAt: string;
+  name: string;
+  denNumber: number;
+  rankLevel: string;
 }
 
 export interface AvailableRole {
@@ -99,7 +115,6 @@ export class VolunteerApiService {
     name?: string;
     phone?: string | null;
     leaderboardOptIn?: boolean;
-    childrenRanks?: string[];
   }): Promise<Partial<VolunteerProfile>> {
     const response = await axios.put('/volunteers/me/profile', data);
     return response.data;
@@ -108,8 +123,15 @@ export class VolunteerApiService {
   /**
    * Assign a role to current volunteer
    */
-  async assignRole(roleId: string): Promise<RoleAssignment> {
-    const response = await axios.post<RoleAssignment>('/volunteers/me/roles', { roleId });
+  async assignRole(input: { roleId: string; denIds?: string[] }): Promise<RoleAssignment> {
+    const response = await axios.post<RoleAssignment>('/volunteers/me/roles', input);
+    return response.data;
+  }
+
+  async getAssignableDens(params?: { rankLevel?: string }): Promise<AssignableDen[]> {
+    const response = await axios.get<AssignableDen[]>('/volunteers/roles/assignable-dens', {
+      params,
+    });
     return response.data;
   }
 

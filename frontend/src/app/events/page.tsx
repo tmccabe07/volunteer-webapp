@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -10,70 +9,196 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Card } from '@/components/ui/card';
 import { PlusCircle, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import EventCard from '@/components/shared/events/EventCard';
 import eventsService from '@/services/events.service';
 import { useAuth } from '@/lib/auth-context';
+import { denService } from '@/services/den.service';
+import { volunteerApi } from '@/services/volunteer.service';
+import { parentLinkService } from '@/services/parentLinkService';
 
-const RANK_LEVELS = [
-  { value: 'ALL', label: 'All Ranks' },
-  { value: 'LION', label: 'Lion' },
-  { value: 'TIGER', label: 'Tiger' },
-  { value: 'WOLF', label: 'Wolf' },
-  { value: 'BEAR', label: 'Bear' },
-  { value: 'WEBELOS', label: 'Webelos' },
-  { value: 'AOL', label: 'Arrow of Light' },
+interface DenOption {
+  id: string;
+  name: string;
+  denNumber: number;
+  rankLevel: string;
+}
+
+interface EventActivitySlot {
+  id: string;
+  activityType: {
+    name: string;
+    pointValue: number;
+  };
+  capacity: number | null;
+  signedUpCount: number;
+  currentUserSignup: {
+    id: string;
+    withdrawn: boolean;
+  } | null;
+}
+
+interface EventListItem {
+  id: string;
+  title: string;
+  description: string | null;
+  eventDate: string;
+  eventTime: string | null;
+  endTime?: string | null;
+  fullDay?: boolean;
+  location: string | null;
+  rankLevel: string | null;
+  derivedRankLevels?: string[];
+  isComplete: boolean;
+  activitySlots: EventActivitySlot[];
+}
+
+const SCOPE_OPTIONS = [
+  { value: 'ALL', label: 'All Events' },
+  { value: 'PACK_WIDE', label: 'Pack-Wide' },
+  { value: 'DEN', label: 'Den-Scoped' },
 ];
 
 export default function EventsPage() {
-  const searchParams = useSearchParams();
   const { user } = useAuth();
   
-  const [events, setEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<EventListItem[]>([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [availableDens, setAvailableDens] = useState<DenOption[]>([]);
+  const [selectedDenIds, setSelectedDenIds] = useState<string[]>([]);
+
   // Filters
-  const [rankLevel, setRankLevel] = useState('ALL');
+  const [scopeType, setScopeType] = useState<'ALL' | 'PACK_WIDE' | 'DEN'>('ALL');
   const [upcoming, setUpcoming] = useState(true);
   const [mySignups, setMySignups] = useState(false);
 
   const canCreateEvents = user?.authTier === 'LEADER' || user?.authTier === 'ADMIN';
 
   useEffect(() => {
-    loadEvents();
-  }, [rankLevel, upcoming, mySignups, pagination.page]);
+    const loadFilterOptions = async () => {
+      try {
+        if (!user) {
+          return;
+        }
 
-  const loadEvents = async () => {
+        if (user.authTier === 'ADMIN') {
+          const response = await denService.listDens({ isActive: true });
+          const dens = response.data.sort((a, b) => a.denNumber - b.denNumber);
+          setAvailableDens(dens);
+          setSelectedDenIds(dens.map((den) => den.id));
+          return;
+        }
+
+        if (user.authTier === 'LEADER') {
+          const profile = await volunteerApi.getMyProfile();
+          const dens = new Map<string, DenOption>();
+          profile.roles.forEach((role) => {
+            if (role.denId && role.denName && role.denNumber && role.denRankLevel) {
+              dens.set(role.denId, {
+                id: role.denId,
+                name: role.denName,
+                denNumber: role.denNumber,
+                rankLevel: role.denRankLevel,
+              });
+            }
+          });
+
+          const denList = Array.from(dens.values()).sort((a, b) => a.denNumber - b.denNumber);
+          setAvailableDens(denList);
+          setSelectedDenIds(denList.map((den) => den.id));
+          return;
+        }
+
+        if (user.authTier === 'PARENT') {
+          const response = await parentLinkService.getMyLinkedCubScouts();
+          const dens = new Map<string, DenOption>();
+
+          response.data.forEach((child) => {
+            if (child.currentDen) {
+              dens.set(child.currentDen.id, {
+                id: child.currentDen.id,
+                name: child.currentDen.name,
+                denNumber: child.currentDen.denNumber,
+                rankLevel: '',
+              });
+            }
+          });
+
+          const denList = Array.from(dens.values()).sort((a, b) => a.denNumber - b.denNumber);
+          setAvailableDens(denList);
+          setSelectedDenIds(denList.map((den) => den.id));
+        }
+      } catch (err) {
+        console.error('Error loading event filter options:', err);
+      }
+    };
+
+    loadFilterOptions();
+  }, [user]);
+
+  const loadEvents = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const params: any = {
+      const params: {
+        page: number;
+        limit: number;
+        scopeType: 'ALL' | 'PACK_WIDE' | 'DEN';
+        upcoming: boolean;
+        mySignups: boolean;
+        denIds?: string[];
+      } = {
         page: pagination.page,
         limit: pagination.limit,
+        scopeType,
         upcoming,
         mySignups,
       };
 
-      // Only include rankLevel if a specific rank is selected (not 'ALL')
-      if (rankLevel && rankLevel !== 'ALL') {
-        params.rankLevel = rankLevel;
+      if (scopeType === 'DEN' && selectedDenIds.length > 0) {
+        params.denIds = selectedDenIds;
       }
 
       const result = await eventsService.listEvents(params);
 
       setEvents(result.events);
       setPagination(result.pagination);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error loading events:', err);
-      setError(err.message || 'Failed to load events');
+      setError(err instanceof Error ? err.message : 'Failed to load events');
     } finally {
       setLoading(false);
     }
+  }, [pagination.page, pagination.limit, scopeType, selectedDenIds, upcoming, mySignups]);
+
+  useEffect(() => {
+    void loadEvents();
+  }, [loadEvents]);
+
+  useEffect(() => {
+    if (scopeType !== 'DEN' || availableDens.length === 0) {
+      return;
+    }
+
+    if (selectedDenIds.length === 0) {
+      setSelectedDenIds(availableDens.map((den) => den.id));
+    }
+  }, [scopeType, availableDens, selectedDenIds.length]);
+
+  const toggleDen = (denId: string) => {
+    setSelectedDenIds((prev) => {
+      if (prev.includes(denId)) {
+        return prev.filter((id) => id !== denId);
+      }
+      return [...prev, denId];
+    });
   };
 
   const handlePageChange = (newPage: number) => {
@@ -104,20 +229,43 @@ export default function EventsPage() {
       <Card className="p-4 mb-6">
         <div className="grid md:grid-cols-4 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Rank Level</label>
-            <Select value={rankLevel} onValueChange={setRankLevel}>
+            <label className="block text-sm font-medium mb-2">Scope</label>
+            <Select value={scopeType} onValueChange={(value) => setScopeType(value as 'ALL' | 'PACK_WIDE' | 'DEN')}>
               <SelectTrigger>
-                <SelectValue placeholder="All ranks" />
+                <SelectValue placeholder="All events" />
               </SelectTrigger>
               <SelectContent>
-                {RANK_LEVELS.map(rank => (
-                  <SelectItem key={rank.value} value={rank.value}>
-                    {rank.label}
+                {SCOPE_OPTIONS.map((scope) => (
+                  <SelectItem key={scope.value} value={scope.value}>
+                    {scope.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
+
+          {scopeType === 'DEN' && (
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium mb-2">Dens</label>
+              <div className="border rounded-md p-3 space-y-2 max-h-52 overflow-y-auto">
+                {availableDens.length === 0 ? (
+                  <p className="text-sm text-gray-500">No dens available.</p>
+                ) : (
+                  availableDens.map((den) => (
+                    <label key={den.id} className="flex items-center space-x-2 cursor-pointer">
+                      <Checkbox
+                        checked={selectedDenIds.includes(den.id)}
+                        onCheckedChange={() => toggleDen(den.id)}
+                      />
+                      <span className="text-sm">
+                        {den.name} (#{den.denNumber})
+                      </span>
+                    </label>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="flex items-end">
             <label className="flex items-center space-x-2 cursor-pointer">
@@ -174,7 +322,7 @@ export default function EventsPage() {
                 <div className="text-7xl mb-4">🎪</div>
                 <p className="text-gray-700 text-xl font-semibold mb-2">No events found</p>
                 <p className="text-gray-500 mb-6">
-                  {upcoming ? 'No upcoming events match your filters.' : 'Try adjusting your filters to see more events.'}
+                    {upcoming ? 'No upcoming events match your filters.' : 'Try adjusting your filters to see more events.'}
                 </p>
                 {canCreateEvents && (
                   <Link href="/events/create">
