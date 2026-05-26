@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { hoursPromptService, type ParentPromptItem } from '@/services/hoursPromptService';
+import {
+  hoursPromptService,
+  type ParentPromptItem,
+  type PromptCategory,
+} from '@/services/hoursPromptService';
 import PromptDetailCard from './PromptDetailCard';
 import AcknowledgePromptDialog from './AcknowledgePromptDialog';
 
@@ -19,9 +23,11 @@ function getApiErrorMessage(error: unknown, fallback: string): string {
 
 interface ParentPromptsListProps {
   childScoutId?: string;
+  denId?: string;
+  category?: PromptCategory;
 }
 
-export default function ParentPromptsList({ childScoutId }: ParentPromptsListProps) {
+export default function ParentPromptsList({ childScoutId, denId, category }: ParentPromptsListProps) {
   const [prompts, setPrompts] = useState<ParentPromptItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +42,8 @@ export default function ParentPromptsList({ childScoutId }: ParentPromptsListPro
       const response = await hoursPromptService.getPrompts({
         status: 'PENDING',
         ...(childScoutId ? { childScoutId } : {}),
+        ...(denId ? { denId } : {}),
+        ...(category ? { category } : {}),
       });
       setPrompts(response.data);
     } catch (err: unknown) {
@@ -43,7 +51,7 @@ export default function ParentPromptsList({ childScoutId }: ParentPromptsListPro
     } finally {
       setIsLoading(false);
     }
-  }, [childScoutId]);
+  }, [childScoutId, denId, category]);
 
   useEffect(() => {
     loadPrompts();
@@ -71,6 +79,8 @@ export default function ParentPromptsList({ childScoutId }: ParentPromptsListPro
         <h2 className="text-xl font-semibold">
           Scoutbook Prompt Queue
           {childScoutId ? ' (Filtered by Cub Scout)' : ''}
+          {denId ? ' (Filtered by Den)' : ''}
+          {category ? ` (${category})` : ''}
         </h2>
         <Button variant="outline" size="sm" onClick={loadPrompts}>Refresh</Button>
       </div>

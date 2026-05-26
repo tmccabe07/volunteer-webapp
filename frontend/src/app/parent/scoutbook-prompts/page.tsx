@@ -4,12 +4,22 @@ import { useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ParentPromptsList from '@/components/parent/ParentPromptsList';
 import { useAuth } from '@/lib/auth-context';
+import type { PromptCategory } from '@/services/hoursPromptService';
 
 export default function ParentScoutbookPromptsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoading } = useAuth();
   const childScoutId = searchParams.get('childScoutId') || undefined;
+  const denId = searchParams.get('denId') || undefined;
+  const categoryParam = searchParams.get('category');
+  const category: PromptCategory | undefined =
+    categoryParam === 'CAMPING' ||
+    categoryParam === 'HIKING' ||
+    categoryParam === 'SERVICE' ||
+    categoryParam === 'REQUIREMENT'
+      ? categoryParam
+      : undefined;
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -47,7 +57,7 @@ export default function ParentScoutbookPromptsPage() {
         </p>
       </div>
 
-      <ParentPromptsList childScoutId={childScoutId} />
+      <ParentPromptsList childScoutId={childScoutId} denId={denId} category={category} />
     </div>
   );
 }

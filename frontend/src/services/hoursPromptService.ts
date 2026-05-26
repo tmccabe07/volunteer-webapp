@@ -54,6 +54,7 @@ class HoursPromptService {
 
   async getPrompts(params?: {
     childScoutId?: string;
+    denId?: string;
     status?: PromptStatus;
     category?: PromptCategory;
   }): Promise<{ data: ParentPromptItem[] }> {

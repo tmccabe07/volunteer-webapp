@@ -13,12 +13,20 @@ import {
 } from '@/services/parentLinkService';
 import LinkApprovalDialog from './LinkApprovalDialog';
 
-export default function PendingLinksQueue() {
+interface PendingLinksQueueProps {
+  initialDenId?: string;
+  lockDenFilter?: boolean;
+}
+
+export default function PendingLinksQueue({
+  initialDenId,
+  lockDenFilter = false,
+}: PendingLinksQueueProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pendingLinks, setPendingLinks] = useState<PendingLinkItem[]>([]);
   const [dens, setDens] = useState<PendingFilterDenItem[]>([]);
-  const [denFilter, setDenFilter] = useState('ALL');
+  const [denFilter, setDenFilter] = useState(initialDenId || 'ALL');
   const [selectedLink, setSelectedLink] = useState<PendingLinkItem | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -50,6 +58,12 @@ export default function PendingLinksQueue() {
   useEffect(() => {
     loadPendingLinks();
   }, [loadPendingLinks]);
+
+  useEffect(() => {
+    if (initialDenId) {
+      setDenFilter(initialDenId);
+    }
+  }, [initialDenId]);
 
   const loadDens = async () => {
     try {
@@ -89,19 +103,21 @@ export default function PendingLinksQueue() {
             Pending Parent Link Requests
           </CardTitle>
           <div className="flex items-center gap-2">
-            <Select value={denFilter} onValueChange={setDenFilter}>
-              <SelectTrigger className="w-[220px]">
-                <SelectValue placeholder="Filter by den" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Dens</SelectItem>
-                {dens.map((den) => (
-                  <SelectItem key={den.id} value={den.id}>
-                    {den.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {!lockDenFilter && (
+              <Select value={denFilter} onValueChange={setDenFilter}>
+                <SelectTrigger className="w-[220px]">
+                  <SelectValue placeholder="Filter by den" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Dens</SelectItem>
+                  {dens.map((den) => (
+                    <SelectItem key={den.id} value={den.id}>
+                      {den.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Button type="button" variant="outline" size="sm" onClick={loadPendingLinks}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh

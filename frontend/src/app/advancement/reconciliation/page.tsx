@@ -1,13 +1,15 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import ReconciliationQueue from '@/components/advancement/ReconciliationQueue';
 
 export default function ReconciliationDashboardPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isLoading } = useAuth();
+  const denId = searchParams.get('denId') || undefined;
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -41,7 +43,7 @@ export default function ReconciliationDashboardPage() {
         </p>
       </div>
 
-      <ReconciliationQueue />
+      <ReconciliationQueue initialDenId={denId} />
     </div>
   );
 }

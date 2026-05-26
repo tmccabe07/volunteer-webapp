@@ -414,6 +414,8 @@ export default function CompleteEventPage() {
         return;
       }
 
+      setGeneratedPromptCount((prev) => prev + result.promptedRequirementProgress);
+
       setRequirementPromptStatus(
         `Prompt sent for ${result.promptedRequirementProgress} requirement record(s) to ${result.promptedParents} linked parent(s).`,
       );

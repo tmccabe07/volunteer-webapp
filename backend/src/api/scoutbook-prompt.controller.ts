@@ -57,11 +57,11 @@ export class ScoutbookPromptController {
   }
 
   @Get('scoutbook-prompts')
-  @RequireTier('PARENT')
   @HttpCode(HttpStatus.OK)
   async listPrompts(
     @Req() req: AuthenticatedRequest,
     @Query('childScoutId') childScoutId?: string,
+    @Query('denId') denId?: string,
     @Query('status') status?: string,
     @Query('category') category?: string,
   ) {
@@ -78,6 +78,7 @@ export class ScoutbookPromptController {
 
     return this.scoutbookPromptService.listPrompts(req.user!.userId, req.user!.authTier, {
       childScoutId,
+      denId,
       status: parsedStatus,
       category: parsedCategory,
     });

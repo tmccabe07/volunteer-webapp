@@ -58,7 +58,7 @@ export class RequirementProgressService {
       data: {
         childScoutId,
         adventureId,
-        currentState: AwardState.ELIGIBLE,
+        currentState: AwardState.APPROVED,
         quantityNeeded: 1,
       },
       select: {
@@ -70,9 +70,9 @@ export class RequirementProgressService {
       data: {
         awardItemId: createdAward.id,
         fromState: null,
-        toState: AwardState.ELIGIBLE,
+        toState: AwardState.APPROVED,
         changedBy: userId,
-        notes: 'Adventure fully reconciled in Scoutbook',
+        notes: 'Adventure fully reconciled in Scoutbook and ready for purchase workflow',
       },
     });
   }

@@ -16,6 +16,11 @@ import { NotificationsModule } from './notifications.module';
     AdvancementProgressService,
     AuthorizationService,
   ],
-  exports: [AdvancementService, RequirementProgressService, AdvancementProgressService],
+  exports: [
+    AdvancementService,
+    RequirementProgressService,
+    AdvancementProgressService,
+    AuthorizationService,
+  ],
 })
 export class AdvancementModule {}

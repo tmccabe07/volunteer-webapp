@@ -13,17 +13,22 @@ import {
 } from '@prisma/client';
 import prisma from '../../utils/prisma';
 import { NotificationService } from '../notification.service';
+import { AuthorizationService } from '../role-scope/authorization.service';
 import type { GeneratePromptsDto } from '../../models/hours-prompt/generate-prompts.dto';
 
 interface PromptFilters {
   childScoutId?: string;
   status?: PromptStatus;
   category?: PromptCategory;
+  denId?: string;
 }
 
 @Injectable()
 export class ScoutbookPromptService {
-  constructor(private readonly notificationService: NotificationService) {}
+  constructor(
+    private readonly notificationService: NotificationService,
+    private readonly authorizationService: AuthorizationService,
+  ) {}
 
   private async ensureDenEvent(eventId: string): Promise<DenEvent> {
     const event = await prisma.event.findUnique({
@@ -368,6 +373,18 @@ export class ScoutbookPromptService {
           childScoutId: filters.childScoutId || { in: childScoutIds },
           ...(filters.status ? { status: filters.status } : {}),
           ...(filters.category ? { category: filters.category } : {}),
+          ...(filters.denId
+            ? {
+                childScout: {
+                  denMemberships: {
+                    some: {
+                      denId: filters.denId,
+                      validTo: null,
+                    },
+                  },
+                },
+              }
+            : {}),
         },
         include: {
           childScout: {
@@ -415,6 +432,18 @@ export class ScoutbookPromptService {
         ...(filters.childScoutId ? { childScoutId: filters.childScoutId } : {}),
         ...(filters.status ? { status: filters.status } : {}),
         ...(filters.category ? { category: filters.category } : {}),
+        ...(filters.denId
+          ? {
+              childScout: {
+                denMemberships: {
+                  some: {
+                    denId: filters.denId,
+                    validTo: null,
+                  },
+                },
+              },
+            }
+          : {}),
       },
       include: {
         childScout: {
@@ -435,8 +464,16 @@ export class ScoutbookPromptService {
       orderBy: { generatedAt: 'desc' },
     });
 
+    let filteredPrompts = prompts;
+    if (authTier === AuthTier.LEADER && !(await this.authorizationService.hasPackScope(userId))) {
+      const checks = await Promise.all(
+        prompts.map((prompt) => this.authorizationService.canAccessChild(userId, prompt.childScout.id, authTier)),
+      );
+      filteredPrompts = prompts.filter((_, index) => checks[index]);
+    }
+
     return {
-      data: prompts.map((prompt) => ({
+      data: filteredPrompts.map((prompt) => ({
         id: prompt.id,
         childScout: {
           id: prompt.childScout.id,
