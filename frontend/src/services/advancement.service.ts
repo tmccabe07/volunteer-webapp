@@ -128,6 +128,12 @@ export interface ReconcileConflictState {
   version: number;
 }
 
+export interface PromptParentsForRequirementResponse {
+  requirementProgressId: string;
+  promptedParents: number;
+  scoutbookStatus: 'PENDING' | 'ENTERED' | 'VERIFIED';
+}
+
 /**
  * Advancement API Service
  */
@@ -206,6 +212,17 @@ export class AdvancementService {
     const response = await axios.patch<ReconcileRequirementResponse>(
       `/requirement-progress/${requirementProgressId}/reconcile`,
       data,
+    );
+    return response.data;
+  }
+
+  async promptParentsForRequirement(
+    requirementProgressId: string,
+    data?: { message?: string },
+  ): Promise<PromptParentsForRequirementResponse> {
+    const response = await axios.post<PromptParentsForRequirementResponse>(
+      `/requirement-progress/${requirementProgressId}/prompt-parents`,
+      data || {},
     );
     return response.data;
   }

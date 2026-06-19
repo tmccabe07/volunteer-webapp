@@ -12,6 +12,15 @@ import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 
+function isLoopbackIp(ip?: string): boolean {
+  if (!ip) {
+    return false;
+  }
+
+  const normalized = ip.replace('::ffff:', '').toLowerCase();
+  return normalized === '127.0.0.1' || normalized === '::1' || normalized === 'localhost';
+}
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
@@ -41,6 +50,7 @@ async function bootstrap() {
       message: 'Too many requests from this IP, please try again later',
       standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
       legacyHeaders: false, // Disable `X-RateLimit-*` headers
+      skip: (req) => isLoopbackIp(req.ip),
     });
     app.use(limiter);
     console.log('🔒 Rate limiting enabled (100 requests per 15 minutes)');

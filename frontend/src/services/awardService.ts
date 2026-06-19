@@ -15,30 +15,51 @@ export interface AwardItem {
   };
   currentState: AwardState;
   quantityNeeded: number;
+  den?: {
+    id: string;
+    name: string;
+    denNumber: number;
+  } | null;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface AwardListResponse {
   data: AwardItem[];
+  purchaseSummary?: Array<{
+    denId: string | null;
+    denName: string;
+    awardName: string;
+    rankLevel: string;
+    quantity: number;
+    onHandQuantity: number;
+    netToPurchase: number;
+  }>;
 }
+
+export type AwardQueueType = 'TO_PURCHASE' | 'TO_AWARD' | 'SCOUTBOOK_FOLLOW_UP';
 
 export interface TransitionAwardInput {
   toState: AwardState;
   notes?: string;
   batchId?: string;
+  inventoryItemId?: string;
+  procurementSource?: 'PURCHASE' | 'ON_HAND';
 }
 
 export interface BatchTransitionInput {
   awardIds: string[];
   toState: AwardState;
   notes?: string;
+  inventoryItemId?: string;
+  procurementSource?: 'PURCHASE' | 'ON_HAND';
 }
 
 export interface InventoryItem {
   id: string;
   itemName: string;
   rankLevel: string | null;
+  denId?: string | null;
   onHandQuantity: number;
   reorderPoint: number | null;
   unitCost: number | null;
@@ -58,6 +79,7 @@ export interface InventoryResponse {
 export interface CreateInventoryItemInput {
   itemName: string;
   rankLevel?: 'LION' | 'TIGER' | 'WOLF' | 'BEAR' | 'WEBELOS' | 'AOL' | 'PACK_WIDE' | null;
+  denId?: string | null;
   onHandQuantity?: number;
   reorderPoint?: number | null;
   unitCost?: number | null;
@@ -79,6 +101,7 @@ class AwardService {
     childScoutId?: string;
     adventureId?: string;
     denId?: string;
+    queueType?: AwardQueueType;
   }): Promise<AwardListResponse> {
     const response = await axios.get<AwardListResponse>('/awards', { params });
     return response.data;
@@ -94,8 +117,8 @@ class AwardService {
     return response.data;
   }
 
-  async getInventory(): Promise<InventoryResponse> {
-    const response = await axios.get<InventoryResponse>('/inventory');
+  async getInventory(params?: { denId?: string | null }): Promise<InventoryResponse> {
+    const response = await axios.get<InventoryResponse>('/inventory', { params });
     return response.data;
   }
 

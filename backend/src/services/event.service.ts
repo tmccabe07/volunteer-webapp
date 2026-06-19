@@ -6,7 +6,7 @@
  */
 
 import { Injectable } from '@nestjs/common';
-import { PointEventType, NotificationType, EventScope, AuthTier, RoleScope } from '@prisma/client';
+import { PointEventType, NotificationType, EventScope, AuthTier, RoleScope, Prisma } from '@prisma/client';
 import prisma from '../utils/prisma';
 import type { CreateEventInput, UpdateEventInput, CompleteEventInput } from '../utils/validation/event.schema';
 import { NotificationService } from './notification.service';
@@ -189,6 +189,7 @@ export class EventService {
       activitySlots,
       targetDenIds,
       plannedRequirementIds,
+      plannedHourActivities,
       scopeType = EventScope.PACK_WIDE,
       ...eventData
     } = data;
@@ -238,9 +239,13 @@ export class EventService {
     const event = await prisma.event.create({
       data: {
         ...eventData,
+        eventEndDate: eventData.eventEndDate || null,
         scopeType,
         rankLevel: eventData.rankLevel || null,
         recurringEndDate,
+        plannedHourActivities: plannedHourActivities
+          ? (plannedHourActivities as Prisma.InputJsonValue)
+          : Prisma.DbNull,
         createdById,
         targetDens:
           resolvedTargetDenIds.length > 0
@@ -498,6 +503,7 @@ export class EventService {
       targetDenIds,
       scopeType,
       plannedRequirementIds,
+      plannedHourActivities,
       ...eventData
     } = data;
 
@@ -559,6 +565,14 @@ export class EventService {
       where: { id: eventId },
       data: {
         ...eventData,
+        ...(eventData.eventEndDate !== undefined && {
+          eventEndDate: eventData.eventEndDate || null,
+        }),
+        ...(plannedHourActivities !== undefined && {
+          plannedHourActivities: plannedHourActivities
+            ? (plannedHourActivities as Prisma.InputJsonValue)
+            : Prisma.DbNull,
+        }),
         ...(recurringEndDate !== undefined && { recurringEndDate }),
         ...(validatedPlannedRequirementIds && {
           plannedRequirements: {

@@ -368,46 +368,46 @@
 
 ### Contract Tests for User Story 5
 
-- [ ] T195 [P] [US5] Contract test for POST /events/:id/generate-prompts in backend/test/scoutbook-prompts.e2e-spec.ts
-- [ ] T196 [P] [US5] Contract test for GET /scoutbook-prompts in backend/test/scoutbook-prompts.e2e-spec.ts
-- [ ] T197 [P] [US5] Contract test for PATCH /scoutbook-prompts/:id/acknowledge in backend/test/scoutbook-prompts.e2e-spec.ts
-- [ ] T198 [P] [US5] Contract test for PATCH /scoutbook-prompts/:id/dismiss in backend/test/scoutbook-prompts.e2e-spec.ts
+- [X] T195 [P] [US5] Contract test for POST /events/:id/generate-prompts in backend/test/scoutbook-prompts.e2e-spec.ts
+- [X] T196 [P] [US5] Contract test for GET /scoutbook-prompts in backend/test/scoutbook-prompts.e2e-spec.ts
+- [X] T197 [P] [US5] Contract test for PATCH /scoutbook-prompts/:id/acknowledge in backend/test/scoutbook-prompts.e2e-spec.ts
+- [X] T198 [P] [US5] Contract test for PATCH /scoutbook-prompts/:id/dismiss in backend/test/scoutbook-prompts.e2e-spec.ts
 
 ### Backend Implementation for User Story 5
 
 #### Hours Prompt Generation
 
-- [ ] T199 [P] [US5] Create GeneratePromptsDto in backend/src/models/hours-prompt/generate-prompts.dto.ts with category-specific data schemas
-- [ ] T200 [P] [US5] Create ScoutbookPromptResponseDto in backend/src/models/hours-prompt/prompt-response.dto.ts
-- [ ] T201 [P] [US5] Create UpdatePromptDto in backend/src/models/hours-prompt/update-prompt.dto.ts
-- [ ] T202 [US5] Create ScoutbookPromptService in backend/src/services/hours-prompt/scoutbook-prompt.service.ts
-- [ ] T203 [US5] Implement category-specific prompt generation using strategy pattern in ScoutbookPromptService
-- [ ] T204 [US5] Implement event-type default value prefill logic in ScoutbookPromptService
-- [ ] T205 [US5] Implement reminder notification scheduling in ScoutbookPromptService for unacknowledged prompts
-- [ ] T206 [US5] Create ScoutbookPromptController in backend/src/api/scoutbook-prompt.controller.ts with POST /events/:id/generate-prompts, GET /scoutbook-prompts, PATCH /:id/acknowledge, PATCH /:id/dismiss
-- [ ] T207 [US5] Add ScoutbookPromptService unit tests in backend/src/services/hours-prompt/scoutbook-prompt.service.spec.ts
+- [X] T199 [P] [US5] Create GeneratePromptsDto in backend/src/models/hours-prompt/generate-prompts.dto.ts with category-specific data schemas
+- [X] T200 [P] [US5] Create ScoutbookPromptResponseDto in backend/src/models/hours-prompt/prompt-response.dto.ts
+- [X] T201 [P] [US5] Create UpdatePromptDto in backend/src/models/hours-prompt/update-prompt.dto.ts
+- [X] T202 [US5] Create ScoutbookPromptService in backend/src/services/hours-prompt/scoutbook-prompt.service.ts
+- [X] T203 [US5] Implement category-specific prompt generation using strategy pattern in ScoutbookPromptService
+- [X] T204 [US5] Implement event-type default value prefill logic in ScoutbookPromptService
+- [X] T205 [US5] Implement reminder notification scheduling in ScoutbookPromptService for unacknowledged prompts
+- [X] T206 [US5] Create ScoutbookPromptController in backend/src/api/scoutbook-prompt.controller.ts with POST /events/:id/generate-prompts, GET /scoutbook-prompts, PATCH /:id/acknowledge, PATCH /:id/dismiss
+- [X] T207 [US5] Add ScoutbookPromptService unit tests in backend/src/services/hours-prompt/scoutbook-prompt.service.spec.ts
 
 ### Frontend Implementation for User Story 5
 
 #### Event Closeout with Prompts
 
-- [ ] T208 [P] [US5] Create HoursPromptConfig component in frontend/src/components/den/HoursPromptConfig.tsx for leader event closeout
-- [ ] T209 [P] [US5] Create CategoryPromptForm component in frontend/src/components/den/CategoryPromptForm.tsx for Camping/Hiking/Service
-- [ ] T210 [US5] Extend event closeout page with hours prompt configuration in frontend/src/app/events/[id]/closeout/page.tsx
+- [X] T208 [P] [US5] Create HoursPromptConfig component in frontend/src/components/den/HoursPromptConfig.tsx for leader event closeout
+- [X] T209 [P] [US5] Create CategoryPromptForm component in frontend/src/components/den/CategoryPromptForm.tsx for Camping/Hiking/Service
+- [X] T210 [US5] Extend event closeout page with hours prompt configuration in frontend/src/app/events/[id]/closeout/page.tsx
 
 #### Parent Prompt Dashboard
 
-- [ ] T211 [P] [US5] Create ParentPromptsList component in frontend/src/components/parent/ParentPromptsList.tsx
-- [ ] T212 [P] [US5] Create PromptDetailCard component in frontend/src/components/parent/PromptDetailCard.tsx with suggested values
-- [ ] T213 [P] [US5] Create AcknowledgePromptDialog component in frontend/src/components/parent/AcknowledgePromptDialog.tsx
-- [ ] T214 [US5] Create parent prompts page in frontend/src/app/parent/scoutbook-prompts/page.tsx
-- [ ] T215 [US5] Create hoursPromptService API client in frontend/src/services/hoursPromptService.ts
+- [X] T211 [P] [US5] Create ParentPromptsList component in frontend/src/components/parent/ParentPromptsList.tsx
+- [X] T212 [P] [US5] Create PromptDetailCard component in frontend/src/components/parent/PromptDetailCard.tsx with suggested values
+- [X] T213 [P] [US5] Create AcknowledgePromptDialog component in frontend/src/components/parent/AcknowledgePromptDialog.tsx
+- [X] T214 [US5] Create parent prompts page in frontend/src/app/parent/scoutbook-prompts/page.tsx
+- [X] T215 [US5] Create hoursPromptService API client in frontend/src/services/hoursPromptService.ts
 
 #### Tests
 
-- [ ] T216 [P] [US5] Unit test for HoursPromptConfig component in frontend/src/components/den/HoursPromptConfig.test.tsx
-- [ ] T217 [P] [US5] Unit test for ParentPromptsList component in frontend/src/components/parent/ParentPromptsList.test.tsx
-- [ ] T218 [US5] Integration test for hours prompt flow in frontend/src/test/integration/hours-prompt-flow.test.tsx
+- [X] T216 [P] [US5] Unit test for HoursPromptConfig component in frontend/src/components/den/HoursPromptConfig.test.tsx
+- [X] T217 [P] [US5] Unit test for ParentPromptsList component in frontend/src/components/parent/ParentPromptsList.test.tsx
+- [X] T218 [US5] Integration test for hours prompt flow in frontend/src/test/integration/hours-prompt-flow.test.tsx
 
 **Checkpoint**: At this point, User Stories 1, 2, 3, AND 5 should all work independently - parents receive category-specific prompts after events
 
@@ -421,40 +421,40 @@
 
 ### Contract Tests for User Story 4
 
-- [ ] T219 [P] [US4] Contract test for POST /roles/assign-scoped in backend/test/roles.e2e-spec.ts
-- [ ] T220 [P] [US4] Contract test for GET /roles/assignments in backend/test/roles.e2e-spec.ts
-- [ ] T221 [P] [US4] Contract test for DELETE /roles/assignments/:id in backend/test/roles.e2e-spec.ts
-- [ ] T222 [P] [US4] Contract test for POST /den-chiefs in backend/test/den-chiefs.e2e-spec.ts
-- [ ] T223 [P] [US4] Contract test for GET /den-chiefs in backend/test/den-chiefs.e2e-spec.ts
-- [ ] T224 [P] [US4] Contract test for POST /den-chiefs/:id/assign-den in backend/test/den-chiefs.e2e-spec.ts
-- [ ] T225 [P] [US4] Contract test for DELETE /den-chiefs/:id/assignments/:assignmentId in backend/test/den-chiefs.e2e-spec.ts
+- [X] T219 [P] [US4] Contract test for POST /roles/assign-scoped in backend/test/roles.e2e-spec.ts
+- [X] T220 [P] [US4] Contract test for GET /roles/assignments in backend/test/roles.e2e-spec.ts
+- [X] T221 [P] [US4] Contract test for DELETE /roles/assignments/:id in backend/test/roles.e2e-spec.ts
+- [X] T222 [P] [US4] Contract test for POST /den-chiefs in backend/test/den-chiefs.e2e-spec.ts
+- [X] T223 [P] [US4] Contract test for GET /den-chiefs in backend/test/den-chiefs.e2e-spec.ts
+- [X] T224 [P] [US4] Contract test for POST /den-chiefs/:id/assign-den in backend/test/den-chiefs.e2e-spec.ts
+- [X] T225 [P] [US4] Contract test for DELETE /den-chiefs/:id/assignments/:assignmentId in backend/test/den-chiefs.e2e-spec.ts
 
 ### Backend Implementation for User Story 4
 
 #### Role Scoping
 
-- [ ] T226 [P] [US4] Create AssignScopedRoleDto in backend/src/models/roles/assign-scoped-role.dto.ts with scopeType and denNumber
-- [ ] T227 [P] [US4] Create ScopedRoleAssignmentResponseDto in backend/src/models/roles/scoped-role-response.dto.ts
-- [ ] T228 [US4] Extend RoleService to support multi-den assignments in backend/src/services/roles/role.service.ts
-- [ ] T229 [US4] Implement scopeType validation logic in RoleService (DEN requires denNumber, RANK requires rankLevel, PACK has no restrictions)
-- [ ] T230 [US4] Update role assignment uniqueness to allow same role on different dens in RoleService
+- [X] T226 [P] [US4] Create AssignScopedRoleDto in backend/src/models/roles/assign-scoped-role.dto.ts with scopeType and denNumber
+- [X] T227 [P] [US4] Create ScopedRoleAssignmentResponseDto in backend/src/models/roles/scoped-role-response.dto.ts
+- [X] T228 [US4] Extend RoleService to support multi-den assignments in backend/src/services/roles/role.service.ts
+- [X] T229 [US4] Implement scopeType validation logic in RoleService (DEN requires denNumber, RANK requires rankLevel, PACK has no restrictions)
+- [X] T230 [US4] Update role assignment uniqueness to allow same role on different dens in RoleService
 - [ ] T231 [US4] Add scoped role assignment unit tests in backend/src/services/roles/role.service.spec.ts
 
 #### Den Chief Support
 
-- [ ] T232 [P] [US4] Create CreateDenChiefDto in backend/src/models/den-chief/create-den-chief.dto.ts
-- [ ] T233 [P] [US4] Create DenChiefResponseDto in backend/src/models/den-chief/den-chief-response.dto.ts
-- [ ] T234 [P] [US4] Create AssignDenChiefDto in backend/src/models/den-chief/assign-den-chief.dto.ts with time bounds
-- [ ] T235 [US4] Create DenChiefService in backend/src/services/den/den-chief.service.ts
+- [X] T232 [P] [US4] Create CreateDenChiefDto in backend/src/models/den-chief/create-den-chief.dto.ts
+- [X] T233 [P] [US4] Create DenChiefResponseDto in backend/src/models/den-chief/den-chief-response.dto.ts
+- [X] T234 [P] [US4] Create AssignDenChiefDto in backend/src/models/den-chief/assign-den-chief.dto.ts with time bounds
+- [X] T235 [US4] Create DenChiefService in backend/src/services/den/den-chief.service.ts
 - [ ] T236 [US4] Implement DenChief authentication in AuthService (support DEN_CHIEF auth tier) in backend/src/services/auth/auth.service.ts
-- [ ] T237 [US4] Implement time-bounded assignment logic in DenChiefService (validFrom, validTo)
-- [ ] T238 [US4] Implement multi-den assignment support in DenChiefService (one Den Chief → many dens)
-- [ ] T239 [US4] Create DenChiefController in backend/src/api/den-chief.controller.ts with POST /den-chiefs, GET /den-chiefs, POST /:id/assign-den, DELETE /:id/assignments/:assignmentId
+- [X] T237 [US4] Implement time-bounded assignment logic in DenChiefService (validFrom, validTo)
+- [X] T238 [US4] Implement multi-den assignment support in DenChiefService (one Den Chief → many dens)
+- [X] T239 [US4] Create DenChiefController in backend/src/api/den-chief.controller.ts with POST /den-chiefs, GET /den-chiefs, POST /:id/assign-den, DELETE /:id/assignments/:assignmentId
 - [ ] T240 [US4] Add DenChiefService unit tests in backend/src/services/den/den-chief.service.spec.ts
 
 #### Authorization Guards
 
-- [ ] T241 [US4] Update ScopeGuard to include Den Chief scoping logic in backend/src/middleware/scope.guard.ts
+- [X] T241 [US4] Update ScopeGuard to include Den Chief scoping logic in backend/src/middleware/scope.guard.ts
 - [ ] T242 [US4] Add integration tests for scoped access in backend/test/role-scoping.e2e-spec.ts (parent, den leader, pack admin, Den Chief)
 - [ ] T243 [US4] Verify parent can only access linked children in backend/test/role-scoping.e2e-spec.ts
 - [ ] T244 [US4] Verify den leader can access assigned dens only in backend/test/role-scoping.e2e-spec.ts
@@ -465,31 +465,31 @@
 
 #### Role Management
 
-- [ ] T247 [P] [US4] Create ScopedRoleAssignmentForm component in frontend/src/components/roles/ScopedRoleAssignmentForm.tsx
-- [ ] T248 [P] [US4] Create RoleAssignmentsList component in frontend/src/components/roles/RoleAssignmentsList.tsx with scope display
-- [ ] T249 [US4] Create role assignments page in frontend/src/app/admin/roles/page.tsx
-- [ ] T250 [US4] Update roleService API client with scoped assignment methods in frontend/src/services/roleService.ts
+- [X] T247 [P] [US4] Create ScopedRoleAssignmentForm component in frontend/src/components/roles/ScopedRoleAssignmentForm.tsx
+- [X] T248 [P] [US4] Create RoleAssignmentsList component in frontend/src/components/roles/RoleAssignmentsList.tsx with scope display
+- [X] T249 [US4] Create role assignments page in frontend/src/app/admin/roles/page.tsx
+- [X] T250 [US4] Update roleService API client with scoped assignment methods in frontend/src/services/roleService.ts
 
 #### Den Chief Management
 
-- [ ] T251 [P] [US4] Create DenChiefList component in frontend/src/components/den-chief/DenChiefList.tsx
-- [ ] T252 [P] [US4] Create CreateDenChiefForm component in frontend/src/components/den-chief/CreateDenChiefForm.tsx
-- [ ] T253 [P] [US4] Create AssignDenChiefDialog component in frontend/src/components/den-chief/AssignDenChiefDialog.tsx with time bounds
-- [ ] T254 [P] [US4] Create DenChiefProfile component in frontend/src/components/den-chief/DenChiefProfile.tsx
-- [ ] T255 [US4] Create Den Chiefs list page in frontend/src/app/admin/den-chiefs/page.tsx
-- [ ] T256 [US4] Create Den Chief profile page in frontend/src/app/admin/den-chiefs/[id]/page.tsx
-- [ ] T257 [US4] Create denChiefService API client in frontend/src/services/denChiefService.ts
+- [X] T251 [P] [US4] Create DenChiefList component in frontend/src/components/den-chief/DenChiefList.tsx
+- [X] T252 [P] [US4] Create CreateDenChiefForm component in frontend/src/components/den-chief/CreateDenChiefForm.tsx
+- [X] T253 [P] [US4] Create AssignDenChiefDialog component in frontend/src/components/den-chief/AssignDenChiefDialog.tsx with time bounds
+- [X] T254 [P] [US4] Create DenChiefProfile component in frontend/src/components/den-chief/DenChiefProfile.tsx
+- [X] T255 [US4] Create Den Chiefs list page in frontend/src/app/admin/den-chiefs/page.tsx
+- [X] T256 [US4] Create Den Chief profile page in frontend/src/app/admin/den-chiefs/[id]/page.tsx
+- [X] T257 [US4] Create denChiefService API client in frontend/src/services/denChiefService.ts
 
 #### Access Control UI
 
-- [ ] T258 [US4] Add scope-aware navigation filtering (show only accessible dens) in frontend/src/components/navigation/Navigation.tsx
-- [ ] T259 [US4] Add access denied error handling in frontend/src/components/common/ErrorBoundary.tsx
+- [X] T258 [US4] Add scope-aware navigation filtering (show only accessible dens) in frontend/src/components/navigation/Navigation.tsx
+- [X] T259 [US4] Add access denied error handling in frontend/src/components/common/ErrorBoundary.tsx
 
 #### Tests
 
-- [ ] T260 [P] [US4] Unit test for ScopedRoleAssignmentForm component in frontend/src/components/roles/ScopedRoleAssignmentForm.test.tsx
-- [ ] T261 [P] [US4] Unit test for DenChiefList component in frontend/src/components/den-chief/DenChiefList.test.tsx
-- [ ] T262 [US4] Integration test for scoped access in frontend/src/test/integration/scoped-access-flow.test.tsx
+- [X] T260 [P] [US4] Unit test for ScopedRoleAssignmentForm component in frontend/src/components/roles/ScopedRoleAssignmentForm.test.tsx
+- [X] T261 [P] [US4] Unit test for DenChiefList component in frontend/src/components/den-chief/DenChiefList.test.tsx
+- [X] T262 [US4] Integration test for scoped access in frontend/src/test/integration/scoped-access-flow.test.tsx
 
 **Checkpoint**: All user stories should now be independently functional - role-based access controls are enforced throughout
 

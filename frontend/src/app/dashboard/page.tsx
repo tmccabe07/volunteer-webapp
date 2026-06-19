@@ -7,12 +7,13 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import eventsService from '@/services/events.service';
 import adminTasksService from '@/services/admin-tasks.service';
 import volunteersService, { VolunteerProfile } from '@/services/volunteers.service';
 import { volunteerApi } from '@/services/volunteer.service';
 import { parentLinkService, RequestableCubScoutItem } from '@/services/parentLinkService';
+import { hoursPromptService, type ParentPromptItem } from '@/services/hoursPromptService';
 import DashboardTaskCard from '@/components/shared/tasks/DashboardTaskCard';
 import QuickSignupDialog from '@/components/shared/events/QuickSignupDialog';
 import { formatEventTime } from '@/lib/time-format.util';
@@ -46,6 +47,16 @@ interface Task {
   updatedAt: string;
 }
 
+interface DashboardPromptItem {
+  id: string;
+  childScout: {
+    id: string;
+    name: string;
+  };
+  category: ParentPromptItem['category'];
+  generatedAt: string;
+}
+
 export default function DashboardPage() {
   const { user, isLoading } = useRequireAuth();
   const router = useRouter();
@@ -56,6 +67,8 @@ export default function DashboardPage() {
   const [upcomingTasks, setUpcomingTasks] = useState<Task[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [taskError, setTaskError] = useState<string | null>(null);
+  const [pendingPrompts, setPendingPrompts] = useState<DashboardPromptItem[]>([]);
+  const [loadingPrompts, setLoadingPrompts] = useState(false);
   const [signupDialogOpen, setSignupDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<{ id: string; title: string } | null>(null);
 
@@ -72,7 +85,7 @@ export default function DashboardPage() {
   };
 
   const loadLinkedCubs = useCallback(async () => {
-    if (!user || user.authTier !== 'PARENT') {
+    if (!user) {
       setLinkedCubs([]);
       return;
     }
@@ -83,6 +96,32 @@ export default function DashboardPage() {
     } catch (error) {
       console.error('Failed to load linked cub scouts:', error);
       setLinkedCubs([]);
+    }
+  }, [user]);
+
+  const loadPendingPrompts = useCallback(async () => {
+    if (!user || (user.authTier !== 'PARENT' && user.authTier !== 'LEADER' && user.authTier !== 'ADMIN')) {
+      setPendingPrompts([]);
+      return;
+    }
+
+    try {
+      setLoadingPrompts(true);
+      const response = await hoursPromptService.getPrompts({ status: 'PENDING' });
+      const sortedPrompts = [...response.data]
+        .sort((a, b) => new Date(a.generatedAt).getTime() - new Date(b.generatedAt).getTime())
+        .map((prompt) => ({
+          id: prompt.id,
+          childScout: prompt.childScout,
+          category: prompt.category,
+          generatedAt: prompt.generatedAt,
+        }));
+      setPendingPrompts(sortedPrompts);
+    } catch (error) {
+      console.error('Failed to load pending prompts:', error);
+      setPendingPrompts([]);
+    } finally {
+      setLoadingPrompts(false);
     }
   }, [user]);
 
@@ -145,10 +184,11 @@ export default function DashboardPage() {
     if (user) {
       loadProfile();
       loadLinkedCubs();
+      loadPendingPrompts();
       loadUpcomingEvents();
       loadUpcomingTasks();
     }
-  }, [user, loadLinkedCubs, loadUpcomingEvents]);
+  }, [user, loadLinkedCubs, loadPendingPrompts, loadUpcomingEvents]);
 
   /**
    * Load tasks assigned to the current user
@@ -285,6 +325,19 @@ export default function DashboardPage() {
       year: 'numeric' 
     });
   };
+
+  const getPromptAgeDays = (generatedAt: string) => {
+    const ageMs = Date.now() - new Date(generatedAt).getTime();
+    return Math.floor(ageMs / (24 * 60 * 60 * 1000));
+  };
+
+  const linkedCubIdSet = useMemo(() => new Set(linkedCubs.map((cub) => cub.id)), [linkedCubs]);
+  const parentScopedPrompts = useMemo(
+    () => pendingPrompts.filter((prompt) => linkedCubIdSet.has(prompt.childScout.id)),
+    [pendingPrompts, linkedCubIdSet],
+  );
+  const canSeeParentScoutbookActions = linkedCubs.length > 0;
+  const canSeeLeaderScoutbookQueue = user?.authTier === 'LEADER' || user?.authTier === 'ADMIN';
 
   if (isLoading) {
     return (
@@ -610,6 +663,110 @@ export default function DashboardPage() {
                 {taskError}
               </div>
             )}
+
+            {canSeeParentScoutbookActions && (
+              <div className="mb-4 p-3 border rounded-lg bg-amber-50 border-amber-200">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <p className="text-sm font-semibold text-amber-900">Parent Scoutbook Actions</p>
+                  <span className="text-xs font-medium px-2 py-1 rounded bg-amber-100 text-amber-900">
+                    {parentScopedPrompts.length} pending
+                  </span>
+                </div>
+
+                {loadingPrompts ? (
+                  <p className="text-xs text-amber-900">Loading Scoutbook prompts...</p>
+                ) : parentScopedPrompts.length > 0 ? (
+                  <div className="space-y-2">
+                    {parentScopedPrompts.slice(0, 3).map((prompt) => {
+                      const ageDays = getPromptAgeDays(prompt.generatedAt);
+                      const ageClass =
+                        ageDays >= 7
+                          ? 'text-red-700'
+                          : ageDays >= 3
+                          ? 'text-amber-700'
+                          : 'text-gray-700';
+
+                      return (
+                        <div key={prompt.id} className="text-xs flex items-center justify-between gap-2">
+                          <Link
+                            href={`/parent/scoutbook-prompts?childScoutId=${prompt.childScout.id}`}
+                            className="hover:underline text-gray-900"
+                          >
+                            {prompt.childScout.name} • {prompt.category}
+                          </Link>
+                          <span className={ageClass}>
+                            {ageDays}d
+                          </span>
+                        </div>
+                      );
+                    })}
+
+                    <div className="flex gap-2 pt-1">
+                      {user.authTier === 'PARENT' && (
+                        <Link href="/parent/scoutbook-prompts">
+                          <Button variant="outline" size="sm">Open Parent Queue</Button>
+                        </Link>
+                      )}
+                      <Link href="/my-cub-scouts">
+                        <Button variant="outline" size="sm">My Cub Scouts</Button>
+                      </Link>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-amber-900">No pending Scoutbook prompts for your linked Cub Scouts.</p>
+                )}
+              </div>
+            )}
+
+            {canSeeLeaderScoutbookQueue && (
+              <div className="mb-4 p-3 border rounded-lg bg-blue-50 border-blue-200">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <p className="text-sm font-semibold text-blue-900">Leader Scoutbook Prompt Queue</p>
+                  <span className="text-xs font-medium px-2 py-1 rounded bg-blue-100 text-blue-900">
+                    {pendingPrompts.length} pending
+                  </span>
+                </div>
+
+                {loadingPrompts ? (
+                  <p className="text-xs text-blue-900">Loading Scoutbook queue...</p>
+                ) : pendingPrompts.length > 0 ? (
+                  <div className="space-y-2">
+                    {pendingPrompts.slice(0, 3).map((prompt) => {
+                      const ageDays = getPromptAgeDays(prompt.generatedAt);
+                      const ageClass =
+                        ageDays >= 7
+                          ? 'text-red-700'
+                          : ageDays >= 3
+                          ? 'text-amber-700'
+                          : 'text-gray-700';
+
+                      return (
+                        <div key={`leader-${prompt.id}`} className="text-xs flex items-center justify-between gap-2">
+                          <Link
+                            href={`/parent/scoutbook-prompts?childScoutId=${prompt.childScout.id}`}
+                            className="hover:underline text-gray-900"
+                          >
+                            {prompt.childScout.name} • {prompt.category}
+                          </Link>
+                          <span className={ageClass}>
+                            {ageDays}d
+                          </span>
+                        </div>
+                      );
+                    })}
+
+                    <div className="flex gap-2 pt-1">
+                      <Link href="/parent/scoutbook-prompts">
+                        <Button variant="outline" size="sm">Open Leader Queue</Button>
+                      </Link>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-blue-900">No pending Scoutbook prompts in leader queue right now.</p>
+                )}
+              </div>
+            )}
+
             {loadingTasks ? (
               <p className="text-gray-600 text-sm">Loading tasks...</p>
             ) : upcomingTasks.length > 0 ? (

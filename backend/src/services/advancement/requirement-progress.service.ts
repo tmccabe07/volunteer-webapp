@@ -4,13 +4,17 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { AwardState, CompletionType, CoverageSource, ReconciliationStatus } from '@prisma/client';
+import { AwardState, CompletionType, CoverageSource, PromptCategory, ReconciliationStatus } from '@prisma/client';
 import prisma from '../../utils/prisma';
 import { AuthorizationService } from '../role-scope/authorization.service';
+import { NotificationService } from '../notification.service';
 
 @Injectable()
 export class RequirementProgressService {
-  constructor(private readonly authorizationService: AuthorizationService) {}
+  constructor(
+    private readonly authorizationService: AuthorizationService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   private async createEligibleAwardItemIfAdventureFullyReconciled(
     childScoutId: string,
@@ -54,7 +58,7 @@ export class RequirementProgressService {
       data: {
         childScoutId,
         adventureId,
-        currentState: AwardState.ELIGIBLE,
+        currentState: AwardState.APPROVED,
         quantityNeeded: 1,
       },
       select: {
@@ -66,9 +70,9 @@ export class RequirementProgressService {
       data: {
         awardItemId: createdAward.id,
         fromState: null,
-        toState: AwardState.ELIGIBLE,
+        toState: AwardState.APPROVED,
         changedBy: userId,
-        notes: 'Adventure fully reconciled in Scoutbook',
+        notes: 'Adventure fully reconciled in Scoutbook and ready for purchase workflow',
       },
     });
   }
@@ -380,6 +384,112 @@ export class RequirementProgressService {
       scoutbookEnteredAt: updated.scoutbookEnteredAt?.toISOString(),
       scoutbookEnteredBy: updated.scoutbookEnteredBy,
       version: updated.version,
+    };
+  }
+
+  async promptParentsForRequirement(
+    progressId: string,
+    userId: string,
+    authTier: string,
+    input: { message?: string },
+  ) {
+    if (authTier === 'PARENT') {
+      throw new ForbiddenException('Only leaders or admins can prompt parents');
+    }
+
+    const progress = await prisma.requirementProgress.findUnique({
+      where: { id: progressId },
+      include: {
+        childScout: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        requirement: {
+          select: {
+            requirementText: true,
+            adventure: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!progress) {
+      throw new NotFoundException('Requirement progress not found');
+    }
+
+    await this.assertCanAccessCubScout(userId, authTier, progress.childScoutId);
+
+    const parentLinks = await prisma.parentChildLink.findMany({
+      where: {
+        childScoutId: progress.childScoutId,
+        status: 'APPROVED',
+      },
+      select: {
+        parentId: true,
+      },
+    });
+
+    const childName = `${progress.childScout.firstName} ${progress.childScout.lastName}`;
+    const latestOccurrence = await prisma.requirementCoverageOccurrence.findFirst({
+      where: {
+        childScoutId: progress.childScoutId,
+        requirementId: progress.requirementId,
+      },
+      orderBy: {
+        recordedAt: 'desc',
+      },
+      select: {
+        eventId: true,
+      },
+    });
+
+    let createdPromptId: string | undefined;
+    if (latestOccurrence?.eventId) {
+      const createdPrompt = await prisma.scoutbookPrompt.create({
+        data: {
+          childScoutId: progress.childScoutId,
+          eventId: latestOccurrence.eventId,
+          category: PromptCategory.REQUIREMENT,
+          categoryData: {
+            requirementProgressId: progress.id,
+            adventureName: progress.requirement.adventure.name,
+            requirementText: progress.requirement.requirementText,
+            scoutbookStatus: progress.scoutbookStatus,
+          },
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      createdPromptId = createdPrompt.id;
+    }
+
+    const baseMessage =
+      input.message?.trim() ||
+      `Scoutbook update reminder for ${childName}: ${progress.requirement.adventure.name} - ${progress.requirement.requirementText}`;
+
+    for (const parentLink of parentLinks) {
+      await this.notificationService.createNotification({
+        volunteerId: parentLink.parentId,
+        type: 'EVENT_REMINDER',
+        message: baseMessage,
+        link: `/parent/scoutbook-prompts?childScoutId=${progress.childScoutId}`,
+      });
+    }
+
+    return {
+      requirementProgressId: progress.id,
+      promptedParents: parentLinks.length,
+      scoutbookStatus: progress.scoutbookStatus,
+      queuePromptId: createdPromptId,
     };
   }
 }

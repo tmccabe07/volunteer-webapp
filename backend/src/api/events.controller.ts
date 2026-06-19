@@ -44,6 +44,10 @@ import {
   RecordAttendanceSchema,
   type RecordAttendanceDto,
 } from '../models/attendance/record-attendance.dto';
+import {
+  PromptParentForRequirementSchema,
+  type PromptParentForRequirementDto,
+} from '../models/advancement/prompt-parent.dto';
 import { AttendanceStatus } from '@prisma/client';
 import { z } from 'zod';
 import prisma from '../utils/prisma';
@@ -436,6 +440,45 @@ export class EventsController {
       );
     } catch (error: any) {
       if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * POST /api/events/:id/prompt-requirements
+   * Prompt linked parents to update Scoutbook for requirement progress
+   * derived from this event's covered requirements.
+   */
+  @Post(':id/prompt-requirements')
+  @UseGuards(TierGuard)
+  @RequireTier(AuthTier.LEADER)
+  @HttpCode(HttpStatus.OK)
+  async promptRequirementParents(
+    @Param('id') eventId: string,
+    @Body() body: PromptParentForRequirementDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    try {
+      const validated = PromptParentForRequirementSchema.parse(body || {});
+      return await this.childAttendanceService.promptParentsForEventRequirements(
+        eventId,
+        req.user!.userId,
+        req.user!.authTier,
+        validated,
+      );
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        throw new BadRequestException({
+          error: 'Invalid input',
+          details: error.issues?.map((e: any) => e.message) || [],
+        });
+      }
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      if (error instanceof BadRequestException) {
         throw error;
       }
       throw error;

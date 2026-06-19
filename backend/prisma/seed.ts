@@ -71,6 +71,7 @@ async function main() {
   // 4. Create Default Volunteer Roles
   const volunteerRoles = [
     { name: 'Parent/Guardian', roleType: 'PARENT_GUARDIAN', grantsTier: 'PARENT', description: 'Default parent volunteer role' },
+    { name: 'Advancement Chair', roleType: 'COMMITTEE', specialty: 'advancement', grantsTier: 'LEADER', description: 'Pack advancement chair' },
     { name: 'Committee Chair', roleType: 'COMMITTEE', specialty: 'chair', grantsTier: 'LEADER', description: 'Committee chairperson' },
     { name: 'Committee Member - Treasurer', roleType: 'COMMITTEE', specialty: 'treasurer', grantsTier: 'LEADER', description: 'Pack treasurer' },
     { name: 'Committee Member - Secretary', roleType: 'COMMITTEE', specialty: 'secretary', grantsTier: 'LEADER', description: 'Pack secretary' },

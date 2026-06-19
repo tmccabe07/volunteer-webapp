@@ -132,7 +132,7 @@ export function useRequireTier(minTier: 'PARENT' | 'LEADER' | 'ADMIN') {
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
-  const tierLevels = { PARENT: 1, LEADER: 2, ADMIN: 3 };
+  const tierLevels = { PARENT: 1, LEADER: 2, DEN_CHIEF: 2, ADMIN: 3 };
 
   useEffect(() => {
     if (!isLoading) {

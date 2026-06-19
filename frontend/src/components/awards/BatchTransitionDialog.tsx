@@ -22,7 +22,7 @@ interface BatchTransitionDialogProps {
   onCompleted: () => Promise<void> | void;
 }
 
-const AVAILABLE_STATES: AwardState[] = ['APPROVED', 'PURCHASED', 'DISTRIBUTED', 'RECONCILED', 'ELIGIBLE'];
+const AVAILABLE_STATES: AwardState[] = ['APPROVED', 'PURCHASED', 'DISTRIBUTED', 'RECONCILED'];
 
 export default function BatchTransitionDialog({ open, awardIds, onClose, onCompleted }: BatchTransitionDialogProps) {
   const [toState, setToState] = useState<AwardState>('APPROVED');
@@ -60,14 +60,14 @@ export default function BatchTransitionDialog({ open, awardIds, onClose, onCompl
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Batch Transition Awards</DialogTitle>
+          <DialogTitle>Bulk Update Award Status</DialogTitle>
           <DialogDescription>
-            Update {awardIds.length} selected awards at once.
+            Update the status for {awardIds.length} selected awards at once.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-2">
-          <Label>New State</Label>
+          <Label>New Status</Label>
           <Select value={toState} onValueChange={(value) => setToState(value as AwardState)}>
             <SelectTrigger>
               <SelectValue />
@@ -96,7 +96,7 @@ export default function BatchTransitionDialog({ open, awardIds, onClose, onCompl
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Cancel</Button>
           <Button onClick={handleSubmit} disabled={isSubmitting || awardIds.length === 0}>
-            {isSubmitting ? 'Updating...' : 'Run Batch Transition'}
+            {isSubmitting ? 'Updating...' : 'Update Selected Awards'}
           </Button>
         </DialogFooter>
       </DialogContent>

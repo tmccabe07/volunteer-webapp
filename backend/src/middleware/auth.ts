@@ -101,7 +101,7 @@ export class TierGuard implements CanActivate {
       throw new UnauthorizedException('Authentication required');
     }
 
-    const tierLevels = { PARENT: 1, LEADER: 2, ADMIN: 3 };
+    const tierLevels = { PARENT: 1, LEADER: 2, DEN_CHIEF: 2, ADMIN: 3 };
     const userLevel = tierLevels[user.authTier as keyof typeof tierLevels] || 0;
     const requiredLevel = tierLevels[requiredTier as keyof typeof tierLevels] || 0;
 

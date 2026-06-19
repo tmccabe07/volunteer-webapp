@@ -12,7 +12,7 @@ export interface VolunteerRoleData {
   roleType: 'PARENT_GUARDIAN' | 'COMMITTEE' | 'DEN_LEADER' | 'ASSISTANT_DEN_LEADER' | 'ASSISTANT_CUB_MASTER' | 'LION_GUIDE' | 'SCOUTER_RESERVE';
   specialty?: string;
   rankLevel?: 'LION' | 'TIGER' | 'WOLF' | 'BEAR' | 'WEBELOS' | 'AOL';
-  grantsTier?: 'PARENT' | 'LEADER' | 'ADMIN';
+  grantsTier?: 'PARENT' | 'LEADER' | 'DEN_CHIEF' | 'ADMIN';
 }
 
 interface VolunteerRoleFormProps {
@@ -63,7 +63,7 @@ export function VolunteerRoleForm({ initialData, onSubmit, onCancel, isEdit = fa
   const requiresRankLevel = formData.roleType === 'DEN_LEADER';
 
   // Determine the authorization tier based on role type
-  const getDefaultTierForRoleType = (roleType: string): 'PARENT' | 'LEADER' | 'ADMIN' => {
+  const getDefaultTierForRoleType = (roleType: string): 'PARENT' | 'LEADER' | 'DEN_CHIEF' | 'ADMIN' => {
     switch (roleType) {
       case 'PARENT_GUARDIAN':
         return 'PARENT';

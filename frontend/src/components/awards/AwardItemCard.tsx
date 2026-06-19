@@ -20,7 +20,37 @@ const STATE_COLORS: Record<string, string> = {
   RECONCILED: 'bg-slate-100 text-slate-800 border-slate-200',
 };
 
+const NEXT_ACTION_BY_STATE: Record<string, { next: string; reason: string; cta: string }> = {
+  ELIGIBLE: {
+    next: 'APPROVED',
+    reason: 'Ready to move into purchasing workflow.',
+    cta: 'Approve for Purchase',
+  },
+  APPROVED: {
+    next: 'PURCHASED',
+    reason: 'Record how this award is sourced before distribution.',
+    cta: 'Record as Purchased',
+  },
+  PURCHASED: {
+    next: 'DISTRIBUTED',
+    reason: 'Mark once the physical award is handed to the Cub Scout.',
+    cta: 'Mark as Distributed',
+  },
+  DISTRIBUTED: {
+    next: 'RECONCILED',
+    reason: 'Confirm Scoutbook is updated to awarded.',
+    cta: 'Confirm Scoutbook Awarded',
+  },
+  RECONCILED: {
+    next: 'COMPLETE',
+    reason: 'No further action needed unless reopening is required.',
+    cta: 'Update Status',
+  },
+};
+
 export default function AwardItemCard({ item, isSelected, onSelect, onTransitionClick }: AwardItemCardProps) {
+  const actionMeta = NEXT_ACTION_BY_STATE[item.currentState] || NEXT_ACTION_BY_STATE.RECONCILED;
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -34,17 +64,21 @@ export default function AwardItemCard({ item, isSelected, onSelect, onTransition
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-slate-600">Type: {item.award.type} • Qty: {item.quantityNeeded}</p>
+        <div className="rounded border bg-slate-50 p-2 text-xs text-slate-700">
+          <p><span className="font-medium">Next:</span> {actionMeta.next}</p>
+          <p>{actionMeta.reason}</p>
+        </div>
         <div className="flex items-center justify-between gap-2">
-          <label className="text-sm inline-flex items-center gap-2">
+          <label className="text-xs text-slate-600 inline-flex items-center gap-2">
             <input
               type="checkbox"
               checked={isSelected}
               onChange={(event) => onSelect(event.target.checked)}
               aria-label={`Select ${item.award.name}`}
             />
-            Select
+            Select for bulk update
           </label>
-          <Button size="sm" onClick={onTransitionClick}>Transition</Button>
+          <Button size="sm" onClick={onTransitionClick}>{actionMeta.cta}</Button>
         </div>
       </CardContent>
     </Card>

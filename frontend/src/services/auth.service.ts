@@ -5,7 +5,7 @@ export interface User {
   email: string;
   name: string;
   phone: string | null;
-  authTier: 'PARENT' | 'LEADER' | 'ADMIN';
+  authTier: 'PARENT' | 'LEADER' | 'DEN_CHIEF' | 'ADMIN';
   leaderboardOptIn: boolean;
   mustChangePassword?: boolean;
   roles: Array<{

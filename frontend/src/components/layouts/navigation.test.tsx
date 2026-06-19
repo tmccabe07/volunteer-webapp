@@ -33,4 +33,10 @@ describe('Navigation', () => {
     expect(screen.queryByRole('link', { name: /parent links/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /reconciliation/i })).not.toBeInTheDocument();
   });
+
+  it('shows My Dens link for leader users without den scope props', () => {
+    render(<Navigation userTier={2} userAuthTier="LEADER" />);
+
+    expect(screen.getByRole('link', { name: /my dens/i })).toHaveAttribute('href', '/my-dens');
+  });
 });

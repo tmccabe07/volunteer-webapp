@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { awardService } from '@/services/awardService';
+import { advancementService } from '@/services/advancement.service';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,29 +20,100 @@ interface CreateInventoryItemDialogProps {
   open: boolean;
   onClose: () => void;
   onCreated: () => Promise<void> | void;
+  denId?: string | null;
+  dens?: Array<{ id: string; name: string; denNumber: number }>;
 }
 
 const RANK_OPTIONS = ['ALL', 'LION', 'TIGER', 'WOLF', 'BEAR', 'WEBELOS', 'AOL'] as const;
+const CUSTOM_ADVENTURE_VALUE = 'CUSTOM';
 
-export default function CreateInventoryItemDialog({ open, onClose, onCreated }: CreateInventoryItemDialogProps) {
+interface AdventureOption {
+  id: string;
+  name: string;
+  rankLevel?: string;
+}
+
+export default function CreateInventoryItemDialog({ open, onClose, onCreated, denId, dens }: CreateInventoryItemDialogProps) {
+    const [selectedDenId, setSelectedDenId] = useState<string>(denId ?? '');
+    useEffect(() => {
+      setSelectedDenId(denId ?? '');
+    }, [denId]);
   const [itemName, setItemName] = useState('');
   const [rankLevel, setRankLevel] = useState<(typeof RANK_OPTIONS)[number]>('ALL');
+  const [adventures, setAdventures] = useState<AdventureOption[]>([]);
+  const [selectedAdventureId, setSelectedAdventureId] = useState<string>(CUSTOM_ADVENTURE_VALUE);
+  const [isAdventureLoading, setIsAdventureLoading] = useState(false);
   const [onHandQuantity, setOnHandQuantity] = useState('0');
   const [reorderPoint, setReorderPoint] = useState('');
   const [unitCost, setUnitCost] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const rankOptionSet = new Set<string>(RANK_OPTIONS);
+
   useEffect(() => {
-    if (open) {
-      setItemName('');
-      setRankLevel('ALL');
-      setOnHandQuantity('0');
-      setReorderPoint('');
-      setUnitCost('');
-      setError(null);
+    if (!open) {
+      return;
     }
+
+    setItemName('');
+    setRankLevel('ALL');
+    setSelectedAdventureId(CUSTOM_ADVENTURE_VALUE);
+    setOnHandQuantity('0');
+    setReorderPoint('');
+    setUnitCost('');
+    setError(null);
+
+    const loadAdventures = async () => {
+      try {
+        setIsAdventureLoading(true);
+        const response = await advancementService.getAdventures();
+        const options: AdventureOption[] = (response.data || [])
+          .map((adventure) => ({
+            id: adventure.id,
+            name: adventure.name,
+            rankLevel: (adventure as AdventureOption).rankLevel,
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+
+        setAdventures(options);
+
+        if (options.length > 0) {
+          const firstAdventure = options[0];
+          setSelectedAdventureId(firstAdventure.id);
+          setItemName(firstAdventure.name);
+          if (firstAdventure.rankLevel && rankOptionSet.has(firstAdventure.rankLevel)) {
+            setRankLevel(firstAdventure.rankLevel as (typeof RANK_OPTIONS)[number]);
+          }
+        }
+      } catch {
+        setAdventures([]);
+        setSelectedAdventureId(CUSTOM_ADVENTURE_VALUE);
+      } finally {
+        setIsAdventureLoading(false);
+      }
+    };
+
+    void loadAdventures();
   }, [open]);
+
+  const handleAdventureChange = (value: string) => {
+    setSelectedAdventureId(value);
+
+    if (value === CUSTOM_ADVENTURE_VALUE) {
+      return;
+    }
+
+    const selectedAdventure = adventures.find((adventure) => adventure.id === value);
+    if (!selectedAdventure) {
+      return;
+    }
+
+    setItemName(selectedAdventure.name);
+    if (selectedAdventure.rankLevel && rankOptionSet.has(selectedAdventure.rankLevel)) {
+      setRankLevel(selectedAdventure.rankLevel as (typeof RANK_OPTIONS)[number]);
+    }
+  };
 
   const handleSubmit = async () => {
     const parsedOnHand = Number(onHandQuantity);
@@ -74,6 +146,7 @@ export default function CreateInventoryItemDialog({ open, onClose, onCreated }: 
       await awardService.createInventoryItem({
         itemName: itemName.trim(),
         rankLevel: rankLevel === 'ALL' ? null : rankLevel,
+        denId: selectedDenId || null,
         onHandQuantity: parsedOnHand,
         reorderPoint: parsedReorder,
         unitCost: parsedUnitCost,
@@ -86,6 +159,28 @@ export default function CreateInventoryItemDialog({ open, onClose, onCreated }: 
       setIsSubmitting(false);
     }
   };
+        {Array.isArray(dens) && (
+          <div className="space-y-2">
+            <Label htmlFor="den-select">Den Scope</Label>
+            <Select
+              value={selectedDenId || 'ALL'}
+              onValueChange={val => setSelectedDenId(val === 'ALL' ? '' : val)}
+            >
+              <SelectTrigger id="den-select" className="min-w-[180px]">
+                <SelectValue placeholder="All Dens" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Dens</SelectItem>
+                {dens.map((den) => (
+                  <SelectItem key={den.id} value={den.id}>
+                    {den.name} (#{den.denNumber})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-slate-500">Choose a den to scope this inventory item, or leave as pack-wide.</p>
+          </div>
+        )}
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -94,6 +189,31 @@ export default function CreateInventoryItemDialog({ open, onClose, onCreated }: 
           <DialogTitle>Create Inventory Item</DialogTitle>
           <DialogDescription>Add a new badge or award item to inventory tracking.</DialogDescription>
         </DialogHeader>
+
+        <div className="space-y-2">
+          <Label>Adventure Catalog (optional)</Label>
+          <Select
+            value={selectedAdventureId}
+            onValueChange={handleAdventureChange}
+            disabled={isAdventureLoading}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={isAdventureLoading ? 'Loading adventures...' : 'Select an adventure'} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={CUSTOM_ADVENTURE_VALUE}>Custom / Special Award (free text)</SelectItem>
+              {adventures.map((adventure) => (
+                <SelectItem key={adventure.id} value={adventure.id}>
+                  {adventure.name}
+                  {adventure.rankLevel ? ` (${adventure.rankLevel})` : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-slate-500">
+            Adventure selection pre-fills item name and rank. Choose custom for special awards.
+          </p>
+        </div>
 
         <div className="space-y-2">
           <Label htmlFor="itemName">Item Name</Label>

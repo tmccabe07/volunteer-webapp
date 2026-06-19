@@ -54,6 +54,7 @@ model Volunteer {
 enum AuthTier {
   PARENT // Tier 1: Parent/guardian volunteer
   LEADER // Tier 2: Den leader or committee role
+  DEN_CHIEF // Tier 2: Youth Den Chief leader
   ADMIN // Tier 3: Site admin
 }
 
@@ -181,6 +182,7 @@ model Event {
   title            String
   description      String?
   eventDate        DateTime
+  eventEndDate     DateTime?
   eventTime        String? // Start time in HH:mm format (24hr)
   endTime          String? // End time in HH:mm format (24hr), optional
   fullDay          Boolean    @default(false) // If true, times are ignored
@@ -194,6 +196,7 @@ model Event {
   activitySlots ActivitySlot[]
   targetDens    EventTargetDen[]
   plannedRequirements EventPlannedRequirement[]
+  plannedHourActivities Json? // { camping: { enabled, nights }, hiking: { enabled, miles }, service: { enabled, hours } }
   requirementOccurrences RequirementCoverageOccurrence[]
   createdById   String
   createdBy     Volunteer      @relation(fields: [createdById], references: [id])
@@ -577,6 +580,7 @@ model Den {
   targetedByEvents    EventTargetDen[]
   denChiefAssignments DenChiefAssignment[] // Youth leaders assigned to help
   leaderAssignments   VolunteerToRole[] // Leaders assigned to this den
+  inventoryItems      InventoryItem[]
 
   // Audit
   createdAt DateTime  @default(now())
@@ -618,7 +622,7 @@ model DenChief {
   firstName    String
   lastName     String
   passwordHash String
-  authTier     AuthTier @default(PARENT) // View-only access
+  authTier     AuthTier @default(DEN_CHIEF) // View-only access
   isActive     Boolean  @default(true)
 
   // External system references
@@ -875,6 +879,7 @@ model DenEvent {
   title       String
   description String?
   eventDate   DateTime
+  eventEndDate DateTime?
   eventTime   String?
   endTime     String?
   fullDay     Boolean  @default(false)
@@ -971,6 +976,8 @@ model InventoryItem {
   id             String     @id @default(cuid())
   itemName       String // "Tiger Badge", "Wolf Belt Loop"
   rankLevel      RankLevel? // NULL for rank-agnostic items
+  denId          String? // NULL for pack/rank-wide items
+  den            Den?     @relation(fields: [denId], references: [id], onDelete: SetNull)
   onHandQuantity Int        @default(0)
   reorderPoint   Int? // Trigger reorder alert
   unitCost       Float? // Unit cost in dollars
@@ -982,8 +989,9 @@ model InventoryItem {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  @@unique([itemName, rankLevel])
+  @@unique([itemName, rankLevel, denId])
   @@index([onHandQuantity, reorderPoint])
+  @@index([denId])
 }
 
 model InventoryAdjustment {
@@ -1027,6 +1035,7 @@ enum PromptCategory {
   CAMPING
   HIKING
   SERVICE
+  REQUIREMENT
 }
 
 enum PromptStatus {

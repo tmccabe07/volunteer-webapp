@@ -45,10 +45,11 @@ const baseNavLinks: NavLink[] = [
 
 interface NavigationProps {
   userTier?: number; // Current user's tier (1-3)
-  userAuthTier?: 'PARENT' | 'LEADER' | 'ADMIN';
+  userAuthTier?: 'PARENT' | 'LEADER' | 'DEN_CHIEF' | 'ADMIN';
+  accessibleDenNumbers?: number[];
 }
 
-export function Navigation({ userTier = 1 }: NavigationProps) {
+export function Navigation({ userTier = 1, accessibleDenNumbers = [] }: NavigationProps) {
   const pathname = usePathname();
 
   const roleSpecificLinks: NavLink[] = [

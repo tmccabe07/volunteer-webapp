@@ -4,6 +4,15 @@ import * as jwt from 'jsonwebtoken';
 import { AuthTier } from '@prisma/client';
 import prisma from '../utils/prisma';
 
+type AuthenticatedRecord = {
+  id: string;
+  email: string;
+  name: string;
+  phone: string | null;
+  authTier: AuthTier;
+  mustChangePassword?: boolean;
+};
+
 /**
  * AuthService handles authentication operations including password hashing,
  * JWT generation, and token verification per research.md Decision 3.2
@@ -203,25 +212,57 @@ export class AuthService {
       }
     });
 
-    if (!volunteer) {
+    if (volunteer) {
+      // Verify password
+      const isValid = await this.verifyPassword(password, volunteer.passwordHash);
+      if (isValid) {
+        // Generate tokens
+        const accessToken = this.generateAccessToken(volunteer.id, volunteer.email, volunteer.authTier);
+        const refreshToken = this.generateRefreshToken(volunteer.id, rememberMe);
+
+        // Remove password hash from response
+        const { passwordHash, ...volunteerData } = volunteer;
+
+        return {
+          volunteer: volunteerData,
+          accessToken,
+          refreshToken
+        };
+      }
+    }
+
+    const denChief = await prisma.denChief.findFirst({
+      where: {
+        email,
+        deletedAt: null,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        authTier: true,
+        passwordHash: true,
+      },
+    });
+
+    if (!denChief) {
       return null;
     }
 
-    // Verify password
-    const isValid = await this.verifyPassword(password, volunteer.passwordHash);
-    if (!isValid) {
+    const denChiefPasswordValid = await this.verifyPassword(password, denChief.passwordHash);
+    if (!denChiefPasswordValid) {
       return null;
     }
 
-    // Generate tokens
-    const accessToken = this.generateAccessToken(volunteer.id, volunteer.email, volunteer.authTier);
-    const refreshToken = this.generateRefreshToken(volunteer.id, rememberMe);
+    const accessToken = this.generateAccessToken(denChief.id, denChief.email, denChief.authTier);
+    const refreshToken = this.generateRefreshToken(denChief.id, rememberMe);
 
-    // Remove password hash from response
-    const { passwordHash, ...volunteerData } = volunteer;
+    const denChiefUser = this.buildDenChiefUser(denChief);
 
     return {
-      volunteer: volunteerData,
+      volunteer: denChiefUser,
       accessToken,
       refreshToken
     };
@@ -272,12 +313,64 @@ export class AuthService {
     });
 
     if (!volunteer) {
-      throw new Error('Volunteer not found');
+      const denChief = await prisma.denChief.findFirst({
+        where: { id: userId, deletedAt: null, isActive: true },
+        include: {
+          denAssignments: {
+            where: { validTo: null },
+            include: {
+              den: {
+                select: { id: true, name: true, denNumber: true, rankLevel: true },
+              },
+            },
+          },
+        },
+      });
+
+      if (!denChief) {
+        throw new Error('Volunteer not found');
+      }
+
+      return this.buildDenChiefUser(denChief);
     }
 
     return {
       ...volunteer,
       roles: volunteer.volunteerRoles.map(vr => vr.role)
+    };
+  }
+
+  private buildDenChiefUser(denChief: any) {
+    return {
+      id: denChief.id,
+      email: denChief.email,
+      name: `${denChief.firstName} ${denChief.lastName}`,
+      phone: null,
+      authTier: denChief.authTier,
+      leaderboardOptIn: false,
+      mustChangePassword: false,
+      roles: [],
+      childrenRanks: [],
+      pointBalance: {
+        totalPoints: 0,
+        currentYearPoints: 0,
+      },
+      badgeTier: {
+        current: null,
+        currentTierDetails: null,
+        nextTier: null,
+        pointsToNextTier: null,
+      },
+      projectedPoints: 0,
+      denAssignments: (denChief.denAssignments || []).map((assignment: any) => ({
+        id: assignment.id,
+        denId: assignment.denId,
+        denName: assignment.den.name,
+        denNumber: assignment.den.denNumber,
+        rankLevel: assignment.den.rankLevel,
+        validFrom: assignment.validFrom.toISOString(),
+        validTo: assignment.validTo ? assignment.validTo.toISOString() : null,
+      })),
     };
   }
 
@@ -301,7 +394,33 @@ export class AuthService {
     });
 
     if (!volunteer) {
-      throw new Error('Volunteer not found');
+      const denChief = await prisma.denChief.findFirst({
+        where: { id: userId, deletedAt: null, isActive: true },
+        select: {
+          id: true,
+          passwordHash: true,
+        }
+      });
+
+      if (!denChief) {
+        throw new Error('Volunteer not found');
+      }
+
+      const isValidDenChief = await this.verifyPassword(currentPassword, denChief.passwordHash);
+      if (!isValidDenChief) {
+        throw new Error('Current password is incorrect');
+      }
+
+      const newPasswordHash = await this.hashPassword(newPassword);
+
+      await prisma.denChief.update({
+        where: { id: userId },
+        data: {
+          passwordHash: newPasswordHash,
+        }
+      });
+
+      return true;
     }
 
     // Verify current password

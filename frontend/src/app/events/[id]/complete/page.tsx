@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AttendanceForm from '@/components/den/AttendanceForm';
 import eventsService from '@/services/events.service';
@@ -31,6 +32,7 @@ interface DenOption {
 
 interface EventActivitySlot {
   id: string;
+  description?: string | null;
   activityType: {
     id: string;
     name: string;
@@ -53,6 +55,7 @@ interface EventDetails {
   id: string;
   title: string;
   eventDate: string;
+  eventEndDate?: string | null;
   eventTime: string | null;
   scopeType?: 'PACK_WIDE' | 'DEN';
   rankLevel?: string | null;
@@ -67,6 +70,11 @@ interface EventDetails {
       };
     };
   }>;
+  plannedHourActivities?: {
+    camping?: { enabled: boolean; nights?: number };
+    hiking?: { enabled: boolean; miles?: number };
+    service?: { enabled: boolean; hours?: number };
+  } | null;
   activitySlots: EventActivitySlot[];
   isComplete: boolean;
 }
@@ -110,6 +118,14 @@ export default function CompleteEventPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isCompleting, setIsCompleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [generatedPromptCount, setGeneratedPromptCount] = useState(0);
+  const [requirementPromptMessage, setRequirementPromptMessage] = useState('');
+  const [isPromptingRequirementParents, setIsPromptingRequirementParents] = useState(false);
+  const [requirementPromptStatus, setRequirementPromptStatus] = useState<string | null>(null);
+  const [createPlannedHourPrompts, setCreatePlannedHourPrompts] = useState(true);
+  const [hourPromptSyncMode, setHourPromptSyncMode] = useState<'ADD_ONLY' | 'SYNC_REMOVE'>('ADD_ONLY');
+  const [isApplyingPlannedHourActivities, setIsApplyingPlannedHourActivities] = useState(false);
+  const [plannedHourActivityStatus, setPlannedHourActivityStatus] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -289,6 +305,130 @@ export default function CompleteEventPage() {
       }
       return next;
     });
+  };
+
+  const getPresentChildIds = () =>
+    attendanceRecords
+      .filter((record) => record.attendanceStatus === 'PRESENT')
+      .map((record) => record.child.id);
+
+  const handleApplyPlannedHourActivities = async () => {
+    if (!event?.plannedHourActivities) {
+      setPlannedHourActivityStatus('No planned camping/hiking/service activities are configured for this event.');
+      return;
+    }
+
+    const presentChildIds = getPresentChildIds();
+    if (presentChildIds.length === 0) {
+      setPlannedHourActivityStatus('No PRESENT attendance records found. Record attendance first.');
+      return;
+    }
+
+    if (!createPlannedHourPrompts) {
+      setPlannedHourActivityStatus('Planned activities acknowledged. Prompt generation is currently disabled.');
+      return;
+    }
+
+    const categoryPrompts: Array<{
+      category: 'CAMPING' | 'HIKING' | 'SERVICE';
+      categoryData?: Record<string, unknown>;
+      childScoutIds: string[];
+    }> = [];
+
+    if (event.plannedHourActivities.camping?.enabled) {
+      categoryPrompts.push({
+        category: 'CAMPING',
+        categoryData: {
+          nights: event.plannedHourActivities.camping.nights,
+          location: event.title,
+        },
+        childScoutIds: presentChildIds,
+      });
+    }
+
+    if (event.plannedHourActivities.hiking?.enabled) {
+      categoryPrompts.push({
+        category: 'HIKING',
+        categoryData: {
+          miles: event.plannedHourActivities.hiking.miles,
+          trailName: event.title,
+        },
+        childScoutIds: presentChildIds,
+      });
+    }
+
+    if (event.plannedHourActivities.service?.enabled) {
+      categoryPrompts.push({
+        category: 'SERVICE',
+        categoryData: {
+          hours: event.plannedHourActivities.service.hours,
+          projectName: event.title,
+        },
+        childScoutIds: presentChildIds,
+      });
+    }
+
+    if (categoryPrompts.length === 0) {
+      setPlannedHourActivityStatus('No enabled planned hour activities found on this event.');
+      return;
+    }
+
+    try {
+      setIsApplyingPlannedHourActivities(true);
+      setPlannedHourActivityStatus(null);
+      setError(null);
+
+      const result = await eventsService.generateHourPrompts(eventId, {
+        categoryPrompts,
+        syncMode: hourPromptSyncMode,
+      });
+
+      setGeneratedPromptCount((prev) => prev + (result.promptsGenerated || 0));
+      setPlannedHourActivityStatus(
+        `Applied planned activities to ${presentChildIds.length} present Cub Scout(s); generated ${result.promptsGenerated || 0} prompt(s).`,
+      );
+    } catch (err: unknown) {
+      const apiError = err as ApiErrorShape;
+      setError(
+        apiError.response?.data?.error ||
+          apiError.message ||
+          'Failed to apply planned camping/hiking/service activities',
+      );
+    } finally {
+      setIsApplyingPlannedHourActivities(false);
+    }
+  };
+
+  const handlePromptRequirementParents = async () => {
+    try {
+      setIsPromptingRequirementParents(true);
+      setRequirementPromptStatus(null);
+      setError(null);
+
+      const result = await eventsService.promptRequirementParents(eventId, {
+        message: requirementPromptMessage.trim() || undefined,
+      });
+
+      if (result.promptedRequirementProgress === 0) {
+        setRequirementPromptStatus('No pending requirement updates were found for this event.');
+        return;
+      }
+
+      setGeneratedPromptCount((prev) => prev + result.promptedRequirementProgress);
+
+      setRequirementPromptStatus(
+        `Prompt sent for ${result.promptedRequirementProgress} requirement record(s) to ${result.promptedParents} linked parent(s).`,
+      );
+    } catch (err: unknown) {
+      const apiError = err as ApiErrorShape;
+      setError(
+        apiError.response?.data?.error ||
+          apiError.message ||
+          'Failed to prompt parents for requirement Scoutbook updates',
+      );
+    } finally {
+      setIsPromptingRequirementParents(false);
+    }
   };
 
   const handleComplete = async () => {
@@ -519,6 +659,92 @@ export default function CompleteEventPage() {
                   </div>
                 )}
               </div>
+
+              <div className="pt-3 border-t space-y-2">
+                <p className="text-sm font-medium">Prompt Parents for Scoutbook Requirement Updates</p>
+                <p className="text-xs text-gray-600">
+                  Send parents a reminder to update Scoutbook for requirements covered in this event.
+                </p>
+                <Textarea
+                  value={requirementPromptMessage}
+                  onChange={(e) => setRequirementPromptMessage(e.target.value)}
+                  placeholder="Optional custom message for parents"
+                  rows={2}
+                  maxLength={500}
+                />
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={handlePromptRequirementParents}
+                    disabled={isPromptingRequirementParents}
+                  >
+                    {isPromptingRequirementParents ? 'Sending Prompt...' : 'Prompt Parents'}
+                  </Button>
+                  {requirementPromptStatus && (
+                    <p className="text-xs text-green-700">{requirementPromptStatus}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-3 border-t space-y-2">
+                <p className="text-sm font-medium">Planned Camping / Hiking / Service Activities</p>
+                {!event.plannedHourActivities ? (
+                  <p className="text-xs text-gray-600">No planned hour activities were configured for this event.</p>
+                ) : (
+                  <>
+                    <div className="text-xs text-gray-700 space-y-1">
+                      {event.plannedHourActivities.camping?.enabled && (
+                        <p>Camping: {event.plannedHourActivities.camping.nights ?? 0} night(s)</p>
+                      )}
+                      {event.plannedHourActivities.hiking?.enabled && (
+                        <p>Hiking: {event.plannedHourActivities.hiking.miles ?? 0} mile(s)</p>
+                      )}
+                      {event.plannedHourActivities.service?.enabled && (
+                        <p>Service: {event.plannedHourActivities.service.hours ?? 0} hour(s)</p>
+                      )}
+                    </div>
+
+                    <label className="flex items-center gap-2 text-xs">
+                      <Checkbox
+                        checked={createPlannedHourPrompts}
+                        onCheckedChange={(checked) => setCreatePlannedHourPrompts(!!checked)}
+                      />
+                      Create Scoutbook prompts when applying planned activities
+                    </label>
+
+                    {createPlannedHourPrompts && (
+                      <div className="space-y-1">
+                        <Label className="text-xs">Attendance change prompt behavior</Label>
+                        <Select
+                          value={hourPromptSyncMode}
+                          onValueChange={(value: 'ADD_ONLY' | 'SYNC_REMOVE') => setHourPromptSyncMode(value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="ADD_ONLY">Add prompts for newly present scouts only</SelectItem>
+                            <SelectItem value="SYNC_REMOVE">Sync prompts (add new and remove obsolete pending prompts)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-3">
+                      <Button
+                        variant="outline"
+                        onClick={handleApplyPlannedHourActivities}
+                        disabled={isApplyingPlannedHourActivities}
+                      >
+                        {isApplyingPlannedHourActivities ? 'Applying...' : 'Apply Planned Activities'}
+                      </Button>
+                      {plannedHourActivityStatus && (
+                        <p className="text-xs text-green-700">{plannedHourActivityStatus}</p>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
             </>
           )}
 
@@ -613,7 +839,9 @@ export default function CompleteEventPage() {
                     <SelectContent>
                       {event.activitySlots.map((slot) => (
                         <SelectItem key={slot.id} value={slot.id}>
-                          {slot.activityType.name}
+                          {slot.description
+                            ? `${slot.activityType.name} - ${slot.description}`
+                            : slot.activityType.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -644,6 +872,7 @@ export default function CompleteEventPage() {
             <p>Volunteer signups included: <strong>{totalSignups}</strong></p>
             <p>Manual volunteers added: <strong>{validManuals.length}</strong></p>
             <p>Total points to award: <strong>{totalPoints}</strong></p>
+            <p>Scoutbook prompts generated: <strong>{generatedPromptCount}</strong></p>
           </div>
 
           {error && (

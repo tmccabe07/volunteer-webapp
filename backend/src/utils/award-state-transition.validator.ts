@@ -3,7 +3,7 @@ import { AwardState } from '@prisma/client';
 
 const VALID_TRANSITIONS: Record<AwardState, AwardState[]> = {
   ELIGIBLE: [AwardState.APPROVED, AwardState.ELIGIBLE],
-  APPROVED: [AwardState.PURCHASED, AwardState.ELIGIBLE],
+  APPROVED: [AwardState.PURCHASED, AwardState.DISTRIBUTED, AwardState.ELIGIBLE],
   PURCHASED: [AwardState.DISTRIBUTED, AwardState.ELIGIBLE],
   DISTRIBUTED: [AwardState.RECONCILED, AwardState.ELIGIBLE],
   RECONCILED: [AwardState.ELIGIBLE],

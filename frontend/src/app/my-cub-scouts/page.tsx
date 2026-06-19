@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth-context';
 import { advancementService, ChildAdvancementProgress } from '@/services/advancement.service';
+import { hoursPromptService } from '@/services/hoursPromptService';
 import RequestChildLinkForm from '@/components/parent/RequestChildLinkForm';
 import { parentLinkService, RequestableCubScoutItem } from '@/services/parentLinkService';
 
@@ -22,6 +23,7 @@ export default function MyCubScoutsPage() {
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cubsWithProgress, setCubsWithProgress] = useState<CubWithProgress[]>([]);
+  const [pendingPromptCounts, setPendingPromptCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -55,6 +57,18 @@ export default function MyCubScoutsPage() {
         );
 
         setCubsWithProgress(progressResults);
+
+        try {
+          const promptResponse = await hoursPromptService.getPrompts({ status: 'PENDING' });
+          const counts = promptResponse.data.reduce<Record<string, number>>((acc, prompt) => {
+            acc[prompt.childScout.id] = (acc[prompt.childScout.id] || 0) + 1;
+            return acc;
+          }, {});
+          setPendingPromptCounts(counts);
+        } catch (promptError) {
+          console.error('Error loading Scoutbook prompts:', promptError);
+          setPendingPromptCounts({});
+        }
       } catch (err) {
         console.error('Error loading My Cub Scouts data:', err);
         setError('Unable to load your Cub Scouts right now.');
@@ -69,6 +83,11 @@ export default function MyCubScoutsPage() {
   const totalEligibleRanks = useMemo(
     () => cubsWithProgress.filter((item) => item.progress?.rankProgress.isRankEligible).length,
     [cubsWithProgress],
+  );
+
+  const totalPendingPrompts = useMemo(
+    () => Object.values(pendingPromptCounts).reduce((sum, count) => sum + count, 0),
+    [pendingPromptCounts],
   );
 
   if (authLoading || isLoadingData) {
@@ -108,8 +127,11 @@ export default function MyCubScoutsPage() {
           <p className="text-2xl font-bold mt-1">{totalEligibleRanks}</p>
         </Card>
         <Card className="p-4">
-          <p className="text-sm text-gray-600">Parent link requests</p>
-          <p className="text-sm mt-2">Submit and track requests directly on this page.</p>
+          <p className="text-sm text-gray-600">Pending Scoutbook prompts</p>
+          <p className="text-2xl font-bold mt-1">{totalPendingPrompts}</p>
+          <Link href="/parent/scoutbook-prompts" className="inline-block mt-2 text-sm text-blue-700 hover:underline">
+            Open prompt queue
+          </Link>
         </Card>
       </div>
 
@@ -165,10 +187,20 @@ export default function MyCubScoutsPage() {
                         {rankProgress.isRankEligible ? 'Eligible' : 'In Progress'}
                       </span>
                     </p>
+                    <p>
+                      Scoutbook Prompts:{' '}
+                      <span className="font-medium">{pendingPromptCounts[cub.id] || 0} pending</span>
+                    </p>
                   </div>
                 ) : (
                   <p className="mt-4 text-sm text-gray-600">Advancement status is temporarily unavailable for this Cub Scout.</p>
                 )}
+
+                <div className="mt-4 pt-3 border-t">
+                  <Link href={`/parent/scoutbook-prompts?childScoutId=${cub.id}`}>
+                    <Button variant="outline" size="sm">Manage Scoutbook Prompts</Button>
+                  </Link>
+                </div>
               </Card>
             );
           })}

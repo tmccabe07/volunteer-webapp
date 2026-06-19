@@ -54,7 +54,7 @@ export interface VolunteerRole {
   roleType: 'PARENT_GUARDIAN' | 'COMMITTEE' | 'DEN_LEADER' | 'ASSISTANT_DEN_LEADER' | 'ASSISTANT_CUB_MASTER' | 'LION_GUIDE' | 'SCOUTER_RESERVE';
   specialty: string | null;
   rankLevel: 'LION' | 'TIGER' | 'WOLF' | 'BEAR' | 'WEBELOS' | 'AOL' | null;
-  grantsTier: 'PARENT' | 'LEADER' | 'ADMIN';
+  grantsTier: 'PARENT' | 'LEADER' | 'DEN_CHIEF' | 'ADMIN';
   createdAt: string;
   updatedAt: string;
 }
@@ -65,7 +65,7 @@ export interface CreateVolunteerRoleData {
   roleType: 'PARENT_GUARDIAN' | 'COMMITTEE' | 'DEN_LEADER' | 'ASSISTANT_DEN_LEADER' | 'ASSISTANT_CUB_MASTER' | 'LION_GUIDE' | 'SCOUTER_RESERVE';
   specialty?: string;
   rankLevel?: 'LION' | 'TIGER' | 'WOLF' | 'BEAR' | 'WEBELOS' | 'AOL';
-  grantsTier?: 'PARENT' | 'LEADER' | 'ADMIN';
+  grantsTier?: 'PARENT' | 'LEADER' | 'DEN_CHIEF' | 'ADMIN';
 }
 
 export interface UpdateVolunteerRoleData {

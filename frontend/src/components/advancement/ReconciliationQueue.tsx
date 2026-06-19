@@ -19,6 +19,12 @@ import { advancementService } from '@/services/advancement.service';
 import ReconcileRequirementDialog, {
   type PendingReconciliationItem,
 } from './ReconcileRequirementDialog';
+import BatchReconcileDialog from './BatchReconcileDialog';
+
+interface ReconciliationQueueProps {
+  initialDenId?: string;
+  lockDenFilter?: boolean;
+}
 
 function getApiErrorMessage(error: unknown, fallback: string): string {
   if (typeof error === 'object' && error !== null && 'response' in error) {
@@ -37,15 +43,17 @@ const COMPLETION_TYPE_LABELS: Record<'MEETING' | 'PARENT_SUBMIT' | 'LEADER_AWARD
   LEADER_AWARD: 'Leader Award',
 };
 
-export default function ReconciliationQueue() {
+export default function ReconciliationQueue({ initialDenId, lockDenFilter = false }: ReconciliationQueueProps) {
   const [items, setItems] = useState<PendingReconciliationItem[]>([]);
   const [dens, setDens] = useState<DenListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<PendingReconciliationItem | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isBatchDialogOpen, setIsBatchDialogOpen] = useState(false);
 
-  const [denFilter, setDenFilter] = useState('ALL');
+  const [denFilter, setDenFilter] = useState(initialDenId || 'ALL');
   const [completionTypeFilter, setCompletionTypeFilter] = useState('ALL');
   const [olderThanDaysFilter, setOlderThanDaysFilter] = useState('ALL');
 
@@ -89,6 +97,42 @@ export default function ReconciliationQueue() {
     loadQueue();
   }, [loadQueue]);
 
+  useEffect(() => {
+    if (initialDenId) {
+      setDenFilter(initialDenId);
+    }
+  }, [initialDenId]);
+
+  useEffect(() => {
+    setSelectedIds((prev) => prev.filter((id) => items.some((item) => item.id === id)));
+  }, [items]);
+
+  const filteredSelectedCount = items.filter((item) => selectedIds.includes(item.id)).length;
+  const allFilteredSelected = items.length > 0 && filteredSelectedCount === items.length;
+
+  const updateSelection = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedIds((prev) => [...new Set([...prev, id])]);
+      return;
+    }
+
+    setSelectedIds((prev) => prev.filter((selectedId) => selectedId !== id));
+  };
+
+  const toggleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds((prev) => [...new Set([...prev, ...items.map((item) => item.id)])]);
+      return;
+    }
+
+    const visibleIds = new Set(items.map((item) => item.id));
+    setSelectedIds((prev) => prev.filter((id) => !visibleIds.has(id)));
+  };
+
+  const selectedItems = items
+    .filter((item) => selectedIds.includes(item.id))
+    .map((item) => ({ id: item.id, version: item.version }));
+
   const openReconcileDialog = (item: PendingReconciliationItem) => {
     setSelectedItem(item);
     setIsDialogOpen(true);
@@ -109,19 +153,21 @@ export default function ReconciliationQueue() {
           </CardTitle>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <Select value={denFilter} onValueChange={setDenFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Den" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Dens</SelectItem>
-                {dens.map((den) => (
-                  <SelectItem key={den.id} value={den.id}>
-                    {den.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {!lockDenFilter && (
+              <Select value={denFilter} onValueChange={setDenFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Den" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Dens</SelectItem>
+                  {dens.map((den) => (
+                    <SelectItem key={den.id} value={den.id}>
+                      {den.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
 
             <Select value={completionTypeFilter} onValueChange={setCompletionTypeFilter}>
               <SelectTrigger className="w-[190px]">
@@ -152,6 +198,13 @@ export default function ReconciliationQueue() {
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
+            <Button
+              size="sm"
+              onClick={() => setIsBatchDialogOpen(true)}
+              disabled={selectedItems.length === 0}
+            >
+              Mark Selected Entered ({selectedItems.length})
+            </Button>
           </div>
         </div>
       </CardHeader>
@@ -169,6 +222,14 @@ export default function ReconciliationQueue() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[40px]">
+                  <input
+                    type="checkbox"
+                    checked={allFilteredSelected}
+                    onChange={(event) => toggleSelectAll(event.target.checked)}
+                    aria-label="Select all visible requirements"
+                  />
+                </TableHead>
                 <TableHead>Cub Scout</TableHead>
                 <TableHead>Requirement</TableHead>
                 <TableHead>Type</TableHead>
@@ -180,6 +241,14 @@ export default function ReconciliationQueue() {
             <TableBody>
               {items.map((item) => (
                 <TableRow key={item.id}>
+                  <TableCell>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(item.id)}
+                      onChange={(event) => updateSelection(item.id, event.target.checked)}
+                      aria-label={`Select ${item.childScout.name} requirement`}
+                    />
+                  </TableCell>
                   <TableCell>
                     <div className="font-medium">{item.childScout.name}</div>
                     <div className="text-xs text-gray-600">
@@ -216,6 +285,16 @@ export default function ReconciliationQueue() {
         onClose={closeDialog}
         onReconciled={loadQueue}
         onRefreshRequested={loadQueue}
+      />
+
+      <BatchReconcileDialog
+        open={isBatchDialogOpen}
+        items={selectedItems}
+        onClose={() => setIsBatchDialogOpen(false)}
+        onCompleted={async () => {
+          await loadQueue();
+          setSelectedIds([]);
+        }}
       />
     </Card>
   );

@@ -42,6 +42,8 @@ interface AuthenticatedRequest extends Request {
   user?: JWTPayload;
 }
 
+type AwardQueueType = 'TO_PURCHASE' | 'TO_AWARD' | 'SCOUTBOOK_FOLLOW_UP';
+
 @Controller()
 @UseGuards(AuthGuard, TierGuard)
 @RequireTier(AuthTier.LEADER)
@@ -60,10 +62,21 @@ export class AwardController {
     @Query('childScoutId') childScoutId?: string,
     @Query('adventureId') adventureId?: string,
     @Query('denId') denId?: string,
+    @Query('queueType') queueType?: string,
   ) {
     const parsedState = state ? AwardState[state as keyof typeof AwardState] : undefined;
     if (state && !parsedState) {
       throw new BadRequestException('Invalid award state');
+    }
+
+    const parsedQueueType = queueType as AwardQueueType | undefined;
+    if (
+      queueType &&
+      parsedQueueType !== 'TO_PURCHASE' &&
+      parsedQueueType !== 'TO_AWARD' &&
+      parsedQueueType !== 'SCOUTBOOK_FOLLOW_UP'
+    ) {
+      throw new BadRequestException('Invalid queue type');
     }
 
     return this.awardFulfillmentService.getAwards(req.user!.userId, req.user!.authTier, {
@@ -71,6 +84,7 @@ export class AwardController {
       childScoutId,
       adventureId,
       denId,
+      queueType: parsedQueueType,
     });
   }
 
@@ -136,8 +150,8 @@ export class AwardController {
 
   @Get('inventory')
   @HttpCode(HttpStatus.OK)
-  async getInventory() {
-    return this.inventoryService.getInventory();
+  async getInventory(@Query('denId') denId?: string) {
+    return this.inventoryService.getInventory({ denId });
   }
 
   @Post('inventory')

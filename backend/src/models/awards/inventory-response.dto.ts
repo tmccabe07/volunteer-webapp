@@ -1,10 +1,12 @@
 import { RankLevel } from '@prisma/client';
 import { z } from 'zod';
 
+
 export const InventoryItemResponseSchema = z.object({
   id: z.string(),
   itemName: z.string(),
   rankLevel: z.nativeEnum(RankLevel).nullable(),
+  denId: z.string().nullable(),
   onHandQuantity: z.number().int(),
   reorderPoint: z.number().int().nullable(),
   unitCost: z.number().nullable(),

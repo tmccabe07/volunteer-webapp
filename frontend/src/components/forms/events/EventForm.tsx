@@ -31,6 +31,7 @@ interface EventFormData {
   title: string;
   description?: string;
   eventDate: string;
+  eventEndDate?: string;
   eventTime?: string;
   endTime?: string;
   fullDay?: boolean;
@@ -39,6 +40,11 @@ interface EventFormData {
   targetDenIds?: string[];
   isRecurring?: boolean;
   plannedRequirementIds?: string[];
+  plannedHourActivities?: {
+    camping?: { enabled: boolean; nights?: number };
+    hiking?: { enabled: boolean; miles?: number };
+    service?: { enabled: boolean; hours?: number };
+  };
   activitySlots: ActivitySlot[];
 }
 
@@ -101,6 +107,7 @@ export default function EventForm({
     title: initialData?.title || '',
     description: initialData?.description || '',
     eventDate: initialData?.eventDate || '',
+    eventEndDate: initialData?.eventEndDate || '',
     eventTime: initialData?.eventTime || '',
     endTime: initialData?.endTime || '',
     fullDay: initialData?.fullDay || false,
@@ -109,6 +116,11 @@ export default function EventForm({
     targetDenIds: initialData?.targetDenIds || [],
     isRecurring: initialData?.isRecurring || false,
     plannedRequirementIds: initialData?.plannedRequirementIds || [],
+    plannedHourActivities: initialData?.plannedHourActivities || {
+      camping: { enabled: false },
+      hiking: { enabled: false },
+      service: { enabled: false },
+    },
     activitySlots: initialData?.activitySlots || [{ activityTypeId: '', capacity: null, description: '', steps: [] }],
   });
 
@@ -182,6 +194,29 @@ export default function EventForm({
     }
     return null;
   }, [formData.fullDay, formData.eventTime, formData.endTime]);
+
+  const suggestedNights = useMemo(() => {
+    if (!formData.eventDate || !formData.eventEndDate) {
+      return 0;
+    }
+    const start = new Date(`${formData.eventDate}T00:00:00`);
+    const end = new Date(`${formData.eventEndDate}T00:00:00`);
+    const days = Math.round((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000));
+    return days > 0 ? days : 0;
+  }, [formData.eventDate, formData.eventEndDate]);
+
+  const suggestedHours = useMemo(() => {
+    if (!duration) {
+      return undefined;
+    }
+    const match = duration.match(/(\d+)h\s*(\d+)?m?/i);
+    if (!match) {
+      return undefined;
+    }
+    const hours = Number(match[1] || 0);
+    const minutes = Number(match[2] || 0);
+    return Math.round((hours + minutes / 60) * 10) / 10;
+  }, [duration]);
 
   // Validate time range
   const timeError = useMemo(() => {
@@ -313,6 +348,9 @@ export default function EventForm({
       const submissionData: EventFormData = {
         ...formData,
         eventDate: eventDateTime.toISOString(),
+        eventEndDate: formData.eventEndDate
+          ? new Date(`${formData.eventEndDate}T12:00:00`).toISOString()
+          : undefined,
         // Ensure empty strings become undefined for proper API handling
         eventTime: formData.eventTime || undefined,
         endTime: formData.endTime || undefined,
@@ -394,6 +432,17 @@ export default function EventForm({
                 value={formData.eventDate}
                 onChange={(e) => handleChange('eventDate', e.target.value)}
                 required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="eventEndDate">End Date (optional)</Label>
+              <Input
+                id="eventEndDate"
+                type="date"
+                value={formData.eventEndDate || ''}
+                onChange={(e) => handleChange('eventEndDate', e.target.value)}
+                min={formData.eventDate || undefined}
               />
             </div>
 
@@ -545,6 +594,121 @@ export default function EventForm({
             <p className="text-xs text-gray-500 mt-1">
               These planned requirements can be bulk-applied to present Cub Scouts when completing attendance.
             </p>
+          </div>
+
+          <div>
+            <Label>Planned Camping / Hiking / Service (Optional)</Label>
+            <div className="mt-2 grid gap-3 md:grid-cols-3">
+              <div className="border rounded-md p-3 space-y-2">
+                <label className="flex items-center gap-2 text-sm font-medium">
+                  <Checkbox
+                    checked={formData.plannedHourActivities?.camping?.enabled || false}
+                    onCheckedChange={(checked) =>
+                      handleChange('plannedHourActivities', {
+                        ...formData.plannedHourActivities,
+                        camping: {
+                          ...(formData.plannedHourActivities?.camping || {}),
+                          enabled: !!checked,
+                        },
+                      })
+                    }
+                  />
+                  Camping
+                </label>
+                <Input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={formData.plannedHourActivities?.camping?.nights ?? ''}
+                  placeholder="Nights"
+                  onChange={(e) =>
+                    handleChange('plannedHourActivities', {
+                      ...formData.plannedHourActivities,
+                      camping: {
+                        ...(formData.plannedHourActivities?.camping || { enabled: true }),
+                        nights: e.target.value ? Number(e.target.value) : undefined,
+                      },
+                    })
+                  }
+                  disabled={!formData.plannedHourActivities?.camping?.enabled}
+                />
+                <p className="text-xs text-gray-500">Suggested from dates: {suggestedNights} night(s)</p>
+              </div>
+
+              <div className="border rounded-md p-3 space-y-2">
+                <label className="flex items-center gap-2 text-sm font-medium">
+                  <Checkbox
+                    checked={formData.plannedHourActivities?.hiking?.enabled || false}
+                    onCheckedChange={(checked) =>
+                      handleChange('plannedHourActivities', {
+                        ...formData.plannedHourActivities,
+                        hiking: {
+                          ...(formData.plannedHourActivities?.hiking || {}),
+                          enabled: !!checked,
+                        },
+                      })
+                    }
+                  />
+                  Hiking
+                </label>
+                <Input
+                  type="number"
+                  min={0}
+                  step={0.1}
+                  value={formData.plannedHourActivities?.hiking?.miles ?? ''}
+                  placeholder="Miles"
+                  onChange={(e) =>
+                    handleChange('plannedHourActivities', {
+                      ...formData.plannedHourActivities,
+                      hiking: {
+                        ...(formData.plannedHourActivities?.hiking || { enabled: true }),
+                        miles: e.target.value ? Number(e.target.value) : undefined,
+                      },
+                    })
+                  }
+                  disabled={!formData.plannedHourActivities?.hiking?.enabled}
+                />
+                <p className="text-xs text-gray-500">Use decimal miles (e.g., 1.5).</p>
+              </div>
+
+              <div className="border rounded-md p-3 space-y-2">
+                <label className="flex items-center gap-2 text-sm font-medium">
+                  <Checkbox
+                    checked={formData.plannedHourActivities?.service?.enabled || false}
+                    onCheckedChange={(checked) =>
+                      handleChange('plannedHourActivities', {
+                        ...formData.plannedHourActivities,
+                        service: {
+                          ...(formData.plannedHourActivities?.service || {}),
+                          enabled: !!checked,
+                        },
+                      })
+                    }
+                  />
+                  Service
+                </label>
+                <Input
+                  type="number"
+                  min={0}
+                  step={0.1}
+                  value={formData.plannedHourActivities?.service?.hours ?? ''}
+                  placeholder="Hours"
+                  onChange={(e) =>
+                    handleChange('plannedHourActivities', {
+                      ...formData.plannedHourActivities,
+                      service: {
+                        ...(formData.plannedHourActivities?.service || { enabled: true }),
+                        hours: e.target.value ? Number(e.target.value) : undefined,
+                      },
+                    })
+                  }
+                  disabled={!formData.plannedHourActivities?.service?.enabled}
+                />
+                <p className="text-xs text-gray-500">
+                  {suggestedHours !== undefined ? `Duration-based suggestion: ${suggestedHours}h` : 'Use decimal hours (e.g., 2.5).'}
+                </p>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>

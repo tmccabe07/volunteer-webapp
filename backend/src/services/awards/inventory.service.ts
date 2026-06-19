@@ -11,6 +11,7 @@ export class InventoryService {
         data: {
           itemName: input.itemName,
           rankLevel: input.rankLevel ?? null,
+          denId: input.denId ?? null,
           onHandQuantity: input.onHandQuantity ?? 0,
           reorderPoint: input.reorderPoint ?? null,
           unitCost: input.unitCost ?? null,
@@ -21,6 +22,7 @@ export class InventoryService {
         id: created.id,
         itemName: created.itemName,
         rankLevel: created.rankLevel,
+        denId: created.denId,
         onHandQuantity: created.onHandQuantity,
         reorderPoint: created.reorderPoint,
         unitCost: created.unitCost,
@@ -28,16 +30,20 @@ export class InventoryService {
       };
     } catch (error: any) {
       if (error?.code === 'P2002') {
-        throw new ConflictException('Inventory item already exists for this rank scope');
+        throw new ConflictException('Inventory item already exists for this rank/den scope');
       }
 
       throw error;
     }
   }
 
-  async getInventory() {
+  async getInventory({ denId }: { denId?: string } = {}) {
+    const where: any = { deletedAt: null };
+    if (typeof denId !== 'undefined') {
+      where.denId = denId;
+    }
     const rows = await prisma.inventoryItem.findMany({
-      where: { deletedAt: null },
+      where,
       orderBy: [{ itemName: 'asc' }, { updatedAt: 'desc' }],
     });
 
@@ -46,6 +52,7 @@ export class InventoryService {
         id: item.id,
         itemName: item.itemName,
         rankLevel: item.rankLevel,
+        denId: item.denId,
         onHandQuantity: item.onHandQuantity,
         reorderPoint: item.reorderPoint,
         unitCost: item.unitCost,

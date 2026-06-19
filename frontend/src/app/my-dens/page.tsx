@@ -17,8 +17,13 @@ import { denService, DenListItem } from '@/services/den.service';
 import eventsService from '@/services/events.service';
 import { childScoutService, ChildScoutListItem } from '@/services/childScout.service';
 import { advancementService, PendingReconciliationResponse } from '@/services/advancement.service';
+import { awardService } from '@/services/awardService';
+import { hoursPromptService } from '@/services/hoursPromptService';
 import { volunteerApi } from '@/services/volunteer.service';
 import PendingLinksQueue from '@/components/parent/PendingLinksQueue';
+import ReconciliationQueue from '@/components/advancement/ReconciliationQueue';
+import DenAwardsQueuePanel from '@/components/my-dens/DenAwardsQueuePanel';
+import LeaderPromptQueuePanel from '@/components/my-dens/LeaderPromptQueuePanel';
 
 interface EventListItem {
   id: string;
@@ -26,6 +31,8 @@ interface EventListItem {
   eventDate: string;
   location?: string;
 }
+
+type DenQueueView = 'VERIFY' | 'TO_PURCHASE' | 'TO_AWARD' | 'SCOUTBOOK_FOLLOW_UP' | 'LEADER_PROMPTS';
 
 export default function MyDensPage() {
   const router = useRouter();
@@ -41,6 +48,16 @@ export default function MyDensPage() {
   const [denCubs, setDenCubs] = useState<ChildScoutListItem[]>([]);
   const [denEvents, setDenEvents] = useState<EventListItem[]>([]);
   const [pendingReconciliation, setPendingReconciliation] = useState<PendingReconciliationResponse['data']>([]);
+  const [awardQueueCounts, setAwardQueueCounts] = useState({
+    toPurchase: 0,
+    toAward: 0,
+    scoutbookFollowUp: 0,
+  });
+  const [requirementPromptSummary, setRequirementPromptSummary] = useState({
+    pending: 0,
+    acknowledged: 0,
+  });
+  const [activeQueueView, setActiveQueueView] = useState<DenQueueView>('VERIFY');
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -120,7 +137,16 @@ export default function MyDensPage() {
       setError(null);
 
       try {
-        const [cubsResponse, eventsResponse, pendingResponse] = await Promise.all([
+        const [
+          cubsResponse,
+          eventsResponse,
+          pendingResponse,
+          toPurchaseResponse,
+          toAwardResponse,
+          followUpResponse,
+          pendingRequirementPrompts,
+          acknowledgedRequirementPrompts,
+        ] = await Promise.all([
           childScoutService.listChildScouts({ denId: selectedDen.id, isActive: true, limit: 100 }),
           eventsService.listEvents({
             scopeType: 'DEN',
@@ -129,11 +155,25 @@ export default function MyDensPage() {
             limit: 8,
           }),
           advancementService.getPendingReconciliation({ denId: selectedDen.id }),
+          awardService.getAwards({ denId: selectedDen.id, queueType: 'TO_PURCHASE' }),
+          awardService.getAwards({ denId: selectedDen.id, queueType: 'TO_AWARD' }),
+          awardService.getAwards({ denId: selectedDen.id, queueType: 'SCOUTBOOK_FOLLOW_UP' }),
+          hoursPromptService.getPrompts({ denId: selectedDen.id, category: 'REQUIREMENT', status: 'PENDING' }),
+          hoursPromptService.getPrompts({ denId: selectedDen.id, category: 'REQUIREMENT', status: 'ACKNOWLEDGED' }),
         ]);
 
         setDenCubs(cubsResponse.data);
         setDenEvents((eventsResponse.events ?? []) as EventListItem[]);
         setPendingReconciliation(pendingResponse.data);
+        setAwardQueueCounts({
+          toPurchase: toPurchaseResponse.data.length,
+          toAward: toAwardResponse.data.length,
+          scoutbookFollowUp: followUpResponse.data.length,
+        });
+        setRequirementPromptSummary({
+          pending: pendingRequirementPrompts.data.length,
+          acknowledged: acknowledgedRequirementPrompts.data.length,
+        });
       } catch (err) {
         console.error('Error loading den details:', err);
         setError('Unable to load den details right now.');
@@ -260,9 +300,14 @@ export default function MyDensPage() {
             <Card className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold">Upcoming Den Events</h2>
-                <Link href={`/events?scopeType=DEN&denIds=${selectedDen.id}&upcoming=true`}>
-                  <Button variant="outline" size="sm">View All Events</Button>
-                </Link>
+                <div className="flex gap-2">
+                  <Link href={`/events?scopeType=DEN&denIds=${selectedDen.id}&upcoming=true`}>
+                    <Button variant="outline" size="sm">View All Events</Button>
+                  </Link>
+                  <Link href={`/events/create?denId=${selectedDen.id}`}>
+                    <Button size="sm">Create Event</Button>
+                  </Link>
+                </div>
               </div>
 
               {isLoadingDetails ? (
@@ -278,9 +323,12 @@ export default function MyDensPage() {
                         {new Date(event.eventDate).toLocaleDateString()}
                         {event.location ? ` • ${event.location}` : ''}
                       </p>
-                      <div className="mt-2">
+                      <div className="mt-2 flex gap-2">
                         <Link href={`/events/${event.id}`}>
-                          <Button variant="outline" size="sm">Open Event</Button>
+                          <Button variant="outline" size="sm">View Event</Button>
+                        </Link>
+                        <Link href={`/events/${event.id}/edit`}>
+                          <Button size="sm">Edit Event</Button>
                         </Link>
                       </div>
                     </li>
@@ -291,40 +339,165 @@ export default function MyDensPage() {
           </div>
 
           <Card className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">Verify Completions Queue</h2>
-              <Link href={`/advancement/reconciliation?denId=${selectedDen.id}`}>
-                <Button>Open Full Queue</Button>
-              </Link>
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+              <div>
+                <h2 className="text-xl font-semibold">Advancement Queues (Active Den)</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Select a queue to work it here without leaving My Dens.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Link href="/awards">
+                  <Button variant="outline" size="sm">Open All Awards Queues</Button>
+                </Link>
+                <Link href={`/awards/inventory?denId=${selectedDen.id}`}>
+                  <Button variant="outline" size="sm">Manage Inventory</Button>
+                </Link>
+              </div>
             </div>
 
-            {isLoadingDetails ? (
-              <p className="text-gray-600">Loading queue...</p>
-            ) : pendingReconciliation.length === 0 ? (
-              <p className="text-gray-600">No requirements need verification for this den.</p>
-            ) : (
-              <ul className="space-y-3">
-                {pendingReconciliation.slice(0, 8).map((item) => (
-                  <li key={item.id} className="border rounded p-3">
-                    <p className="font-medium">{item.childScout.name}</p>
-                    <p className="text-sm text-gray-600">
-                      {item.requirement.adventureName} • {item.requirement.requirementText}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {item.daysSinceCompletion} day(s) since completion
-                    </p>
-                  </li>
-                ))}
-              </ul>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+              <div className={`rounded border p-3 ${activeQueueView === 'VERIFY' ? 'border-blue-500 bg-blue-50' : ''}`}>
+                <p className="text-sm text-gray-600">Pending Verify</p>
+                <p className="text-2xl font-bold mt-1">{pendingReconciliation.length}</p>
+                <div className="mt-3">
+                  <Button size="sm" className="w-full" onClick={() => setActiveQueueView('VERIFY')}>
+                    Work This Queue
+                  </Button>
+                </div>
+              </div>
+
+              <div className={`rounded border p-3 ${activeQueueView === 'TO_PURCHASE' ? 'border-blue-500 bg-blue-50' : ''}`}>
+                <p className="text-sm text-gray-600">To Purchase</p>
+                <p className="text-2xl font-bold mt-1">{awardQueueCounts.toPurchase}</p>
+                <div className="mt-3">
+                  <Button size="sm" className="w-full" onClick={() => setActiveQueueView('TO_PURCHASE')}>
+                    Work This Queue
+                  </Button>
+                </div>
+              </div>
+
+              <div className={`rounded border p-3 ${activeQueueView === 'TO_AWARD' ? 'border-blue-500 bg-blue-50' : ''}`}>
+                <p className="text-sm text-gray-600">To Award</p>
+                <p className="text-2xl font-bold mt-1">{awardQueueCounts.toAward}</p>
+                <div className="mt-3">
+                  <Button size="sm" className="w-full" onClick={() => setActiveQueueView('TO_AWARD')}>
+                    Work This Queue
+                  </Button>
+                </div>
+              </div>
+
+              <div className={`rounded border p-3 ${activeQueueView === 'SCOUTBOOK_FOLLOW_UP' ? 'border-blue-500 bg-blue-50' : ''}`}>
+                <p className="text-sm text-gray-600">Scoutbook Reminder</p>
+                <p className="text-2xl font-bold mt-1">{awardQueueCounts.scoutbookFollowUp}</p>
+                <div className="mt-3">
+                  <Button size="sm" className="w-full" onClick={() => setActiveQueueView('SCOUTBOOK_FOLLOW_UP')}>
+                    Work This Queue
+                  </Button>
+                </div>
+              </div>
+
+              <div className={`rounded border p-3 ${activeQueueView === 'LEADER_PROMPTS' ? 'border-blue-500 bg-blue-50' : ''}`}>
+                <p className="text-sm text-gray-600">Leader Prompt Queue</p>
+                <p className="text-2xl font-bold mt-1">{requirementPromptSummary.pending}</p>
+                <p className="text-xs text-gray-600 mt-1">
+                  {requirementPromptSummary.acknowledged} acknowledged
+                </p>
+                <div className="mt-3">
+                  <Button size="sm" className="w-full" onClick={() => setActiveQueueView('LEADER_PROMPTS')}>
+                    Work This Queue
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+              <h2 className="text-xl font-semibold">
+                {activeQueueView === 'VERIFY' && 'Verify Completions Queue'}
+                {activeQueueView === 'TO_PURCHASE' && 'To Purchase Queue'}
+                {activeQueueView === 'TO_AWARD' && 'To Award Queue'}
+                {activeQueueView === 'SCOUTBOOK_FOLLOW_UP' && 'Scoutbook Reminder Queue'}
+                {activeQueueView === 'LEADER_PROMPTS' && 'Leader Prompt Queue'}
+              </h2>
+              <div className="flex gap-2">
+                {activeQueueView === 'VERIFY' && (
+                  <Link href={`/advancement/reconciliation?denId=${selectedDen.id}`}>
+                    <Button variant="outline">Open Full Verify Page</Button>
+                  </Link>
+                )}
+                {(activeQueueView === 'TO_PURCHASE' ||
+                  activeQueueView === 'TO_AWARD' ||
+                  activeQueueView === 'SCOUTBOOK_FOLLOW_UP') && (
+                  <Link href={`/awards?queue=${activeQueueView}&denId=${selectedDen.id}`}>
+                    <Button variant="outline">Open Full Awards Page</Button>
+                  </Link>
+                )}
+                {activeQueueView === 'LEADER_PROMPTS' && (
+                  <Link href={`/parent/scoutbook-prompts?denId=${selectedDen.id}&category=REQUIREMENT`}>
+                    <Button variant="outline">Open Full Prompt Page</Button>
+                  </Link>
+                )}
+              </div>
+            </div>
+
+            <div className="mb-4 rounded border bg-gray-50 p-3 text-sm">
+              {activeQueueView === 'VERIFY' && (
+                <>
+                  <p className="font-medium">Verify completions first</p>
+                  <p className="text-gray-600 mt-1">
+                    Verified requirements create award items that flow into purchase, distribution, and Scoutbook follow-up queues.
+                  </p>
+                </>
+              )}
+              {(activeQueueView === 'TO_PURCHASE' ||
+                activeQueueView === 'TO_AWARD' ||
+                activeQueueView === 'SCOUTBOOK_FOLLOW_UP') && (
+                <>
+                  <p className="font-medium">Award fulfillment workflow</p>
+                  <p className="text-gray-600 mt-1">
+                    Use per-row actions for individual updates and bulk actions to process multiple awards together.
+                  </p>
+                </>
+              )}
+              {activeQueueView === 'LEADER_PROMPTS' && (
+                <>
+                  <p className="font-medium">Requirement prompt follow-up</p>
+                  <p className="text-gray-600 mt-1">
+                    Toggle between pending and acknowledged prompts. Pending supports single and bulk actions.
+                  </p>
+                </>
+              )}
+            </div>
+
+            {activeQueueView === 'VERIFY' && (
+              <ReconciliationQueue initialDenId={selectedDen.id} lockDenFilter />
+            )}
+
+            {activeQueueView === 'TO_PURCHASE' && (
+              <DenAwardsQueuePanel denId={selectedDen.id} queueType="TO_PURCHASE" />
+            )}
+
+            {activeQueueView === 'TO_AWARD' && (
+              <DenAwardsQueuePanel denId={selectedDen.id} queueType="TO_AWARD" />
+            )}
+
+            {activeQueueView === 'SCOUTBOOK_FOLLOW_UP' && (
+              <DenAwardsQueuePanel denId={selectedDen.id} queueType="SCOUTBOOK_FOLLOW_UP" />
+            )}
+
+            {activeQueueView === 'LEADER_PROMPTS' && (
+              <LeaderPromptQueuePanel denId={selectedDen.id} />
             )}
           </Card>
 
           <div>
             <h2 className="text-xl font-semibold mb-3">Parent Link Approvals</h2>
             <p className="text-sm text-gray-600 mb-3">
-              Review and approve parent-to-Cub Scout link requests for your dens.
+              Review and approve parent-to-Cub Scout link requests for the active den.
             </p>
-            <PendingLinksQueue />
+            <PendingLinksQueue initialDenId={selectedDen.id} lockDenFilter />
           </div>
         </>
       )}

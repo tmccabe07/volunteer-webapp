@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { redirect } from 'next/navigation';
+import { redirect, useSearchParams } from 'next/navigation';
 import EventForm from '@/components/forms/events/EventForm';
 import eventsService, { type CreateEventData } from '@/services/events.service';
 import { denService } from '@/services/den.service';
@@ -25,10 +25,13 @@ interface DenOption {
 
 export default function CreateEventPage() {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
   const [activityTypes, setActivityTypes] = useState<ActivityType[]>([]);
   const [availableDens, setAvailableDens] = useState<DenOption[]>([]);
   const [availableRequirements, setAvailableRequirements] = useState<Requirement[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const preselectedDenId = searchParams.get('denId') || undefined;
 
   // Check permissions
   if (!user || (user.authTier !== 'LEADER' && user.authTier !== 'ADMIN')) {
@@ -82,6 +85,22 @@ export default function CreateEventPage() {
     await eventsService.createEvent(data);
   };
 
+  const initialData = useMemo(() => {
+    if (!preselectedDenId) {
+      return undefined;
+    }
+
+    const hasDenInScope = availableDens.some((den) => den.id === preselectedDenId);
+    if (!hasDenInScope) {
+      return undefined;
+    }
+
+    return {
+      scopeType: 'DEN' as const,
+      targetDenIds: [preselectedDenId],
+    };
+  }, [availableDens, preselectedDenId]);
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -96,6 +115,7 @@ export default function CreateEventPage() {
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">Create Volunteer Event</h1>
       <EventForm
+        initialData={initialData}
         activityTypes={activityTypes}
         availableDens={availableDens}
         availableRequirements={availableRequirements}
