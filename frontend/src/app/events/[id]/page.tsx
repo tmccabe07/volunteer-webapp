@@ -156,7 +156,7 @@ export default function EventDetailPage() {
 
       <EventDetails
         event={event}
-        currentUserId={user?.id}
+        currentUserId={user?.signupActorId || user?.id}
         onSignup={handleSignup}
         onWithdraw={handleWithdraw}
       />

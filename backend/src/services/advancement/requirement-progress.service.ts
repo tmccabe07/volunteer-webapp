@@ -21,9 +21,16 @@ export class RequirementProgressService {
     adventureId: string,
     userId: string,
   ): Promise<void> {
-    const [totalRequirements, reconciledRequirements] = await Promise.all([
+    const [totalRequirements, lockedRequirements, reconciledRequirements] = await Promise.all([
       prisma.requirement.count({
         where: { adventureId },
+      }),
+      prisma.requirementProgress.count({
+        where: {
+          childScoutId,
+          adventureId,
+          awardable: false,
+        },
       }),
       prisma.requirementProgress.count({
         where: {
@@ -36,7 +43,11 @@ export class RequirementProgressService {
       }),
     ]);
 
-    if (totalRequirements === 0 || reconciledRequirements < totalRequirements) {
+    if (totalRequirements === 0 || lockedRequirements > 0) {
+      return;
+    }
+
+    if (reconciledRequirements < totalRequirements) {
       return;
     }
 

@@ -83,6 +83,7 @@ export class EventsController {
       const validatedQuery = listEventsSchema.parse(query);
       const currentUserId = req.user!.userId;
       const currentUserTier = req.user!.authTier as AuthTier;
+      const currentSignupVolunteerId = await this.signupService.resolveActorVolunteerId(currentUserId);
 
       const accessibleDenIds = await this.getAccessibleDenIds(currentUserId, currentUserTier);
       const requestedDenIds = validatedQuery.denIds
@@ -107,7 +108,7 @@ export class EventsController {
           upcoming: validatedQuery.upcoming,
           mySignups: validatedQuery.mySignups,
         },
-        currentUserId
+        currentSignupVolunteerId
       );
 
       return result;
@@ -132,12 +133,23 @@ export class EventsController {
       return dens.map((den) => den.id);
     }
 
-    const [volunteer, linkedCubs] = await Promise.all([
+    const [volunteer, denChief, linkedCubs] = await Promise.all([
       prisma.volunteer.findFirst({
         where: { id: userId, deletedAt: null },
         select: {
           volunteerRoles: {
             where: { removedAt: null },
+            select: {
+              denId: true,
+            },
+          },
+        },
+      }),
+      prisma.denChief.findFirst({
+        where: { id: userId, deletedAt: null, isActive: true },
+        select: {
+          denAssignments: {
+            where: { validTo: null },
             select: {
               denId: true,
             },
@@ -174,6 +186,12 @@ export class EventsController {
     volunteer?.volunteerRoles.forEach((role) => {
       if (role.denId) {
         denIds.add(role.denId);
+      }
+    });
+
+    denChief?.denAssignments.forEach((assignment) => {
+      if (assignment.denId) {
+        denIds.add(assignment.denId);
       }
     });
 
@@ -331,9 +349,9 @@ export class EventsController {
     @Req() req: AuthenticatedRequest
   ) {
     try {
-      const volunteerId = req.user!.userId;
+      const actorId = req.user!.userId;
 
-      const signup = await this.signupService.signupForActivity(volunteerId, slotId);
+      const signup = await this.signupService.signupForActivity(actorId, slotId);
 
       return signup;
     } catch (error: any) {
@@ -361,9 +379,9 @@ export class EventsController {
     @Req() req: AuthenticatedRequest
   ) {
     try {
-      const volunteerId = req.user!.userId;
+      const actorId = req.user!.userId;
 
-      const signup = await this.signupService.withdrawFromActivity(volunteerId, slotId);
+      const signup = await this.signupService.withdrawFromActivity(actorId, slotId);
 
       return signup;
     } catch (error: any) {

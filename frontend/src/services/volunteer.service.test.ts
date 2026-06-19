@@ -85,6 +85,64 @@ describe('VolunteerApiService', () => {
         response: { status: 404 },
       });
     });
+
+    it('should fallback to den chief profile when volunteer profile endpoint returns 404', async () => {
+      mockAxios.get
+        .mockRejectedValueOnce({
+          response: {
+            status: 404,
+            data: { message: 'Profile not found' },
+          },
+        })
+        .mockResolvedValueOnce({
+          data: {
+            id: 'dc-1',
+            email: 'liondenchief@test.com',
+            name: 'Lion Den Chief',
+            phone: '555-7777',
+            authTier: 'DEN_CHIEF',
+            leaderboardOptIn: false,
+            pointBalance: {
+              totalPoints: 10,
+              currentYearPoints: 6,
+            },
+            badgeTier: {
+              current: 'Bronze',
+            },
+          },
+        })
+        .mockResolvedValueOnce({
+          data: [
+            {
+              id: 'dc-1',
+              email: 'liondenchief@test.com',
+              assignments: [
+                {
+                  id: 'assignment-1',
+                  denId: 'den-1',
+                  denName: 'Lion Den',
+                  denNumber: 1,
+                  validFrom: '2026-01-01T00:00:00Z',
+                  validTo: null,
+                },
+              ],
+            },
+          ],
+        });
+
+      const result = await service.getMyProfile();
+
+      expect(mockAxios.get).toHaveBeenNthCalledWith(1, '/volunteers/me/profile');
+      expect(mockAxios.get).toHaveBeenNthCalledWith(2, '/auth/me');
+      expect(mockAxios.get).toHaveBeenNthCalledWith(3, '/den-chiefs');
+      expect(result.authTier).toBe('DEN_CHIEF');
+      expect(result.roles).toEqual([
+        expect.objectContaining({
+          roleName: 'Den Chief',
+          denId: 'den-1',
+        }),
+      ]);
+    });
   });
 
   describe('updateMyProfile', () => {

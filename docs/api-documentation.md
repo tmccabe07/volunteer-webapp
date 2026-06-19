@@ -1654,6 +1654,86 @@ X-RateLimit-Reset: 1648224000
 - bcrypt with 12 rounds
 - Never stored in plaintext
 
+---
+
+## Advancement Operations
+
+### GET /api/admin/data-quality
+
+Run admin data quality checks for duplicate links, stale approvals, and award reconciliation gaps.
+
+**Authorization**: Bearer token (Tier 3 only)
+
+**Query Parameters**:
+- `olderThanDays` (default: 30)
+
+**Response (200 OK)**:
+```json
+{
+  "summary": {
+    "olderThanDays": 30,
+    "duplicateLinkCount": 2,
+    "staleApprovalCount": 4,
+    "awardReconciliationGapCount": 1
+  },
+  "duplicateLinks": [],
+  "staleApprovals": [],
+  "awardReconciliationGaps": []
+}
+```
+
+### POST /api/child-scouts/import
+
+Import child records from a CSV file.
+
+**Authorization**: Bearer token (Tier 3 only)
+
+**Request**: `multipart/form-data` with `file`
+
+**Response (202 Accepted)**:
+```json
+{
+  "batchId": "cuid",
+  "message": "Import processing started"
+}
+```
+
+### GET /api/imports/:batchId
+
+Get a CSV import batch status and row-level errors.
+
+**Authorization**: Bearer token (Tier 3 only)
+
+### POST /api/dens/transfer-child
+
+Atomically move one child from one den to another.
+
+**Authorization**: Bearer token (Tier 3 only)
+
+### POST /api/dens/batch-assign
+
+Bulk assign multiple children during den splits or restructuring.
+
+**Authorization**: Bearer token (Tier 3 only)
+
+### POST /api/rollover/preview
+
+Preview the next annual rank rollover without changing records.
+
+**Authorization**: Bearer token (Tier 3 only)
+
+### POST /api/rollover/execute
+
+Execute annual rollover or queue a dry run.
+
+**Authorization**: Bearer token (Tier 3 only)
+
+### GET /api/rollover/:batchId
+
+Get annual rollover batch status and errors.
+
+**Authorization**: Bearer token (Tier 3 only)
+
 **Password Reset Flow**:
 1. Admin initiates reset via `POST /api/admin/volunteers/:id/reset-password`
 2. System generates readable temporary password (format: word-word-number)

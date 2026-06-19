@@ -105,6 +105,24 @@ export default function AdminConfigPage() {
               >
                 Manage Activities
               </Link>
+              <Link
+                href="/admin/den-chiefs"
+                className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Manage Den Chiefs
+              </Link>
+              <Link
+                href="/admin/data-quality"
+                className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Data Quality
+              </Link>
+              <Link
+                href="/admin/bulk-operations"
+                className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Bulk Operations
+              </Link>
             </div>
           </div>
         </div>

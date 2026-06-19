@@ -25,9 +25,13 @@ export class ChildScoutService {
     userId: string,
     roleAssignments?: Awaited<ReturnType<AuthorizationService['getUserRoleAssignments']>>,
   ): Promise<AuthTier> {
-    const [volunteer, assignments] = await Promise.all([
+    const [volunteer, denChief, assignments] = await Promise.all([
       prisma.volunteer.findFirst({
         where: { id: userId, deletedAt: null },
+        select: { authTier: true },
+      }),
+      prisma.denChief.findFirst({
+        where: { id: userId, deletedAt: null, isActive: true },
         select: { authTier: true },
       }),
       roleAssignments
@@ -38,12 +42,16 @@ export class ChildScoutService {
     const tierLevels: Record<AuthTier, number> = {
       PARENT: 1,
       LEADER: 2,
+      DEN_CHIEF: 2,
       ADMIN: 3,
     };
 
     const tierCandidates: AuthTier[] = [];
     if (volunteer?.authTier) {
       tierCandidates.push(volunteer.authTier);
+    }
+    if (denChief?.authTier) {
+      tierCandidates.push(denChief.authTier);
     }
     for (const assignment of assignments) {
       const tier = assignment.grantsTier as AuthTier;
@@ -122,10 +130,28 @@ export class ChildScoutService {
     const isActive = filters.isActive ?? true;
 
     // Get user's role assignments to determine access scope
-    const roleAssignments = await this.authorizationService.getUserRoleAssignments(userId);
+    const [roleAssignments, denChiefRecord] = await Promise.all([
+      this.authorizationService.getUserRoleAssignments(userId),
+      prisma.denChief.findFirst({
+        where: { id: userId, deletedAt: null, isActive: true },
+        select: {
+          denAssignments: {
+            where: { validTo: null },
+            select: {
+              denId: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    const denChiefDenIds = new Set(
+      (denChiefRecord?.denAssignments ?? []).map((assignment) => assignment.denId),
+    );
+
     const userTier = await this.getEffectiveUserTier(userId, roleAssignments);
     const isAdmin = userTier === 'ADMIN';
-    const isLeader = userTier === 'LEADER';
+    const isLeader = userTier === 'LEADER' || userTier === 'DEN_CHIEF';
 
     // Build where clause based on user's access level
     const whereClause: any = {
@@ -178,6 +204,17 @@ export class ChildScoutService {
                   den: {
                     denNumber: { in: denScopes },
                   },
+                  validTo: null,
+                },
+              },
+            });
+          }
+
+          if (denChiefDenIds.size > 0) {
+            scopeFilters.push({
+              denMemberships: {
+                some: {
+                  denId: { in: Array.from(denChiefDenIds) },
                   validTo: null,
                 },
               },

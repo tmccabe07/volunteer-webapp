@@ -136,6 +136,7 @@ export class ParentChildLinkService {
     const tierLevels: Record<AuthTier, number> = {
       PARENT: 1,
       LEADER: 2,
+      DEN_CHIEF: 2,
       ADMIN: 3,
     };
 

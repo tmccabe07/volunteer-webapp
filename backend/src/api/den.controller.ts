@@ -26,6 +26,10 @@ import {
   AssignDenMemberSchema,
   type AssignDenMemberDto,
 } from '../models/den/assign-member.dto';
+import {
+  TransferChildSchema,
+  type TransferChildDto,
+} from '../models/den/transfer-child.dto';
 import { z } from 'zod';
 
 /**
@@ -49,6 +53,22 @@ const ListDensQuerySchema = z.object({
     .transform(val => val === 'true')
     .or(z.boolean())
     .optional(),
+});
+
+const BatchAssignSchema = z.object({
+  assignments: z.array(
+    z.object({
+      childScoutId: z.string().min(1, 'Child scout ID is required'),
+      fromDenId: z.string().min(1).nullable().optional(),
+      toDenId: z.string().min(1, 'Destination den ID is required'),
+    }),
+  ).min(1, 'At least one assignment is required'),
+  effectiveDate: z
+    .string()
+    .datetime('Invalid ISO 8601 date format')
+    .optional()
+    .transform(val => (val ? new Date(val) : undefined)),
+  reason: z.string().min(1, 'Reason is required').max(200).trim(),
 });
 
 /**
@@ -192,6 +212,68 @@ export class DenController {
       return await this.denService.removeChildFromDen(denId, childScoutId);
     } catch (error: any) {
       if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * POST /api/dens/transfer-child
+   * Transfer a child from one den to another atomically.
+   *
+   * Authorization: ADMIN only
+   */
+  @Post('transfer-child')
+  @UseGuards(TierGuard)
+  @RequireTier(AuthTier.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  async transferChild(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: TransferChildDto,
+  ) {
+    try {
+      const validatedData = TransferChildSchema.parse(body);
+      return await this.denService.transferChild(validatedData, req.user!.userId);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        throw new BadRequestException({
+          error: 'Invalid input',
+          details: error.issues?.map((e: any) => e.message) || [],
+        });
+      }
+      if (error instanceof NotFoundException || error instanceof ConflictException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * POST /api/dens/batch-assign
+   * Bulk assign multiple children to dens.
+   *
+   * Authorization: ADMIN only
+   */
+  @Post('batch-assign')
+  @UseGuards(TierGuard)
+  @RequireTier(AuthTier.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  async batchAssignChildren(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: unknown,
+  ) {
+    try {
+      const validatedBody = BatchAssignSchema.parse(body);
+      return await this.denService.batchAssignChildren(validatedBody, req.user!.userId);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        throw new BadRequestException({
+          error: 'Invalid input',
+          details: error.issues?.map((e: any) => e.message) || [],
+        });
+      }
+      if (error instanceof NotFoundException || error instanceof ConflictException || error instanceof BadRequestException) {
         throw error;
       }
       throw error;

@@ -800,7 +800,7 @@ export default function DashboardPage() {
           eventTitle={selectedEvent.title}
           open={signupDialogOpen}
           onOpenChange={setSignupDialogOpen}
-          currentUserId={user?.id}
+          currentUserId={user?.signupActorId || user?.id}
           onSignupSuccess={handleSignupSuccess}
         />
       )}

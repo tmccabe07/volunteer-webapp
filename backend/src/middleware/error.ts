@@ -134,6 +134,9 @@ export const errorHandler = (
     code,
     path: req.path,
     method: req.method,
+    requestId: req.header('x-request-id'),
+    userId: (req as Request & { user?: { userId?: string } }).user?.userId,
+    query: req.query,
     stack: err.stack,
   });
 

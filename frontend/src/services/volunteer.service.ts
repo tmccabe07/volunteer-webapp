@@ -1,5 +1,34 @@
 import axios from '@/lib/axios';
 
+interface CurrentUserResponse {
+  id: string;
+  email: string;
+  name: string;
+  phone: string | null;
+  authTier: 'PARENT' | 'LEADER' | 'DEN_CHIEF' | 'ADMIN';
+  leaderboardOptIn: boolean;
+  pointBalance: {
+    totalPoints: number;
+    currentYearPoints: number;
+  };
+  badgeTier?: {
+    current: string | null;
+  };
+}
+
+interface DenChiefListItem {
+  id: string;
+  email: string;
+  assignments: Array<{
+    id: string;
+    denId: string;
+    denName: string;
+    denNumber: number;
+    validFrom: string;
+    validTo: string | null;
+  }>;
+}
+
 export interface VolunteerProfile {
   id: string;
   email: string;
@@ -104,8 +133,65 @@ export class VolunteerApiService {
    * Get current volunteer's full profile
    */
   async getMyProfile(): Promise<VolunteerProfile> {
-    const response = await axios.get<VolunteerProfile>('/volunteers/me/profile');
-    return response.data;
+    try {
+      const response = await axios.get<VolunteerProfile>('/volunteers/me/profile');
+      return response.data;
+    } catch (error) {
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      if (status !== 404) {
+        throw error;
+      }
+
+      const meResponse = await axios.get<CurrentUserResponse>('/auth/me');
+      const currentUser = meResponse.data;
+
+      if (currentUser.authTier !== 'DEN_CHIEF') {
+        throw error;
+      }
+
+      let activeAssignments: DenChiefListItem['assignments'] = [];
+      try {
+        const denChiefsResponse = await axios.get<DenChiefListItem[]>('/den-chiefs');
+        const denChiefRecord = denChiefsResponse.data.find(
+          (denChief) => denChief.email.toLowerCase() === currentUser.email.toLowerCase(),
+        );
+        activeAssignments = (denChiefRecord?.assignments ?? []).filter(
+          (assignment) => assignment.validTo === null,
+        );
+      } catch {
+        activeAssignments = [];
+      }
+
+      return {
+        id: currentUser.id,
+        email: currentUser.email,
+        name: currentUser.name,
+        phone: currentUser.phone,
+        authTier: currentUser.authTier,
+        leaderboardOptIn: currentUser.leaderboardOptIn,
+        roles: activeAssignments.map((assignment) => ({
+          id: assignment.id,
+          roleId: 'DEN_CHIEF',
+          roleName: 'Den Chief',
+          roleType: 'DEN_CHIEF',
+          specialty: null,
+          rankLevel: null,
+          denId: assignment.denId,
+          denName: assignment.denName,
+          denNumber: assignment.denNumber,
+          denRankLevel: null,
+          assignedAt: assignment.validFrom,
+        })),
+        childrenRanks: [],
+        pointBalance: {
+          totalPoints: currentUser.pointBalance.totalPoints,
+          currentYearPoints: currentUser.pointBalance.currentYearPoints,
+          badgeTier: currentUser.badgeTier?.current ?? null,
+          rank: null,
+        },
+        createdAt: new Date(0).toISOString(),
+      };
+    }
   }
 
   /**

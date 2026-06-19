@@ -26,6 +26,86 @@ export class AuthService {
   private readonly JWT_SECRET: string;
   private readonly JWT_REFRESH_SECRET: string;
 
+  private getDenChiefMirrorEmail(denChiefId: string): string {
+    return `denchief+${denChiefId}@local.volunteer`;
+  }
+
+  private async getProjectedPoints(volunteerId: string): Promise<number> {
+    const activeSignups = await prisma.signup.findMany({
+      where: {
+        volunteerId,
+        withdrawn: false,
+        deletedAt: null,
+        activitySlot: {
+          event: {
+            isComplete: false,
+            deletedAt: null,
+            eventDate: {
+              gte: new Date(),
+            },
+          },
+        },
+      },
+      select: {
+        activitySlot: {
+          select: {
+            activityType: {
+              select: {
+                pointValue: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return activeSignups.reduce((sum, signup) => sum + signup.activitySlot.activityType.pointValue, 0);
+  }
+
+  private async getBadgeTierInfo(totalPoints: number) {
+    const allTiers = await prisma.badgeTier.findMany({
+      orderBy: {
+        displayOrder: 'asc',
+      },
+    });
+
+    let currentTier = null as (typeof allTiers)[number] | null;
+    for (let index = allTiers.length - 1; index >= 0; index -= 1) {
+      const tier = allTiers[index];
+      if (totalPoints >= tier.minPoints && (tier.maxPoints === null || totalPoints <= tier.maxPoints)) {
+        currentTier = tier;
+        break;
+      }
+    }
+
+    let nextTier = null as (typeof allTiers)[number] | null;
+    if (currentTier) {
+      nextTier = allTiers.find((tier) => tier.displayOrder === currentTier.displayOrder + 1) ?? null;
+    } else {
+      nextTier = allTiers[0] ?? null;
+    }
+
+    return {
+      current: currentTier?.tierName ?? null,
+      currentTierDetails: currentTier
+        ? {
+            tierName: currentTier.tierName,
+            minPoints: currentTier.minPoints,
+            maxPoints: currentTier.maxPoints,
+            badgeColor: currentTier.badgeColor,
+          }
+        : null,
+      nextTier: nextTier
+        ? {
+            tierName: nextTier.tierName,
+            minPoints: nextTier.minPoints,
+            badgeColor: nextTier.badgeColor,
+          }
+        : null,
+      pointsToNextTier: nextTier ? nextTier.minPoints - totalPoints : null,
+    };
+  }
+
   constructor() {
     this.JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
     this.JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-change-in-production';
@@ -179,6 +259,7 @@ export class AuthService {
     return {
       volunteer: {
         ...volunteer,
+        signupActorId: volunteer.id,
         mustChangePassword: false // New registrations don't need to change password
       },
       accessToken,
@@ -224,7 +305,10 @@ export class AuthService {
         const { passwordHash, ...volunteerData } = volunteer;
 
         return {
-          volunteer: volunteerData,
+          volunteer: {
+            ...volunteerData,
+            signupActorId: volunteer.id,
+          },
           accessToken,
           refreshToken
         };
@@ -259,7 +343,7 @@ export class AuthService {
     const accessToken = this.generateAccessToken(denChief.id, denChief.email, denChief.authTier);
     const refreshToken = this.generateRefreshToken(denChief.id, rememberMe);
 
-    const denChiefUser = this.buildDenChiefUser(denChief);
+    const denChiefUser = await this.buildDenChiefUser(denChief);
 
     return {
       volunteer: denChiefUser,
@@ -336,32 +420,60 @@ export class AuthService {
 
     return {
       ...volunteer,
+      signupActorId: volunteer.id,
       roles: volunteer.volunteerRoles.map(vr => vr.role)
     };
   }
 
-  private buildDenChiefUser(denChief: any) {
+  private async buildDenChiefUser(denChief: any) {
+    const mirrorEmail = this.getDenChiefMirrorEmail(denChief.id);
+    const mirrorVolunteer = await prisma.volunteer.upsert({
+      where: { email: mirrorEmail },
+      update: {
+        name: `${denChief.firstName} ${denChief.lastName}`,
+        passwordHash: denChief.passwordHash,
+        authTier: AuthTier.DEN_CHIEF,
+        deletedAt: null,
+      },
+      create: {
+        email: mirrorEmail,
+        name: `${denChief.firstName} ${denChief.lastName}`,
+        passwordHash: denChief.passwordHash,
+        authTier: AuthTier.DEN_CHIEF,
+        leaderboardOptIn: true,
+      },
+      include: {
+        pointBalance: {
+          select: {
+            totalPoints: true,
+            currentYearPoints: true,
+          },
+        },
+      },
+    });
+
+    const pointBalance = mirrorVolunteer?.pointBalance || {
+      totalPoints: 0,
+      currentYearPoints: 0,
+    };
+
+    const badgeTier = await this.getBadgeTierInfo(pointBalance.totalPoints);
+    const projectedPoints = await this.getProjectedPoints(mirrorVolunteer.id);
+
     return {
       id: denChief.id,
       email: denChief.email,
       name: `${denChief.firstName} ${denChief.lastName}`,
+      signupActorId: mirrorVolunteer.id,
       phone: null,
       authTier: denChief.authTier,
       leaderboardOptIn: false,
       mustChangePassword: false,
       roles: [],
       childrenRanks: [],
-      pointBalance: {
-        totalPoints: 0,
-        currentYearPoints: 0,
-      },
-      badgeTier: {
-        current: null,
-        currentTierDetails: null,
-        nextTier: null,
-        pointsToNextTier: null,
-      },
-      projectedPoints: 0,
+      pointBalance,
+      badgeTier,
+      projectedPoints,
       denAssignments: (denChief.denAssignments || []).map((assignment: any) => ({
         id: assignment.id,
         denId: assignment.denId,

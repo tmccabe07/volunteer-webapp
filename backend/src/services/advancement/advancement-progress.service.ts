@@ -2,15 +2,32 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import prisma from '../../utils/prisma';
 import { AuthorizationService } from '../role-scope/authorization.service';
 
+type CachedProgress = {
+  expiresAt: number;
+  value: unknown;
+};
+
 @Injectable()
 export class AdvancementProgressService {
+  private readonly progressCache = new Map<string, CachedProgress>();
+  private readonly cacheTtlMs = 30_000;
+
   constructor(private readonly authorizationService: AuthorizationService) {}
+
+  invalidateChildCache(childScoutId: string): void {
+    this.progressCache.delete(childScoutId);
+  }
 
   async getChildAdvancementProgress(
     childScoutId: string,
     userId: string,
     authTier: string,
   ) {
+    const cachedProgress = this.progressCache.get(childScoutId);
+    if (cachedProgress && cachedProgress.expiresAt > Date.now()) {
+      return cachedProgress.value;
+    }
+
     if (authTier !== 'ADMIN') {
       const canAccess = await this.authorizationService.canAccessChild(
         userId,
@@ -123,7 +140,7 @@ export class AdvancementProgressService {
       a => a.classification === 'ELECTIVE' && a.isComplete,
     ).length;
 
-    return {
+    const result = {
       childScout: {
         id: childScout.id,
         name: `${childScout.firstName} ${childScout.lastName}`,
@@ -141,5 +158,12 @@ export class AdvancementProgressService {
       },
       adventures: adventureProgress,
     };
+
+    this.progressCache.set(childScoutId, {
+      expiresAt: Date.now() + this.cacheTtlMs,
+      value: result,
+    });
+
+    return result;
   }
 }

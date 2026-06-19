@@ -6,18 +6,79 @@
  */
 
 import { Injectable } from '@nestjs/common';
+import { AuthTier } from '@prisma/client';
 import prisma from '../utils/prisma';
 
 @Injectable()
 export class SignupService {
+  private getDenChiefMirrorEmail(denChiefId: string): string {
+    return `denchief+${denChiefId}@local.volunteer`;
+  }
+
+  async resolveActorVolunteerId(userId: string): Promise<string> {
+    const volunteer = await prisma.volunteer.findFirst({
+      where: {
+        id: userId,
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+
+    if (volunteer) {
+      return volunteer.id;
+    }
+
+    const denChief = await prisma.denChief.findFirst({
+      where: {
+        id: userId,
+        deletedAt: null,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        passwordHash: true,
+      },
+    });
+
+    if (!denChief) {
+      throw new Error('Volunteer not found');
+    }
+
+    const mirrorEmail = this.getDenChiefMirrorEmail(denChief.id);
+    const mirrorName = `${denChief.firstName} ${denChief.lastName}`;
+
+    const mirrorVolunteer = await prisma.volunteer.upsert({
+      where: { email: mirrorEmail },
+      update: {
+        name: mirrorName,
+        passwordHash: denChief.passwordHash,
+        authTier: AuthTier.DEN_CHIEF,
+      },
+      create: {
+        email: mirrorEmail,
+        name: mirrorName,
+        passwordHash: denChief.passwordHash,
+        authTier: AuthTier.DEN_CHIEF,
+        leaderboardOptIn: true,
+      },
+      select: { id: true },
+    });
+
+    return mirrorVolunteer.id;
+  }
+
   /**
    * Sign up a volunteer for an activity slot
    * Checks capacity constraints before allowing signup
    */
   async signupForActivity(
-    volunteerId: string,
+    userId: string,
     activitySlotId: string,
   ) {
+    const volunteerId = await this.resolveActorVolunteerId(userId);
+
     // Check if activity slot exists and event is not past
     const activitySlot = await prisma.activitySlot.findUnique({
       where: { id: activitySlotId },
@@ -109,9 +170,11 @@ export class SignupService {
    * Can be reversed by signing up again
    */
   async withdrawFromActivity(
-    volunteerId: string,
+    userId: string,
     activitySlotId: string,
   ) {
+    const volunteerId = await this.resolveActorVolunteerId(userId);
+
     // Find signup
     const signup = await prisma.signup.findFirst({
       where: {
@@ -141,7 +204,9 @@ export class SignupService {
    * Get volunteer's signups
    */
   async getVolunteerSignups(volunteerId: string, includeWithdrawn: boolean = false) {
+    const resolvedVolunteerId = await this.resolveActorVolunteerId(volunteerId);
     const where: any = { volunteerId };
+    where.volunteerId = resolvedVolunteerId;
     
     if (!includeWithdrawn) {
       where.withdrawn = false;
