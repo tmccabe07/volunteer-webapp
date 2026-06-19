@@ -50,7 +50,9 @@ export default function ProfileEditPage() {
     if (user && !hasLoadedRef.current) {
       hasLoadedRef.current = true;
       loadProfile();
-      loadAvailableRoles();
+      if (user.authTier !== 'DEN_CHIEF') {
+        loadAvailableRoles();
+      }
     }
   }, [user, authLoading, router]);
 
@@ -171,6 +173,8 @@ export default function ProfileEditPage() {
     return null;
   }
 
+  const isDenChief = profile.authTier === 'DEN_CHIEF';
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="mb-6">
@@ -278,26 +282,38 @@ export default function ProfileEditPage() {
           </Card>
 
           {/* Volunteer Roles */}
-          <RoleSelectionForm
-            availableRoles={availableRoles}
-            assignedRoles={profile.roles.map(r => ({
-              id: r.id,
-              roleId: r.roleId,
-              roleName: r.roleName,
-              roleType: r.roleType,
-              rankLevel: r.rankLevel,
-              denId: r.denId,
-              denName: r.denName,
-              denNumber: r.denNumber,
-              denRankLevel: r.denRankLevel,
-              assignedAt: r.assignedAt,
-            }))}
-            onAssignRole={handleAssignRole}
-            onRemoveRole={handleRemoveRole}
-            loadAssignableDens={(rankLevel?: string) =>
-              volunteerApi.getAssignableDens(rankLevel ? { rankLevel } : undefined)
-            }
-          />
+          {isDenChief ? (
+            <Card className="p-6">
+              <h2 className="text-2xl font-bold mb-4">Role</h2>
+              <div className="p-4 border rounded bg-gray-50">
+                <p className="font-medium">Den Chief</p>
+                <p className="text-sm text-gray-600 mt-1">
+                  Den chief assignments are managed by an admin.
+                </p>
+              </div>
+            </Card>
+          ) : (
+            <RoleSelectionForm
+              availableRoles={availableRoles}
+              assignedRoles={profile.roles.map(r => ({
+                id: r.id,
+                roleId: r.roleId,
+                roleName: r.roleName,
+                roleType: r.roleType,
+                rankLevel: r.rankLevel,
+                denId: r.denId,
+                denName: r.denName,
+                denNumber: r.denNumber,
+                denRankLevel: r.denRankLevel,
+                assignedAt: r.assignedAt,
+              }))}
+              onAssignRole={handleAssignRole}
+              onRemoveRole={handleRemoveRole}
+              loadAssignableDens={(rankLevel?: string) =>
+                volunteerApi.getAssignableDens(rankLevel ? { rankLevel } : undefined)
+              }
+            />
+          )}
 
           {/* Save Button */}
           <div className="flex gap-3 pt-4">

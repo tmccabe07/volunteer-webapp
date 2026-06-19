@@ -11,6 +11,7 @@ import { AppModule } from './app.module';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
+import { sanitizationMiddleware } from './middleware/sanitize';
 
 function isLoopbackIp(ip?: string): boolean {
   if (!ip) {
@@ -38,6 +39,9 @@ async function bootstrap() {
 
   // Cookie parser for JWT tokens in HttpOnly cookies
   app.use(cookieParser());
+
+  // Input sanitization for request bodies, params, and queries
+  app.use(sanitizationMiddleware);
 
   // Global rate limiting (environment-aware)
   const isDevelopment = process.env.NODE_ENV === 'development';

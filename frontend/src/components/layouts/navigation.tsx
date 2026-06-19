@@ -49,15 +49,18 @@ interface NavigationProps {
   accessibleDenNumbers?: number[];
 }
 
-export function Navigation({ userTier = 1, accessibleDenNumbers = [] }: NavigationProps) {
+export function Navigation({ userTier = 1, userAuthTier, accessibleDenNumbers = [] }: NavigationProps) {
   const pathname = usePathname();
 
-  const roleSpecificLinks: NavLink[] = [
-    { href: '/my-cub-scouts', label: 'My Cub Scouts', icon: PawPrint, minTier: 1 },
-  ];
+  const roleSpecificLinks: NavLink[] = [];
 
-  if (userTier >= 2) {
+  if (userAuthTier === 'DEN_CHIEF') {
     roleSpecificLinks.push({ href: '/my-dens', label: 'My Dens', icon: PawPrint, minTier: 2 });
+  } else {
+    roleSpecificLinks.push({ href: '/my-cub-scouts', label: 'My Cub Scouts', icon: PawPrint, minTier: 1 });
+    if (userTier >= 2) {
+      roleSpecificLinks.push({ href: '/my-dens', label: 'My Dens', icon: PawPrint, minTier: 2 });
+    }
   }
 
   const navLinks = [

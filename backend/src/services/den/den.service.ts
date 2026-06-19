@@ -8,6 +8,7 @@ import { RankLevel } from '@prisma/client';
 import prisma from '../../utils/prisma';
 import type { CreateDenDto } from '../../models/den/create-den.dto';
 import type { AssignDenMemberDto } from '../../models/den/assign-member.dto';
+import type { TransferChildDto } from '../../models/den/transfer-child.dto';
 
 /**
  * DenService handles den management and membership operations
@@ -21,6 +22,52 @@ import type { AssignDenMemberDto } from '../../models/den/assign-member.dto';
  */
 @Injectable()
 export class DenService {
+  private async validateTransferTargets(
+    childScoutId: string,
+    fromDenId: string | null | undefined,
+    toDenId: string,
+  ) {
+    const [destinationDen, child] = await Promise.all([
+      prisma.den.findFirst({ where: { id: toDenId, deletedAt: null } }),
+      prisma.childScout.findFirst({ where: { id: childScoutId, deletedAt: null } }),
+    ]);
+
+    if (!destinationDen) {
+      throw new NotFoundException('Destination den not found');
+    }
+
+    if (!child) {
+      throw new NotFoundException('Child scout not found');
+    }
+
+    if (child.currentRank !== destinationDen.rankLevel) {
+      throw new BadRequestException(
+        `Cannot assign ${child.currentRank} scout to ${destinationDen.rankLevel} den. Scout rank must match den rank.`,
+      );
+    }
+
+    const currentMembership = await prisma.denMembership.findFirst({
+      where: {
+        childScoutId,
+        validTo: null,
+      },
+    });
+
+    if (fromDenId && currentMembership?.denId !== fromDenId) {
+      throw new BadRequestException('Child is not currently assigned to the specified source den');
+    }
+
+    if (!fromDenId && currentMembership) {
+      throw new ConflictException('Child already has an active den assignment');
+    }
+
+    if (currentMembership?.denId === toDenId) {
+      throw new ConflictException('Child is already assigned to this den');
+    }
+
+    return { destinationDen, child, currentMembership };
+  }
+
   /**
    * Create a new den with uniqueness validation
    * T061: Den number must be unique among active dens
@@ -272,6 +319,121 @@ export class DenService {
 
     return {
       message: 'Child removed from den successfully',
+    };
+  }
+
+  /**
+   * Transfer a child from one den to another in a single atomic operation.
+   */
+  async transferChild(dto: TransferChildDto, actedByUserId: string) {
+    const effectiveDate = dto.effectiveDate || new Date();
+    const { currentMembership } = await this.validateTransferTargets(
+      dto.childScoutId,
+      dto.fromDenId,
+      dto.toDenId,
+    );
+
+    const result = await prisma.$transaction(async tx => {
+      if (currentMembership) {
+        await tx.denMembership.update({
+          where: { id: currentMembership.id },
+          data: { validTo: effectiveDate },
+        });
+      }
+
+      const newMembership = await tx.denMembership.create({
+        data: {
+          childScoutId: dto.childScoutId,
+          denId: dto.toDenId,
+          validFrom: effectiveDate,
+          assignedBy: actedByUserId,
+          reason: dto.reason,
+        },
+      });
+
+      return { currentMembership, newMembership };
+    });
+
+    return {
+      oldMembership: result.currentMembership
+        ? {
+            id: result.currentMembership.id,
+            denId: result.currentMembership.denId,
+            validFrom: result.currentMembership.validFrom.toISOString(),
+            validTo: effectiveDate.toISOString(),
+          }
+        : null,
+      newMembership: {
+        id: result.newMembership.id,
+        denId: result.newMembership.denId,
+        validFrom: result.newMembership.validFrom.toISOString(),
+        validTo: null,
+        reason: result.newMembership.reason,
+      },
+    };
+  }
+
+  /**
+   * Bulk assign multiple children to dens.
+   */
+  async batchAssignChildren(
+    dto: {
+      assignments: Array<{
+        childScoutId: string;
+        fromDenId?: string | null;
+        toDenId: string;
+      }>;
+      effectiveDate?: Date;
+      reason: string;
+    },
+    actedByUserId: string,
+  ) {
+    const effectiveDate = dto.effectiveDate || new Date();
+    const results: Array<{
+      childScoutId: string;
+      status: 'success' | 'error';
+      error?: string;
+      oldMembership?: { denId: string; validTo: string };
+      newMembership?: { denId: string; validFrom: string };
+    }> = [];
+
+    for (const assignment of dto.assignments) {
+      try {
+        const outcome = await this.transferChild(
+          {
+            childScoutId: assignment.childScoutId,
+            fromDenId: assignment.fromDenId ?? null,
+            toDenId: assignment.toDenId,
+            effectiveDate,
+            reason: dto.reason,
+          },
+          actedByUserId,
+        );
+
+        results.push({
+          childScoutId: assignment.childScoutId,
+          status: 'success',
+          oldMembership: outcome.oldMembership
+            ? { denId: outcome.oldMembership.denId, validTo: outcome.oldMembership.validTo }
+            : undefined,
+          newMembership: {
+            denId: outcome.newMembership.denId,
+            validFrom: outcome.newMembership.validFrom,
+          },
+        });
+      } catch (error: any) {
+        results.push({
+          childScoutId: assignment.childScoutId,
+          status: 'error',
+          error: error instanceof Error ? error.message : 'Failed to assign child',
+        });
+      }
+    }
+
+    return {
+      successful: results.filter(result => result.status === 'success').length,
+      failed: results.filter(result => result.status === 'error').length,
+      results,
     };
   }
 

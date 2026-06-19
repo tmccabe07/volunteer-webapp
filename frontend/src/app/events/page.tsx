@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -19,6 +20,7 @@ import { useAuth } from '@/lib/auth-context';
 import { denService } from '@/services/den.service';
 import { volunteerApi } from '@/services/volunteer.service';
 import { parentLinkService } from '@/services/parentLinkService';
+import { authService } from '@/services/auth.service';
 
 interface DenOption {
   id: string;
@@ -64,6 +66,7 @@ const SCOPE_OPTIONS = [
 
 export default function EventsPage() {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
   
   const [events, setEvents] = useState<EventListItem[]>([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
@@ -115,6 +118,30 @@ export default function EventsPage() {
           return;
         }
 
+        if (user.authTier === 'DEN_CHIEF') {
+          const currentUser = await authService.getCurrentUser();
+          const denAssignments = ((currentUser as { denAssignments?: Array<{
+            denId: string;
+            denName: string;
+            denNumber: number;
+            rankLevel: string;
+            validTo: string | null;
+          }> }).denAssignments ?? []).filter((assignment) => assignment.validTo === null);
+
+          const denList = denAssignments
+            .map((assignment) => ({
+              id: assignment.denId,
+              name: assignment.denName,
+              denNumber: assignment.denNumber,
+              rankLevel: assignment.rankLevel,
+            }))
+            .sort((a, b) => a.denNumber - b.denNumber);
+
+          setAvailableDens(denList);
+          setSelectedDenIds(denList.map((den) => den.id));
+          return;
+        }
+
         if (user.authTier === 'PARENT') {
           const response = await parentLinkService.getMyLinkedCubScouts();
           const dens = new Map<string, DenOption>();
@@ -141,6 +168,27 @@ export default function EventsPage() {
 
     loadFilterOptions();
   }, [user]);
+
+  useEffect(() => {
+    const requestedScope = searchParams.get('scopeType');
+    const requestedDenIds = searchParams
+      .getAll('denIds')
+      .flatMap((value) => value.split(','))
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    if (requestedScope === 'ALL' || requestedScope === 'PACK_WIDE' || requestedScope === 'DEN') {
+      setScopeType(requestedScope);
+    }
+
+    if (requestedDenIds.length > 0 && availableDens.length > 0) {
+      const availableDenIdSet = new Set(availableDens.map((den) => den.id));
+      const filtered = requestedDenIds.filter((denId) => availableDenIdSet.has(denId));
+      if (filtered.length > 0) {
+        setSelectedDenIds(filtered);
+      }
+    }
+  }, [searchParams, availableDens]);
 
   const loadEvents = useCallback(async () => {
     setLoading(true);

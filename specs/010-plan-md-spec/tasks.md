@@ -501,52 +501,52 @@
 
 ### Bulk Operations & Admin Tools
 
-- [ ] T263 [P] [P] Create CSV import endpoint for ChildScout batch creation in backend/src/api/admin/import.controller.ts
-- [ ] T264 [P] [P] Create ImportBatchService in backend/src/services/admin/import-batch.service.ts with row-level error tracking
-- [ ] T265 [P] [P] Create TransferChildDto in backend/src/models/den/transfer-child.dto.ts
-- [ ] T266 [P] Create transfer-child endpoint in backend/src/api/den.controller.ts (atomic close + assign)
-- [ ] T267 [P] Create batch-assign endpoint for den splits in backend/src/api/den.controller.ts
-- [ ] T268 [P] Create annual rollover endpoint in backend/src/api/admin/rollover.controller.ts
-- [ ] T269 [P] Create RolloverService in backend/src/services/admin/rollover.service.ts with dry-run support
-- [ ] T270 [P] Implement den rank advancement logic in RolloverService (TIGER→WOLF→BEAR→WEBELOS→AOL)
-- [ ] T271 [P] Implement AOL den closure logic in RolloverService (mark inactive, preserve history)
-- [ ] T272 Implement child rank advancement in RolloverService (advance all children regardless of completion)
-- [ ] T273 Implement unfinished adventure handling in RolloverService (preserve but mark non-awardable)
-- [ ] T274 [P] Create ImportForm component in frontend/src/components/admin/ImportForm.tsx
-- [ ] T275 [P] Create RolloverDialog component in frontend/src/components/admin/RolloverDialog.tsx with dry-run preview
-- [ ] T276 Create admin bulk operations page in frontend/src/app/admin/bulk-operations/page.tsx
+- [X] T263 [P] [P] Create CSV import endpoint for ChildScout batch creation in backend/src/api/admin/import.controller.ts
+- [X] T264 [P] [P] Create ImportBatchService in backend/src/services/admin/import-batch.service.ts with row-level error tracking
+- [X] T265 [P] [P] Create TransferChildDto in backend/src/models/den/transfer-child.dto.ts
+- [X] T266 [P] Create transfer-child endpoint in backend/src/api/den.controller.ts (atomic close + assign)
+- [X] T267 [P] Create batch-assign endpoint for den splits in backend/src/api/den.controller.ts
+- [X] T268 [P] Create annual rollover endpoint in backend/src/api/admin/rollover.controller.ts
+- [X] T269 [P] Create RolloverService in backend/src/services/admin/rollover.service.ts with dry-run support
+- [X] T270 [P] Implement den rank advancement logic in RolloverService (TIGER→WOLF→BEAR→WEBELOS→AOL)
+- [X] T271 [P] Implement AOL den closure logic in RolloverService (mark inactive, preserve history)
+- [X] T272 Implement child rank advancement in RolloverService (advance all children regardless of completion)
+- [X] T273 Implement unfinished adventure handling in RolloverService (preserve but mark non-awardable)
+- [X] T274 [P] Create ImportForm component in frontend/src/components/admin/ImportForm.tsx
+- [X] T275 [P] Create RolloverDialog component in frontend/src/components/admin/RolloverDialog.tsx with dry-run preview
+- [X] T276 Create admin bulk operations page in frontend/src/app/admin/bulk-operations/page.tsx
 
 ### Data Quality & Validation
 
-- [ ] T277 [P] [P] Create data quality checks service in backend/src/services/admin/data-quality.service.ts
-- [ ] T278 [P] Implement duplicate link detection check in data-quality.service.ts
-- [ ] T279 [P] Implement stale approval detection (requirements older than N days) in data-quality.service.ts
-- [ ] T280 [P] Implement award reconciliation gap detection in data-quality.service.ts
-- [ ] T281 [P] Create DataQualityReport component in frontend/src/components/admin/DataQualityReport.tsx
-- [ ] T282 Create data quality dashboard in frontend/src/app/admin/data-quality/page.tsx
+- [X] T277 [P] [P] Create data quality checks service in backend/src/services/admin/data-quality.service.ts
+- [X] T278 [P] Implement duplicate link detection check in data-quality.service.ts
+- [X] T279 [P] Implement stale approval detection (requirements older than N days) in data-quality.service.ts
+- [X] T280 [P] Implement award reconciliation gap detection in data-quality.service.ts
+- [X] T281 [P] Create DataQualityReport component in frontend/src/components/admin/DataQualityReport.tsx
+- [X] T282 Create data quality dashboard in frontend/src/app/admin/data-quality/page.tsx
 
 ### Documentation
 
-- [ ] T283 [P] [P] Update backend README with advancement operations overview in backend/README.md
-- [ ] T284 [P] [P] Create advancement operations guide in docs/advancement-operations.md
-- [ ] T285 [P] [P] Create den management guide in docs/den-management.md
-- [ ] T286 [P] [P] Create award fulfillment guide in docs/award-fulfillment.md
-- [ ] T287 [P] [P] Update API documentation with new endpoints in docs/api-documentation.md
-- [ ] T288 [P] Add Den Chief management guide in docs/den-chief-management.md
-- [ ] T289 [P] Add rollover procedures guide in docs/annual-rollover-procedures.md
+- [X] T283 [P] [P] Update backend README with advancement operations overview in backend/README.md
+- [X] T284 [P] [P] Create advancement operations guide in docs/advancement-operations.md
+- [X] T285 [P] [P] Create den management guide in docs/den-management.md
+- [X] T286 [P] [P] Create award fulfillment guide in docs/award-fulfillment.md
+- [X] T287 [P] [P] Update API documentation with new endpoints in docs/api-documentation.md
+- [X] T288 [P] Add Den Chief management guide in docs/den-chief-management.md
+- [X] T289 [P] Add rollover procedures guide in docs/annual-rollover-procedures.md
 
 ### Performance & Optimization
 
-- [ ] T290 [P] Add database indexes per contracts/db-constraints.md if not already in migration
-- [ ] T291 [P] Add query optimization for advancement progress calculations (consider materialized views or caching)
+- [X] T290 [P] Add database indexes per contracts/db-constraints.md if not already in migration
+- [X] T291 [P] Add query optimization for advancement progress calculations (consider materialized views or caching)
 - [ ] T292 [P] Add pagination to large list endpoints (child scouts, awards, reconciliation queue)
 
 ### Security & Error Handling
 
-- [ ] T293 [P] Review all authorization guards for proper scope enforcement
-- [ ] T294 [P] Add input sanitization for notes/text fields to prevent XSS
-- [ ] T295 [P] Add rate limiting for bulk operations endpoints
-- [ ] T296 Add comprehensive error logging with structured data
+- [X] T293 [P] Review all authorization guards for proper scope enforcement
+- [X] T294 [P] Add input sanitization for notes/text fields to prevent XSS
+- [X] T295 [P] Add rate limiting for bulk operations endpoints
+- [X] T296 Add comprehensive error logging with structured data
 
 ### Testing & Validation
 

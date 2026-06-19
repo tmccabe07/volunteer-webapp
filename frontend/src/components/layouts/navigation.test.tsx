@@ -39,4 +39,11 @@ describe('Navigation', () => {
 
     expect(screen.getByRole('link', { name: /my dens/i })).toHaveAttribute('href', '/my-dens');
   });
+
+  it('shows My Dens and hides My Cub Scouts for den chief users', () => {
+    render(<Navigation userTier={2} userAuthTier="DEN_CHIEF" />);
+
+    expect(screen.getByRole('link', { name: /my dens/i })).toHaveAttribute('href', '/my-dens');
+    expect(screen.queryByRole('link', { name: /my cub scouts/i })).not.toBeInTheDocument();
+  });
 });

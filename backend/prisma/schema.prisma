@@ -794,6 +794,9 @@ model RequirementProgress {
   scoutbookEnteredBy String?
   scoutbookNotes     String?
 
+  // Rollover control
+  awardable Boolean @default(true)
+
   // Conflict resolution
   version Int @default(1) // Optimistic locking
 
@@ -802,6 +805,7 @@ model RequirementProgress {
   @@index([requirementId])
   @@index([adventureId])
   @@index([scoutbookStatus, completedAt])
+  @@index([childScoutId, adventureId, awardable])
 }
 
 model RequirementCoverageOccurrence {

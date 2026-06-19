@@ -70,6 +70,17 @@ describe('AdminConfigPage', () => {
     expect(screen.getByText('Pack: Pack 123')).toBeInTheDocument();
   });
 
+  it('shows a My Pack link to Den Chiefs management', async () => {
+    render(<AdminConfigPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('pack-config-form')).toBeInTheDocument();
+    });
+
+    const denChiefsLink = screen.getByRole('link', { name: 'Manage Den Chiefs' });
+    expect(denChiefsLink).toHaveAttribute('href', '/admin/den-chiefs');
+  });
+
   it('dispatches packConfigUpdated event after successful update', async () => {
     const eventListener = vi.fn();
     window.addEventListener('packConfigUpdated', eventListener);

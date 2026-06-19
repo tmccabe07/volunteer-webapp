@@ -87,6 +87,19 @@ function sanitizeObject(obj: any): any {
 }
 
 /**
+ * Sanitize a plain object in place.
+ *
+ * Express request.query is exposed through a getter-only property in newer
+ * router implementations, so we must mutate its existing object instead of
+ * reassigning the property.
+ */
+function sanitizeObjectInPlace(target: Record<string, any>): void {
+  for (const key of Object.keys(target)) {
+    target[key] = sanitizeObject(target[key]);
+  }
+}
+
+/**
  * NestJS Middleware for input sanitization
  * 
  * Sanitizes request body, query parameters, and params
@@ -102,12 +115,12 @@ export class SanitizationMiddleware implements NestMiddleware {
 
       // Sanitize query parameters
       if (req.query && typeof req.query === 'object') {
-        req.query = sanitizeObject(req.query);
+        sanitizeObjectInPlace(req.query as Record<string, any>);
       }
 
       // Sanitize route parameters
       if (req.params && typeof req.params === 'object') {
-        req.params = sanitizeObject(req.params);
+        sanitizeObjectInPlace(req.params as Record<string, any>);
       }
 
       next();
@@ -166,12 +179,12 @@ export class ConfigurableSanitizationMiddleware implements NestMiddleware {
 
       // Sanitize query parameters
       if (req.query && typeof req.query === 'object') {
-        req.query = sanitizeObject(req.query);
+        sanitizeObjectInPlace(req.query as Record<string, any>);
       }
 
       // Sanitize route parameters
       if (req.params && typeof req.params === 'object') {
-        req.params = sanitizeObject(req.params);
+        sanitizeObjectInPlace(req.params as Record<string, any>);
       }
 
       next();
