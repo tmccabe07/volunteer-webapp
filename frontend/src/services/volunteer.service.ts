@@ -5,7 +5,7 @@ export interface VolunteerProfile {
   email: string;
   name: string;
   phone: string | null;
-  authTier: 'PARENT' | 'LEADER' | 'ADMIN';
+  authTier: 'PARENT' | 'LEADER' | 'DEN_CHIEF' | 'ADMIN';
   leaderboardOptIn: boolean;
   roles: Array<{
     id: string;
@@ -157,7 +157,7 @@ export class VolunteerApiService {
     page?: number;
     limit?: number;
     search?: string;
-    tier?: 'PARENT' | 'LEADER' | 'ADMIN';
+    tier?: 'PARENT' | 'LEADER' | 'DEN_CHIEF' | 'ADMIN';
     roleId?: string;
   }): Promise<ListVolunteersResponse> {
     const response = await axios.get<ListVolunteersResponse>('/volunteers', { params });

@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button';
 import { VolunteerRoleForm, VolunteerRoleData } from '@/components/forms/config/VolunteerRoleForm';
 import configService, { VolunteerRole } from '@/services/config.service';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
+import ScopedRoleAssignmentForm from '@/components/roles/ScopedRoleAssignmentForm';
+import RoleAssignmentsList from '@/components/roles/RoleAssignmentsList';
+import { roleService, type ScopedRoleAssignment } from '@/services/roleService';
 
 export default function AdminRolesPage() {
   const { user, isLoading } = useRequireTier('ADMIN');
@@ -16,6 +19,8 @@ export default function AdminRolesPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingRole, setEditingRole] = useState<VolunteerRole | null>(null);
   const [deletingRoleId, setDeletingRoleId] = useState<string | null>(null);
+  const [assignments, setAssignments] = useState<ScopedRoleAssignment[]>([]);
+  const [assignmentsError, setAssignmentsError] = useState('');
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -35,6 +40,23 @@ export default function AdminRolesPage() {
       setIsLoadingRoles(false);
     }
   };
+
+  const loadAssignments = async () => {
+    try {
+      const results = await roleService.listAssignments();
+      setAssignments(results);
+      setAssignmentsError('');
+    } catch (err) {
+      console.error('Error loading scoped role assignments:', err);
+      setAssignmentsError('Failed to load scoped role assignments');
+    }
+  };
+
+  useEffect(() => {
+    if (!isLoading && user) {
+      void loadAssignments();
+    }
+  }, [isLoading, user]);
 
   const handleCreate = async (data: Omit<VolunteerRoleData, 'id'>) => {
     try {
@@ -92,6 +114,11 @@ export default function AdminRolesPage() {
   const handleCancelForm = () => {
     setShowForm(false);
     setEditingRole(null);
+  };
+
+  const handleRemoveAssignment = async (assignmentId: string) => {
+    await roleService.removeAssignment(assignmentId);
+    await loadAssignments();
   };
 
   const getRoleTypeLabel = (roleType: string): string => {
@@ -271,6 +298,17 @@ export default function AdminRolesPage() {
               </table>
             </div>
           )}
+        </Card>
+
+        <Card className="p-6 mt-6 bg-blue-50 border-blue-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Scoped Role Assignments</h3>
+          {assignmentsError && (
+            <p className="mb-3 text-sm text-red-600">{assignmentsError}</p>
+          )}
+          <div className="mb-4">
+            <ScopedRoleAssignmentForm onAssigned={loadAssignments} />
+          </div>
+          <RoleAssignmentsList assignments={assignments} onRemove={handleRemoveAssignment} />
         </Card>
 
         <Card className="p-6 mt-6 bg-blue-50 border-blue-200">

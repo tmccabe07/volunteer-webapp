@@ -39,6 +39,8 @@ describe('AuthService', () => {
     // Delete in order to respect foreign key constraints
     await prisma.passwordReset.deleteMany();
     await prisma.notification.deleteMany();
+    await prisma.denChiefAssignment.deleteMany();
+    await prisma.denChief.deleteMany();
     await prisma.volunteerToRole.deleteMany();
     await prisma.childRank.deleteMany();
     await prisma.volunteerPointBalance.deleteMany();
@@ -172,6 +174,35 @@ describe('AuthService', () => {
 
       expect(result).not.toBeNull();
       expect(result!.volunteer).not.toHaveProperty('passwordHash');
+    });
+
+    it('should authenticate a den chief account', async () => {
+      const email = 'denchief@example.com';
+      const password = 'ValidPass123!';
+      const passwordHash = await bcrypt.hash(password, 12);
+
+      const denChief = await prisma.denChief.create({
+        data: {
+          email,
+          firstName: 'Denny',
+          lastName: 'Chief',
+          passwordHash,
+          authTier: 'DEN_CHIEF',
+        },
+      });
+
+      const result = await service.loginVolunteer(email, password);
+
+      expect(result).not.toBeNull();
+      expect(result!.volunteer.email).toBe(email);
+      expect(result!.volunteer.authTier).toBe('DEN_CHIEF');
+
+      const decoded = jwt.verify(
+        result!.accessToken,
+        process.env.JWT_SECRET || 'test-secret'
+      ) as any;
+      expect(decoded.userId).toBe(denChief.id);
+      expect(decoded.authTier).toBe('DEN_CHIEF');
     });
   });
 
@@ -409,6 +440,26 @@ describe('AuthService', () => {
       expect(result.childrenRanks).toBeDefined();
       expect(result.childrenRanks).toHaveLength(1);
       expect(result.childrenRanks[0].rankLevel).toBe('WOLF');
+    });
+
+    it('should return den chief with empty volunteer-shaped profile', async () => {
+      const denChief = await prisma.denChief.create({
+        data: {
+          email: 'profile-denchief@example.com',
+          firstName: 'Profile',
+          lastName: 'Chief',
+          passwordHash: await bcrypt.hash('ValidPass123!', 12),
+          authTier: 'DEN_CHIEF',
+        },
+      });
+
+      const result = await service.getCurrentUser(denChief.id);
+
+      expect(result.id).toBe(denChief.id);
+      expect(result.email).toBe(denChief.email);
+      expect(result.authTier).toBe('DEN_CHIEF');
+      expect(result.roles).toEqual([]);
+      expect(result.childrenRanks).toEqual([]);
     });
 
     it('should throw error if volunteer not found', async () => {

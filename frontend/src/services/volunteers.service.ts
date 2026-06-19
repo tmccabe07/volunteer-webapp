@@ -5,7 +5,7 @@ export interface VolunteerProfile {
   email: string;
   name: string;
   phone: string | null;
-  authTier: 'PARENT' | 'LEADER' | 'ADMIN';
+  authTier: 'PARENT' | 'LEADER' | 'DEN_CHIEF' | 'ADMIN';
   leaderboardOptIn: boolean;
   roles: Array<{
     id: string;

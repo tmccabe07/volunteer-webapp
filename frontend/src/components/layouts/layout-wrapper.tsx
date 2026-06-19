@@ -13,7 +13,7 @@ import { Navigation } from './navigation';
 import { usePathname } from 'next/navigation';
 
 const AUTH_PATHS = ['/auth'];
-const tierLevels = { PARENT: 1, LEADER: 2, ADMIN: 3 };
+const tierLevels = { PARENT: 1, LEADER: 2, DEN_CHIEF: 2, ADMIN: 3 };
 
 interface LayoutWrapperProps {
   children: React.ReactNode;

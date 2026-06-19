@@ -1,17 +1,27 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { awardService, type InventoryItem, type InventoryResponse } from '@/services/awardService';
+import { denService, DenListItem } from '@/services/den.service';
+import { volunteerApi, type VolunteerProfile } from '@/services/volunteer.service';
 import InventoryList from '@/components/awards/InventoryList';
 import AdjustInventoryDialog from '@/components/awards/AdjustInventoryDialog';
 import ReorderAlerts from '@/components/awards/ReorderAlerts';
 import CreateInventoryItemDialog from '@/components/awards/CreateInventoryItemDialog';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select';
 
 export default function InventoryPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isLoading } = useAuth();
 
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -21,16 +31,22 @@ export default function InventoryPage() {
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [isAdjustOpen, setIsAdjustOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [dens, setDens] = useState<DenListItem[]>([]);
+  const requestedDenId = useMemo(() => searchParams.get('denId') || '', [searchParams]);
+  const [selectedDenId, setSelectedDenId] = useState<string>(requestedDenId);
 
-  const loadInventory = useCallback(async () => {
+  const loadInventory = useCallback(async (denId?: string) => {
     try {
       setIsInventoryLoading(true);
       setInventoryError(null);
-      const response = await awardService.getInventory();
+      const response = await awardService.getInventory(denId ? { denId } : undefined);
       setItems(response.data);
       setAlerts(response.reorderAlerts);
-    } catch (err: any) {
-      setInventoryError(err?.response?.data?.error || 'Failed to load inventory');
+    } catch (err: unknown) {
+      const errorMessage = (
+        err as { response?: { data?: { error?: string } } }
+      )?.response?.data?.error;
+      setInventoryError(errorMessage || 'Failed to load inventory');
     } finally {
       setIsInventoryLoading(false);
     }
@@ -47,11 +63,69 @@ export default function InventoryPage() {
     }
   }, [isLoading, user, router]);
 
+  // Load dens for den selector
+  useEffect(() => {
+    if (!user || user.authTier === 'PARENT') return;
+
+    const mapProfileRolesToDens = (roles: VolunteerProfile['roles'] | undefined): DenListItem[] => {
+      const uniqueRoleDens = new Map<string, DenListItem>();
+      (roles || []).forEach((role) => {
+        if (role.denId && role.denName && role.denNumber && role.denRankLevel) {
+          uniqueRoleDens.set(role.denId, {
+            id: role.denId,
+            name: role.denName,
+            denNumber: role.denNumber,
+            rankLevel: role.denRankLevel,
+            isActive: true,
+            currentMemberCount: 0,
+            leaders: [],
+          });
+        }
+      });
+
+      return Array.from(uniqueRoleDens.values()).sort((a, b) => a.denNumber - b.denNumber);
+    };
+
+    const fetchDens = async () => {
+      try {
+        let denOptions: DenListItem[] = [];
+
+        try {
+          const res = await denService.listDens({ isActive: true });
+          denOptions = res.data;
+        } catch {
+          // Fallback keeps selector functional if list endpoint is scoped by role.
+          const profile = user;
+          denOptions = mapProfileRolesToDens(profile.roles);
+
+          if (denOptions.length === 0) {
+            const myProfile = await volunteerApi.getMyProfile();
+            denOptions = mapProfileRolesToDens(myProfile.roles);
+          }
+        }
+
+        setDens(denOptions);
+
+        if (requestedDenId && denOptions.some((den) => den.id === requestedDenId)) {
+          setSelectedDenId(requestedDenId);
+        } else {
+          setSelectedDenId('');
+        }
+      } catch {
+        setDens([]);
+        setSelectedDenId('');
+      }
+    };
+
+    fetchDens();
+  }, [user, requestedDenId]);
+
   useEffect(() => {
     if (!isLoading && user && user.authTier !== 'PARENT') {
-      loadInventory();
+      loadInventory(selectedDenId || undefined);
     }
-  }, [isLoading, user, loadInventory]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, user, selectedDenId]);
 
   if (isLoading) {
     return <div className="container mx-auto px-4 py-8">Loading...</div>;
@@ -68,7 +142,26 @@ export default function InventoryPage() {
         <p className="text-slate-600 mt-2">Monitor stock levels and post manual adjustments with reason tracking.</p>
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <label htmlFor="den-select" className="font-medium">Den Scope:</label>
+          <Select
+            value={selectedDenId || 'ALL'}
+            onValueChange={val => setSelectedDenId(val === 'ALL' ? '' : val)}
+          >
+            <SelectTrigger className="min-w-[180px]">
+              <SelectValue placeholder="All Dens" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Dens</SelectItem>
+              {dens.map((den) => (
+                <SelectItem key={den.id} value={den.id}>
+                  {den.name} (#{den.denNumber})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <Button onClick={() => setIsCreateOpen(true)}>Add Inventory Item</Button>
       </div>
 
@@ -101,13 +194,15 @@ export default function InventoryPage() {
           setIsAdjustOpen(false);
           setSelectedItem(null);
         }}
-        onAdjusted={loadInventory}
+        onAdjusted={() => loadInventory(selectedDenId || undefined)}
       />
 
       <CreateInventoryItemDialog
         open={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
-        onCreated={loadInventory}
+        onCreated={() => loadInventory(selectedDenId || undefined)}
+        denId={selectedDenId || null}
+        dens={dens}
       />
     </div>
   );

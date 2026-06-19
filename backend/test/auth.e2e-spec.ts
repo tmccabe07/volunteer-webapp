@@ -36,6 +36,8 @@ describe('Auth API (e2e)', () => {
 
   afterEach(async () => {
     await prisma.passwordReset.deleteMany();
+    await prisma.denChiefAssignment.deleteMany();
+    await prisma.denChief.deleteMany();
     await prisma.volunteer.deleteMany();
   });
 
@@ -162,6 +164,34 @@ describe('Auth API (e2e)', () => {
           password: 'WrongPassword123!',
         })
         .expect(401);
+    });
+
+    it('should login a den chief account', async () => {
+      const email = 'e2e-denchief@example.com';
+      const password = 'DenChiefPass123!';
+      await prisma.denChief.create({
+        data: {
+          email,
+          firstName: 'E2E',
+          lastName: 'Chief',
+          passwordHash: await bcrypt.hash(password, 12),
+          authTier: 'DEN_CHIEF',
+        },
+      });
+
+      return request(app.getHttpServer())
+        .post('/api/auth/login')
+        .send({
+          email,
+          password,
+        })
+        .expect(201)
+        .expect((res) => {
+          expect(res.body.user.email).toBe(email);
+          expect(res.body.user.authTier).toBe('DEN_CHIEF');
+          expect(res.body).toHaveProperty('accessToken');
+          expect(res.body).toHaveProperty('refreshToken');
+        });
     });
 
     it('should include mustChangePassword flag in response', async () => {

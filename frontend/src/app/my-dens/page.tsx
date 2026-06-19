@@ -300,9 +300,14 @@ export default function MyDensPage() {
             <Card className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold">Upcoming Den Events</h2>
-                <Link href={`/events?scopeType=DEN&denIds=${selectedDen.id}&upcoming=true`}>
-                  <Button variant="outline" size="sm">View All Events</Button>
-                </Link>
+                <div className="flex gap-2">
+                  <Link href={`/events?scopeType=DEN&denIds=${selectedDen.id}&upcoming=true`}>
+                    <Button variant="outline" size="sm">View All Events</Button>
+                  </Link>
+                  <Link href={`/events/create?denId=${selectedDen.id}`}>
+                    <Button size="sm">Create Event</Button>
+                  </Link>
+                </div>
               </div>
 
               {isLoadingDetails ? (
@@ -318,9 +323,12 @@ export default function MyDensPage() {
                         {new Date(event.eventDate).toLocaleDateString()}
                         {event.location ? ` • ${event.location}` : ''}
                       </p>
-                      <div className="mt-2">
+                      <div className="mt-2 flex gap-2">
                         <Link href={`/events/${event.id}`}>
-                          <Button variant="outline" size="sm">Open Event</Button>
+                          <Button variant="outline" size="sm">View Event</Button>
+                        </Link>
+                        <Link href={`/events/${event.id}/edit`}>
+                          <Button size="sm">Edit Event</Button>
                         </Link>
                       </div>
                     </li>
@@ -338,9 +346,14 @@ export default function MyDensPage() {
                   Select a queue to work it here without leaving My Dens.
                 </p>
               </div>
-              <Link href="/awards">
-                <Button variant="outline" size="sm">Open All Awards Queues</Button>
-              </Link>
+              <div className="flex gap-2">
+                <Link href="/awards">
+                  <Button variant="outline" size="sm">Open All Awards Queues</Button>
+                </Link>
+                <Link href={`/awards/inventory?denId=${selectedDen.id}`}>
+                  <Button variant="outline" size="sm">Manage Inventory</Button>
+                </Link>
+              </div>
             </div>
 
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">

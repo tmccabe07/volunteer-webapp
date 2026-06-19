@@ -89,9 +89,10 @@ export class AwardFulfillmentService {
     if (!resolvedInventoryItemId) {
       const inventoryItem = await tx.inventoryItem.upsert({
         where: {
-          itemName_rankLevel: {
+          itemName_rankLevel_denId: {
             itemName,
             rankLevel: award.childScout.currentRank,
+            denId: '', // empty string for pack-wide
           },
         },
         update: {
@@ -157,9 +158,10 @@ export class AwardFulfillmentService {
         })
       : await tx.inventoryItem.findUnique({
           where: {
-            itemName_rankLevel: {
+            itemName_rankLevel_denId: {
               itemName,
               rankLevel: award.childScout.currentRank,
+              denId: '',
             },
           },
           select: {
@@ -220,9 +222,10 @@ export class AwardFulfillmentService {
         })
       : await tx.inventoryItem.findUnique({
           where: {
-            itemName_rankLevel: {
+            itemName_rankLevel_denId: {
               itemName,
               rankLevel: award.childScout.currentRank,
+              denId: '',
             },
           },
           select: { id: true, onHandQuantity: true },
@@ -429,9 +432,10 @@ export class AwardFulfillmentService {
       if (!inventoryCache.has(inventoryKey)) {
         const inventoryItem = await prisma.inventoryItem.findUnique({
           where: {
-            itemName_rankLevel: {
+            itemName_rankLevel_denId: {
               itemName: awardName,
               rankLevel: row.childScout.currentRank,
+              denId: denId,
             },
           },
           select: { onHandQuantity: true },

@@ -150,8 +150,8 @@ export class AwardController {
 
   @Get('inventory')
   @HttpCode(HttpStatus.OK)
-  async getInventory() {
-    return this.inventoryService.getInventory();
+  async getInventory(@Query('denId') denId?: string) {
+    return this.inventoryService.getInventory({ denId });
   }
 
   @Post('inventory')

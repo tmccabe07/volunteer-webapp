@@ -59,6 +59,7 @@ export interface InventoryItem {
   id: string;
   itemName: string;
   rankLevel: string | null;
+  denId?: string | null;
   onHandQuantity: number;
   reorderPoint: number | null;
   unitCost: number | null;
@@ -78,6 +79,7 @@ export interface InventoryResponse {
 export interface CreateInventoryItemInput {
   itemName: string;
   rankLevel?: 'LION' | 'TIGER' | 'WOLF' | 'BEAR' | 'WEBELOS' | 'AOL' | 'PACK_WIDE' | null;
+  denId?: string | null;
   onHandQuantity?: number;
   reorderPoint?: number | null;
   unitCost?: number | null;
@@ -115,8 +117,8 @@ class AwardService {
     return response.data;
   }
 
-  async getInventory(): Promise<InventoryResponse> {
-    const response = await axios.get<InventoryResponse>('/inventory');
+  async getInventory(params?: { denId?: string | null }): Promise<InventoryResponse> {
+    const response = await axios.get<InventoryResponse>('/inventory', { params });
     return response.data;
   }
 

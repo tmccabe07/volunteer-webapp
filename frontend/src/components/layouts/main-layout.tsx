@@ -11,7 +11,7 @@ import { Footer } from './footer';
 interface MainLayoutProps {
   children: React.ReactNode;
   userTier?: number;
-  userAuthTier?: 'PARENT' | 'LEADER' | 'ADMIN';
+  userAuthTier?: 'PARENT' | 'LEADER' | 'DEN_CHIEF' | 'ADMIN';
 }
 
 export function MainLayout({ children, userTier, userAuthTier }: MainLayoutProps) {

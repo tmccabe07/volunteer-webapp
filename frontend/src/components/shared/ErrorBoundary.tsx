@@ -84,6 +84,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   render() {
     if (this.state.hasError) {
+      const message = this.state.error?.message ?? '';
+      const isAccessDenied = message.includes('403') || message.toLowerCase().includes('forbidden');
+
       // Custom fallback UI if provided
       if (this.props.fallback) {
         return this.props.fallback;
@@ -114,8 +117,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-gray-600 dark:text-gray-400">
-                We&apos;re sorry, but something unexpected happened. Please try refreshing the page
-                or contact support if the problem persists.
+                {isAccessDenied
+                  ? 'Access denied for this resource. Your account may not have permission for this page or den scope.'
+                  : 'We\'re sorry, but something unexpected happened. Please try refreshing the page or contact support if the problem persists.'}
               </p>
 
               {process.env.NODE_ENV === 'development' && this.state.error && (

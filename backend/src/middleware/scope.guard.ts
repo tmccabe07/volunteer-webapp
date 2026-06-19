@@ -168,8 +168,30 @@ export abstract class ScopeGuard implements CanActivate {
    */
   protected async hasDenScope(userId: string, denNumber: number): Promise<boolean> {
     const assignments = await this.getUserRoleAssignments(userId);
-    return assignments.some(
+    const hasVolunteerScope = assignments.some(
       a => a.role.scopeType === 'DEN' && a.denNumber === denNumber
     );
+
+    if (hasVolunteerScope) {
+      return true;
+    }
+
+    // Den Chief support: when auth middleware includes denChiefId in request.user,
+    // allow view scope through active DenChiefAssignment.
+    const denChiefAssignments = await this.prisma.denChiefAssignment.findMany({
+      where: {
+        denChiefId: userId,
+        validTo: null,
+      },
+      include: {
+        den: {
+          select: {
+            denNumber: true,
+          },
+        },
+      },
+    });
+
+    return denChiefAssignments.some((assignment) => assignment.den.denNumber === denNumber);
   }
 }
