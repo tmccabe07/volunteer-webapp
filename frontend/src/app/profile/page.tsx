@@ -7,9 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { volunteerApi, type VolunteerProfile } from '@/services/volunteer.service';
 import { childScoutService, type ChildScoutListItem } from '@/services/childScout.service';
+import { calendarFeedService, type CalendarFeedDescriptor } from '@/services/calendarFeed.service';
 import { useAuth } from '@/lib/auth-context';
 import { AchievementHistory } from '@/components/shared/achievements/AchievementHistory';
 import { BadgeTier } from '@/components/shared/points/BadgeTier';
+import { CalendarFeedLinksCard } from '@/components/profile/CalendarFeedLinksCard';
 import { Users } from 'lucide-react';
 
 // Default badge colors (from BadgeTierService)
@@ -48,6 +50,8 @@ export default function ProfilePage() {
   const [linkedCubs, setLinkedCubs] = useState<ChildScoutListItem[]>([]);
   const [linkedCubsLoading, setLinkedCubsLoading] = useState(false);
   const [linkedCubsError, setLinkedCubsError] = useState<string | null>(null);
+  const [calendarFeeds, setCalendarFeeds] = useState<CalendarFeedDescriptor[]>([]);
+  const [calendarFeedsError, setCalendarFeedsError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,6 +71,15 @@ export default function ProfilePage() {
       setIsLoading(true);
       const data = await volunteerApi.getMyProfile();
       setProfile(data);
+
+      try {
+        const feeds = await calendarFeedService.listFeeds();
+        setCalendarFeeds(feeds);
+        setCalendarFeedsError(null);
+      } catch {
+        setCalendarFeeds([]);
+        setCalendarFeedsError('Unable to load calendar subscription links');
+      }
 
       if (data.authTier === 'PARENT') {
         setLinkedCubsLoading(true);
@@ -241,6 +254,25 @@ export default function ProfilePage() {
             <p className="text-gray-600">No roles assigned yet</p>
           )}
         </Card>
+
+        {calendarFeedsError ? (
+          <Card className="p-6 bg-red-50 border-red-200">
+            <p className="text-red-800">{calendarFeedsError}</p>
+          </Card>
+        ) : (
+          <CalendarFeedLinksCard
+            feeds={calendarFeeds}
+            onFeedRegenerated={(updatedFeed) => {
+              setCalendarFeeds((current) =>
+                current.map((feed) =>
+                  feed.scopeType === updatedFeed.scopeType && feed.denId === updatedFeed.denId
+                    ? { ...feed, feedUrl: updatedFeed.feedUrl }
+                    : feed,
+                ),
+              );
+            }}
+          />
+        )}
 
         {profile.authTier === 'PARENT' && (
           <Card className="p-6">
