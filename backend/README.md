@@ -89,6 +89,13 @@ CORS_ORIGIN="http://localhost:3000"
 # Rate Limiting
 RATE_LIMIT_TTL=900000  # 15 minutes in milliseconds
 RATE_LIMIT_MAX=5       # Max requests per TTL
+
+# Calendar feed URLs (required in production)
+# Set this to the public base URL of the backend so that .ics feed links
+# embedded in the app point to the correct host instead of localhost.
+# Example: BACKEND_PUBLIC_URL="https://api.yourdomain.com"
+# If unset, the URL is inferred from the incoming request (fine for local dev).
+BACKEND_PUBLIC_URL=
 ```
 
 **Security Note**: Never commit the `.env` file to version control. Always generate strong, unique secrets for production.

@@ -219,6 +219,91 @@ Change current user's password (required for users with temporary passwords).
 
 Get current authenticated user info.
 
+---
+
+## Calendar Feeds
+
+Calendar feed endpoints provide scoped iCalendar subscription links (pack and den) for authenticated users, including DEN_CHIEF accounts.
+
+### GET /api/calendar/feeds/:feedToken.ics
+
+Public tokenized iCalendar feed endpoint for Google Calendar "From URL" subscriptions.
+
+**Authentication**: None (token in URL)
+
+**Headers**:
+- `Content-Type: text/calendar; charset=utf-8`
+- `Cache-Control: no-store, no-cache, must-revalidate, private`
+
+**Response (200 OK)**:
+- RFC-compatible iCalendar payload (`BEGIN:VCALENDAR ... END:VCALENDAR`)
+
+**Error Responses**:
+- `404 Not Found`: Invalid or revoked token
+- `429 Too Many Requests`: Throttled
+
+### GET /api/me/calendar-feeds
+
+List the current user's scoped feed links.
+
+**Authentication**: Required (JWT cookie)
+
+**Response (200 OK)**:
+```json
+[
+  {
+    "scopeType": "PACK",
+    "denId": null,
+    "displayName": "Pack 123",
+    "feedUrl": "https://example.com/api/calendar/feeds/<token>.ics",
+    "isActive": true,
+    "lastAccessedAt": "2026-06-19T20:00:00.000Z"
+  },
+  {
+    "scopeType": "DEN",
+    "denId": "clx...",
+    "displayName": "Den 8",
+    "feedUrl": "https://example.com/api/calendar/feeds/<token>.ics",
+    "isActive": true,
+    "lastAccessedAt": null
+  }
+]
+```
+
+### POST /api/me/calendar-feeds/regenerate
+
+Regenerate one scope token and revoke the previous active token for that scope.
+
+**Authentication**: Required (JWT cookie)
+
+**Request Body**:
+```json
+{
+  "scopeType": "DEN",
+  "denId": "clx..."
+}
+```
+
+For pack scope:
+```json
+{
+  "scopeType": "PACK"
+}
+```
+
+**Response (200 OK)**:
+```json
+{
+  "scopeType": "DEN",
+  "denId": "clx...",
+  "feedUrl": "https://example.com/api/calendar/feeds/<new-token>.ics"
+}
+```
+
+**Behavior Notes**:
+- Google Calendar refreshes subscribed URLs on its own cadence; updates are pull-based and may take hours.
+- ICS reminder metadata is included as best effort, but Google subscription calendars may ignore feed-level reminders.
+
 **Authorization**: Bearer token required
 
 **Response (200 OK)**:

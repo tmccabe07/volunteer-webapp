@@ -1,0 +1,161 @@
+openapi: 3.1.0
+info:
+  title: Calendar Feed API
+  version: 1.0.0
+  description: Scoped iCalendar subscription endpoints for pack and den event feeds.
+servers:
+  - url: http://localhost:3001
+paths:
+  /api/calendar/feeds/{feedToken}.ics:
+    get:
+      summary: Fetch scoped iCalendar feed by opaque token
+      description: Public endpoint consumed by external calendar providers such as Google Calendar.
+      parameters:
+        - name: feedToken
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 32
+      responses:
+        '200':
+          description: Valid iCalendar feed
+          headers:
+            Content-Type:
+              schema:
+                type: string
+                example: text/calendar; charset=utf-8
+          content:
+            text/calendar:
+              schema:
+                type: string
+                description: RFC-compatible iCalendar payload
+        '403':
+          description: Token is revoked, expired, or no longer authorized for scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Unknown or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/me/calendar-feeds:
+    get:
+      summary: List current user's available calendar subscription links
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Available pack and den feed links
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [packFeed, denFeeds]
+                properties:
+                  packFeed:
+                    $ref: '#/components/schemas/FeedLink'
+                  denFeeds:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FeedLink'
+        '401':
+          description: Authentication required
+
+  /api/me/calendar-feeds/regenerate:
+    post:
+      summary: Regenerate feed token for a specific scope
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegenerateFeedRequest'
+      responses:
+        '200':
+          description: Scope token regenerated and replacement link returned
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [feed]
+                properties:
+                  feed:
+                    $ref: '#/components/schemas/FeedLink'
+        '400':
+          description: Invalid scope payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+        '403':
+          description: User does not have access to requested scope
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: access_token
+  schemas:
+    FeedScopeType:
+      type: string
+      enum: [PACK, DEN]
+
+    FeedLink:
+      type: object
+      required: [scopeType, displayName, url, active]
+      properties:
+        scopeType:
+          $ref: '#/components/schemas/FeedScopeType'
+        denId:
+          type: string
+          nullable: true
+        displayName:
+          type: string
+          description: For den scope this must be den name only, excluding rank labels.
+        url:
+          type: string
+          format: uri
+        active:
+          type: boolean
+        lastAccessedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    RegenerateFeedRequest:
+      type: object
+      required: [scopeType]
+      properties:
+        scopeType:
+          $ref: '#/components/schemas/FeedScopeType'
+        denId:
+          type: string
+          nullable: true
+      allOf:
+        - if:
+            properties:
+              scopeType:
+                const: DEN
+          then:
+            required: [denId]
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+        details:
+          type: array
+          items:
+            type: string

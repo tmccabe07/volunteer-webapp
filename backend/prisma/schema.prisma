@@ -39,6 +39,7 @@ model Volunteer {
   tierHistory        BadgeTierHistory[]
   parentChildLinks   ParentChildLink[]      @relation("ParentLinks")
   linkApprovals      ParentChildLink[]      @relation("LinkApprovals")
+  calendarFeedTokens CalendarFeedToken[] @relation("VolunteerCalendarFeedTokens")
 
   // Timestamps
   createdAt DateTime  @default(now())
@@ -581,6 +582,7 @@ model Den {
   denChiefAssignments DenChiefAssignment[] // Youth leaders assigned to help
   leaderAssignments   VolunteerToRole[] // Leaders assigned to this den
   inventoryItems      InventoryItem[]
+  calendarFeedTokens  CalendarFeedToken[]
 
   // Audit
   createdAt DateTime  @default(now())
@@ -630,6 +632,7 @@ model DenChief {
 
   // Relationships
   denAssignments DenChiefAssignment[]
+  calendarFeedTokens CalendarFeedToken[] @relation("DenChiefCalendarFeedTokens")
 
   // Audit
   createdAt DateTime  @default(now())
@@ -689,6 +692,69 @@ enum LinkStatus {
   APPROVED // Parent has access to child record
   REJECTED // Request denied
   REVOKED // Previously approved link removed
+}
+
+model CalendarFeedToken {
+  id            String                 @id @default(cuid())
+  volunteerId   String?
+  volunteer     Volunteer?             @relation("VolunteerCalendarFeedTokens", fields: [volunteerId], references: [id], onDelete: Cascade)
+  denChiefId    String?
+  denChief      DenChief?              @relation("DenChiefCalendarFeedTokens", fields: [denChiefId], references: [id], onDelete: Cascade)
+  scopeType     CalendarFeedScope
+  denId         String?
+  den           Den?                   @relation(fields: [denId], references: [id], onDelete: SetNull)
+  tokenHash     String                 @unique
+  tokenPrefix   String
+  status        CalendarFeedTokenStatus @default(ACTIVE)
+  revokedReason CalendarFeedRevokedReason?
+  lastAccessedAt DateTime?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  revokedAt     DateTime?
+
+  accessAudits FeedAccessAudit[]
+
+  @@index([volunteerId, status])
+  @@index([denChiefId, status])
+  @@index([scopeType, denId, status])
+  @@index([denId, status])
+}
+
+enum CalendarFeedScope {
+  PACK
+  DEN
+}
+
+enum CalendarFeedTokenStatus {
+  ACTIVE
+  REVOKED
+}
+
+enum CalendarFeedRevokedReason {
+  USER_REGENERATED
+  ACCESS_REMOVED
+  LEFT_PACK
+  ADMIN_REVOKED
+}
+
+model FeedAccessAudit {
+  id            String                   @id @default(cuid())
+  tokenId       String?
+  token         CalendarFeedToken?       @relation(fields: [tokenId], references: [id], onDelete: SetNull)
+  outcome       CalendarFeedAccessOutcome
+  requestedAt   DateTime                 @default(now())
+  requesterIpHash String?
+  userAgent     String?
+
+  @@index([tokenId, requestedAt])
+  @@index([outcome, requestedAt])
+}
+
+enum CalendarFeedAccessOutcome {
+  SUCCESS
+  INVALID_TOKEN
+  REVOKED_TOKEN
+  FORBIDDEN_SCOPE
 }
 
 // Rank catalog entry

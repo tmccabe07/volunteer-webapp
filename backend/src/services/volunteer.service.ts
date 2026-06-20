@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { AuthTier, RankLevel, RoleType } from '@prisma/client';
+import { AuthTier, CalendarFeedRevokedReason, RankLevel, RoleType } from '@prisma/client';
 import prisma from '../utils/prisma';
 import { BadgeTierService } from './badge-tier.service';
 import { PointsService } from './points.service';
+import { CalendarFeedTokenService } from './calendar-feed-token.service';
 
 /**
  * VolunteerService handles volunteer profile management, role assignments,
@@ -12,7 +13,8 @@ import { PointsService } from './points.service';
 export class VolunteerService {
   constructor(
     private readonly badgeTierService: BadgeTierService,
-    private readonly pointsService: PointsService
+    private readonly pointsService: PointsService,
+    private readonly calendarFeedTokenService: CalendarFeedTokenService,
   ) {}
   /**
    * Get volunteer profile with roles, ranks, and point balance
@@ -587,6 +589,11 @@ export class VolunteerService {
       where: { id: volunteerId },
       data: { deletedAt: new Date() },
     });
+
+    await this.calendarFeedTokenService.revokeAllForVolunteer(
+      volunteerId,
+      CalendarFeedRevokedReason.LEFT_PACK,
+    );
 
     // Withdraw all future signups
     await prisma.signup.updateMany({

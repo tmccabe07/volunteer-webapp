@@ -18,6 +18,7 @@ import { ParentChildLinkModule } from './modules/parent-child-link.module';
 import { AwardModule } from './modules/award.module';
 import { RolesModule } from './modules/roles.module';
 import { DenChiefModule } from './modules/den-chief.module';
+import { CalendarFeedModule } from './modules/calendar-feed.module';
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const THROTTLE_DISABLED = process.env.DISABLE_THROTTLE === 'true';
@@ -49,6 +50,7 @@ const THROTTLE_TTL_MS = Number(process.env.THROTTLE_TTL_MS ?? 60_000);
     AwardModule,
     RolesModule,
     DenChiefModule,
+    CalendarFeedModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -4,11 +4,12 @@ import {
   ConflictException,
   BadRequestException,
 } from '@nestjs/common';
-import { RankLevel } from '@prisma/client';
+import { CalendarFeedRevokedReason, CalendarFeedScope, RankLevel } from '@prisma/client';
 import prisma from '../../utils/prisma';
 import type { CreateDenDto } from '../../models/den/create-den.dto';
 import type { AssignDenMemberDto } from '../../models/den/assign-member.dto';
 import type { TransferChildDto } from '../../models/den/transfer-child.dto';
+import { CalendarFeedTokenService } from '../calendar-feed-token.service';
 
 /**
  * DenService handles den management and membership operations
@@ -22,6 +23,30 @@ import type { TransferChildDto } from '../../models/den/transfer-child.dto';
  */
 @Injectable()
 export class DenService {
+  constructor(private readonly calendarFeedTokenService: CalendarFeedTokenService) {}
+
+  private async revokeParentDenTokensForChild(denId: string, childScoutId: string) {
+    const approvedParents = await prisma.parentChildLink.findMany({
+      where: {
+        childScoutId,
+        status: 'APPROVED',
+      },
+      select: {
+        parentId: true,
+      },
+    });
+
+    for (const parent of approvedParents) {
+      await this.calendarFeedTokenService.revokeScopeToken(
+        parent.parentId,
+        'PARENT',
+        CalendarFeedScope.DEN,
+        denId,
+        CalendarFeedRevokedReason.ACCESS_REMOVED,
+      );
+    }
+  }
+
   private async validateTransferTargets(
     childScoutId: string,
     fromDenId: string | null | undefined,
@@ -260,6 +285,16 @@ export class DenService {
     }
 
     // T062: Close any existing current membership in another den
+    const currentMemberships = await prisma.denMembership.findMany({
+      where: {
+        childScoutId: dto.childScoutId,
+        validTo: null,
+      },
+      select: {
+        denId: true,
+      },
+    });
+
     await prisma.denMembership.updateMany({
       where: {
         childScoutId: dto.childScoutId,
@@ -269,6 +304,10 @@ export class DenService {
         validTo: effectiveDate,
       },
     });
+
+    for (const membership of currentMemberships) {
+      await this.revokeParentDenTokensForChild(membership.denId, dto.childScoutId);
+    }
 
     // Create new membership
     const membership = await prisma.denMembership.create({
@@ -317,6 +356,8 @@ export class DenService {
       },
     });
 
+    await this.revokeParentDenTokensForChild(denId, childScoutId);
+
     return {
       message: 'Child removed from den successfully',
     };
@@ -353,6 +394,10 @@ export class DenService {
 
       return { currentMembership, newMembership };
     });
+
+    if (result.currentMembership) {
+      await this.revokeParentDenTokensForChild(result.currentMembership.denId, dto.childScoutId);
+    }
 
     return {
       oldMembership: result.currentMembership

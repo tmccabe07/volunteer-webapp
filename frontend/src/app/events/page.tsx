@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card } from '@/components/ui/card';
-import { PlusCircle, Calendar } from 'lucide-react';
+import { PlusCircle, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import Link from 'next/link';
 import EventCard from '@/components/shared/events/EventCard';
 import eventsService from '@/services/events.service';
@@ -21,6 +21,8 @@ import { denService } from '@/services/den.service';
 import { volunteerApi } from '@/services/volunteer.service';
 import { parentLinkService } from '@/services/parentLinkService';
 import { authService } from '@/services/auth.service';
+import { calendarFeedService, type CalendarFeedDescriptor } from '@/services/calendarFeed.service';
+import { CalendarFeedLinksCard } from '@/components/profile/CalendarFeedLinksCard';
 
 interface DenOption {
   id: string;
@@ -82,6 +84,17 @@ export default function EventsPage() {
   const [mySignups, setMySignups] = useState(false);
 
   const canCreateEvents = user?.authTier === 'LEADER' || user?.authTier === 'ADMIN';
+
+  const [calendarFeeds, setCalendarFeeds] = useState<CalendarFeedDescriptor[]>([]);
+  const [calendarFeedsError, setCalendarFeedsError] = useState<string | null>(null);
+  const [showCalendarSubscribe, setShowCalendarSubscribe] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    calendarFeedService.listFeeds()
+      .then((feeds) => { setCalendarFeeds(feeds); setCalendarFeedsError(null); })
+      .catch(() => { setCalendarFeedsError('Unable to load calendar subscription links'); });
+  }, [user]);
 
   useEffect(() => {
     const loadFilterOptions = async () => {
@@ -255,7 +268,7 @@ export default function EventsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 animate-fade-in">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex justify-between items-center mb-4">
         <div>
           <div className="flex items-center gap-3 mb-2">
             <Calendar className="h-9 w-9 text-[hsl(var(--cub-blue))]" />
@@ -263,15 +276,52 @@ export default function EventsPage() {
           </div>
           <p className="text-lg text-gray-600 mt-1">Sign up for events to help your pack and earn points</p>
         </div>
-        {canCreateEvents && (
-          <Link href="/events/create">
-            <Button variant="outline">
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Create Event
-            </Button>
-          </Link>
-        )}
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowCalendarSubscribe((prev) => !prev)}
+          >
+            <Calendar className="h-4 w-4 mr-2" />
+            Subscribe to Calendar
+            {showCalendarSubscribe ? (
+              <ChevronUp className="h-4 w-4 ml-2" />
+            ) : (
+              <ChevronDown className="h-4 w-4 ml-2" />
+            )}
+          </Button>
+          {canCreateEvents && (
+            <Link href="/events/create">
+              <Button variant="outline">
+                <PlusCircle className="h-4 w-4 mr-2" />
+                Create Event
+              </Button>
+            </Link>
+          )}
+        </div>
       </div>
+
+      {showCalendarSubscribe && (
+        <div className="mb-6">
+          {calendarFeedsError ? (
+            <Card className="p-4 bg-red-50 border-red-200">
+              <p className="text-red-800">{calendarFeedsError}</p>
+            </Card>
+          ) : (
+            <CalendarFeedLinksCard
+              feeds={calendarFeeds}
+              onFeedRegenerated={(updatedFeed) => {
+                setCalendarFeeds((current) =>
+                  current.map((feed) =>
+                    feed.scopeType === updatedFeed.scopeType && feed.denId === updatedFeed.denId
+                      ? { ...feed, feedUrl: updatedFeed.feedUrl }
+                      : feed,
+                  ),
+                );
+              }}
+            />
+          )}
+        </div>
+      )}
 
       {/* Filters */}
       <Card className="p-4 mb-6">

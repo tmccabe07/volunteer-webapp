@@ -8,10 +8,14 @@ import * as bcrypt from 'bcrypt';
 import prisma from '../../utils/prisma';
 import { CreateDenChiefDto } from '../../models/den-chief/create-den-chief.dto';
 import { AssignDenChiefDto } from '../../models/den-chief/assign-den-chief.dto';
+import { CalendarFeedTokenService } from '../calendar-feed-token.service';
+import { CalendarFeedRevokedReason, CalendarFeedScope } from '@prisma/client';
 
 @Injectable()
 export class DenChiefService {
   private readonly BCRYPT_ROUNDS = 12;
+
+  constructor(private readonly calendarFeedTokenService: CalendarFeedTokenService) {}
 
   async createDenChief(data: CreateDenChiefDto) {
     const existing = await prisma.denChief.findFirst({
@@ -120,7 +124,7 @@ export class DenChiefService {
   async removeAssignment(denChiefId: string, assignmentId: string) {
     const assignment = await prisma.denChiefAssignment.findFirst({
       where: { id: assignmentId, denChiefId },
-      select: { id: true, validTo: true },
+      select: { id: true, validTo: true, denId: true },
     });
 
     if (!assignment) {
@@ -135,6 +139,14 @@ export class DenChiefService {
       where: { id: assignmentId },
       data: { validTo: new Date() },
     });
+
+    await this.calendarFeedTokenService.revokeScopeToken(
+      denChiefId,
+      'DEN_CHIEF',
+      CalendarFeedScope.DEN,
+      assignment.denId,
+      CalendarFeedRevokedReason.ACCESS_REMOVED,
+    );
   }
 
   private toResponse(denChief: any) {
