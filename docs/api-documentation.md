@@ -15,8 +15,9 @@
 5. [Administrative Tasks](#administrative-tasks)
 6. [Reports](#reports)
 7. [Pack Configuration](#pack-configuration)
-8. [Error Responses](#error-responses)
-9. [Authorization Tiers](#authorization-tiers)
+8. [Email Notifications](#email-notifications)
+9. [Error Responses](#error-responses)
+10. [Authorization Tiers](#authorization-tiers)
 
 ---
 
@@ -1467,6 +1468,100 @@ Add a new activity type.
 **Error Responses**:
 - `400 Bad Request`: pointValue doesn't match category range
 - `409 Conflict`: Activity type with this name already exists
+
+---
+
+## Email Notifications
+
+Feature 012. Allows leaders and admins to send transactional emails to pack members. Emails are sent immediately via Resend (production) or logged to stdout (`EMAIL_TRANSPORT=console`, local dev).
+
+**Auth**: All endpoints require `LEADER` or `ADMIN` unless noted.
+
+### GET /api/events/:id/email-preview
+
+Returns the default recipient count and cooldown status before the sender confirms.
+
+**Response (200)**:
+```json
+{
+  "defaultRecipientCount": 12,
+  "recentSend": {
+    "sentAt": "2026-06-20T14:00:00Z",
+    "withinCooldown": false
+  }
+}
+```
+`recentSend` is `null` if no prior send exists.
+
+---
+
+### POST /api/events/:id/notify-members
+
+Sends an event notification to all scope-resolved members plus any additional recipients.
+
+**Request Body**:
+```json
+{ "additionalRecipientIds": ["clzzz"] }
+```
+`additionalRecipientIds` is optional. Each entry is a volunteer or den chief ID. Scope recipients are deduplicated automatically.
+
+**Response (200)**: `{ emailLogId, recipientCount, skippedCount, failedCount, status, withinCooldownWarning }`
+
+**Error Responses**:
+- `400 Bad Request`: No recipients found
+- `404 Not Found`: Event not found
+
+---
+
+### POST /api/events/:id/send-completion-summary
+
+Sends a post-event summary to scope-resolved members. Only available when `isComplete = true`.
+
+**Request Body**: same shape as `notify-members`
+
+**Response (200)**: same shape as `notify-members`
+
+**Error Responses**:
+- `400 Bad Request`: Event is not marked complete
+- `404 Not Found`: Event not found
+
+---
+
+### POST /api/admin-tasks/:id/send-reminder
+
+**Auth**: `ADMIN` only. Sends a reminder to all volunteers holding roles assigned to the task. Only available when the task is overdue or due today. Hard 24-hour cooldown enforced.
+
+**Response (200)**: `{ emailLogId, recipientCount, skippedCount, failedCount, status }`
+
+**Error Responses**:
+- `400 Bad Request`: Task not overdue/due today
+- `404 Not Found`: Task not found
+- `409 Conflict`: `{ error, lastSentAt }` — already sent within 24 hours
+
+---
+
+### GET /api/events/:id/email-logs
+
+Returns the send history for an event.
+
+**Response (200)**: Array of `{ id, templateType, senderName, recipientCount, skippedCount, failedCount, status, sentAt }`
+
+---
+
+### GET /api/pack/members/search?q=
+
+Searches all active pack members (volunteers and den chiefs) by name. Used by the additional recipient picker.
+
+**Query**: `q` — partial name string (min 2 chars)
+
+**Response (200)**:
+```json
+[
+  { "id": "clxxx", "name": "Jane Smith", "type": "volunteer", "email": "jane@example.com" },
+  { "id": "clyyy", "name": "Alex Jones", "type": "denChief", "email": "alex@example.com" }
+]
+```
+Members with no email address are excluded.
 
 ---
 

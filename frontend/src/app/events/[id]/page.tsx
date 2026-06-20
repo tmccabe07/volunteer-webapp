@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Edit, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 import EventDetails from '@/components/shared/events/EventDetails';
+import NotifyMembersDialog from '@/components/shared/events/NotifyMembersDialog';
 import eventsService from '@/services/events.service';
 import { attendanceService } from '@/services/attendance.service';
 import { useAuth } from '@/lib/auth-context';
@@ -135,6 +136,12 @@ export default function EventDetailPage() {
         </Link>
 
         <div className="flex gap-2">
+          {canEdit && (
+            <NotifyMembersDialog eventId={eventId} mode="notify" />
+          )}
+          {canEdit && event.isComplete && (
+            <NotifyMembersDialog eventId={eventId} mode="summary" />
+          )}
           {canComplete && (
             <Link href={`/events/${eventId}/closeout`}>
               <Button>

@@ -19,6 +19,7 @@ import { AwardModule } from './modules/award.module';
 import { RolesModule } from './modules/roles.module';
 import { DenChiefModule } from './modules/den-chief.module';
 import { CalendarFeedModule } from './modules/calendar-feed.module';
+import { EmailNotificationModule } from './modules/email-notification.module';
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const THROTTLE_DISABLED = process.env.DISABLE_THROTTLE === 'true';
@@ -51,6 +52,7 @@ const THROTTLE_TTL_MS = Number(process.env.THROTTLE_TTL_MS ?? 60_000);
     RolesModule,
     DenChiefModule,
     CalendarFeedModule,
+    EmailNotificationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

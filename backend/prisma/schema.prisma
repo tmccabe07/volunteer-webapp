@@ -1115,6 +1115,61 @@ enum PromptStatus {
   DISMISSED // Parent dismissed prompt
 }
 
+// ============================================================================
+// Email Notifications (Feature: 012-email-integration)
+// ============================================================================
+
+model EmailLog {
+  id             String          @id @default(cuid())
+  senderId       String
+  templateType   EmailTemplate
+  eventId        String?
+  taskId         String?
+  recipientCount Int             @default(0)
+  skippedCount   Int             @default(0)
+  failedCount    Int             @default(0)
+  status         EmailSendStatus @default(SENT)
+  sentAt         DateTime        @default(now())
+
+  recipients EmailRecipientLog[]
+
+  @@index([eventId, templateType, sentAt])
+  @@index([taskId, templateType, sentAt])
+  @@index([senderId])
+}
+
+model EmailRecipientLog {
+  id             String               @id @default(cuid())
+  emailLogId     String
+  emailLog       EmailLog             @relation(fields: [emailLogId], references: [id], onDelete: Cascade)
+  recipientId    String
+  recipientEmail String
+  status         EmailRecipientStatus @default(SENT)
+  failureReason  String?
+  sentAt         DateTime             @default(now())
+
+  @@index([emailLogId])
+  @@index([recipientId])
+}
+
+enum EmailTemplate {
+  EVENT_NOTIFICATION
+  EVENT_COMPLETION_SUMMARY
+  TASK_REMINDER
+}
+
+enum EmailSendStatus {
+  SENT
+  PARTIAL
+  FAILED
+}
+
+enum EmailRecipientStatus {
+  SENT
+  SKIPPED
+  FAILED
+}
+
 // CSV import job record for Scoutbook roster export processing
 model ImportBatch {
   id          String        @id @default(cuid())
