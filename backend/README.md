@@ -96,6 +96,14 @@ RATE_LIMIT_MAX=5       # Max requests per TTL
 # Example: BACKEND_PUBLIC_URL="https://api.yourdomain.com"
 # If unset, the URL is inferred from the incoming request (fine for local dev).
 BACKEND_PUBLIC_URL=
+
+# Email (Feature: 012-email-integration)
+# EMAIL_TRANSPORT: console (default, logs to stdout) | resend (production)
+# EMAIL_FROM: sender address shown to recipients
+# RESEND_API_KEY: required only when EMAIL_TRANSPORT=resend
+EMAIL_TRANSPORT=console
+EMAIL_FROM=noreply@cubscouts.local
+# RESEND_API_KEY=re_xxxxxxxxxxxx
 ```
 
 **Security Note**: Never commit the `.env` file to version control. Always generate strong, unique secrets for production.

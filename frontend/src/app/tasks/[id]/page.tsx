@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Edit, CheckCircle, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import TaskDetails from '@/components/shared/tasks/TaskDetails';
+import SendReminderButton from '@/components/admin/tasks/SendReminderButton';
 import adminTasksService from '@/services/admin-tasks.service';
 import { useAuth } from '@/lib/auth-context';
 
@@ -154,6 +155,9 @@ export default function TaskDetailPage() {
         </Link>
 
         <div className="flex gap-2">
+          {user?.authTier === 'ADMIN' && task?.dueDate && (
+            <SendReminderButton taskId={taskId} dueDate={task.dueDate} />
+          )}
           {canComplete && (
             <Button onClick={handleComplete} disabled={completing} variant="outline">
               <CheckCircle className="h-4 w-4 mr-2" />
