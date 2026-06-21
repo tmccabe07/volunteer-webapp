@@ -3,6 +3,9 @@
 import { useRequireTier } from '@/lib/auth-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import ImportForm from '@/components/admin/ImportForm';
+import ImportLeadersForm from '@/components/admin/ImportLeadersForm';
+import ImportParentLinksForm from '@/components/admin/ImportParentLinksForm';
+import ImportAdventuresForm from '@/components/admin/ImportAdventuresForm';
 import RolloverDialog from '@/components/admin/RolloverDialog';
 
 export default function AdminBulkOperationsPage() {
@@ -27,31 +30,64 @@ export default function AdminBulkOperationsPage() {
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Admin Tools</p>
           <h1 className="mt-2 text-4xl font-bold tracking-tight text-slate-950">Bulk Operations</h1>
           <p className="mt-3 max-w-3xl text-base text-slate-600">
-            Import child records, preview the annual rollover, and execute year-end changes from one place.
+            Import records and manage year-end changes from one place.
           </p>
         </section>
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          <ImportForm />
-          <RolloverDialog />
+        <div>
+          <h2 className="mb-4 text-lg font-semibold text-slate-700">Cub Scouts</h2>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <ImportForm />
+            <ImportParentLinksForm />
+          </div>
+        </div>
+
+        <div>
+          <h2 className="mb-4 text-lg font-semibold text-slate-700">Leaders</h2>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <ImportLeadersForm />
+          </div>
+        </div>
+
+        <div>
+          <h2 className="mb-4 text-lg font-semibold text-slate-700">Program Catalog</h2>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <ImportAdventuresForm />
+          </div>
+        </div>
+
+        <div>
+          <h2 className="mb-4 text-lg font-semibold text-slate-700">Year-End</h2>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <RolloverDialog />
+          </div>
         </div>
 
         <Card className="bg-white/95 shadow-md">
           <CardHeader>
             <CardTitle>Operational Notes</CardTitle>
             <CardDescription>
-              These tools are intended for pack administrators and preserve historical den and child records.
+              These tools are intended for pack administrators and preserve historical records.
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-3 text-sm text-slate-600 md:grid-cols-3">
+          <CardContent className="grid gap-3 text-sm text-slate-600 md:grid-cols-2 lg:grid-cols-4">
             <div>
-              CSV import creates new cub scout records and can attach a starting den when the row includes one.
+              Cub scout import creates new records and can attach a starting den when the row
+              includes one.
             </div>
             <div>
-              Transfer and batch assign endpoints use temporal membership records so den history stays intact.
+              Parent-link import creates approved links directly, bypassing the approval workflow.
+              New parent accounts receive a 72-hour invite link.
             </div>
             <div>
-              Dry-run rollovers let you preview the next program year before advancing den and child ranks.
+              Leader import sets the account tier and den assignment. New accounts receive a 72-hour
+              invite link. Den role assignment requires matching VolunteerRole records to be
+              pre-configured.
+            </div>
+            <div>
+              Adventure import upserts the catalog — existing adventures and requirements are updated
+              in place. Dry-run rollovers let you preview the next program year before advancing
+              ranks.
             </div>
           </CardContent>
         </Card>

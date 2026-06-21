@@ -56,6 +56,17 @@ export interface RolloverBatchStatus {
   }>;
 }
 
+export interface InviteLink {
+  email: string;
+  name: string;
+  token: string;
+}
+
+export interface ImportWithInvitesResult {
+  batchId: string;
+  inviteLinks: InviteLink[];
+}
+
 class AdminBulkService {
   async importChildScouts(file: File) {
     const formData = new FormData();
@@ -76,6 +87,35 @@ class AdminBulkService {
 
   async getImportBatch(batchId: string): Promise<ImportBatchStatus> {
     const response = await axios.get<ImportBatchStatus>(`/imports/${batchId}`);
+    return response.data;
+  }
+
+  async importLeaders(file: File): Promise<ImportWithInvitesResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await axios.post<ImportWithInvitesResult>('/leaders/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  }
+
+  async importParentLinks(file: File): Promise<ImportWithInvitesResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await axios.post<ImportWithInvitesResult>('/parent-links/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  }
+
+  async importAdventures(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await axios.post<{ batchId: string; message: string }>(
+      '/adventures/import',
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
     return response.data;
   }
 
