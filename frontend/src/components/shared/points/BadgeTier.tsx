@@ -47,7 +47,7 @@ export function BadgeTier({
   let pointsNeeded = 0;
   let pointsInTier = 0;
   
-  if (showProgress && currentPoints !== undefined && minPoints !== undefined && maxPoints !== null) {
+  if (showProgress && currentPoints !== undefined && minPoints !== undefined && maxPoints != null) {
     const tierRange = maxPoints - minPoints;
     pointsInTier = currentPoints - minPoints;
     pointsNeeded = maxPoints - currentPoints;
@@ -71,7 +71,7 @@ export function BadgeTier({
         {tierName}
       </span>
       
-      {showProgress && maxPoints !== null && (
+      {showProgress && maxPoints != null && (
         <div className="px-1">
           <Progress 
             value={pointsInTier} 

@@ -1,6 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+export const dynamic = 'force-dynamic';
+
+import { useCallback, useEffect, useMemo, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
@@ -11,7 +13,7 @@ import BatchTransitionDialog from '@/components/awards/BatchTransitionDialog';
 
 type QueueView = 'TO_PURCHASE' | 'TO_AWARD' | 'SCOUTBOOK_FOLLOW_UP';
 
-export default function AwardsPage() {
+function AwardsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoading } = useAuth();
@@ -229,4 +231,8 @@ export default function AwardsPage() {
       />
     </div>
   );
+}
+
+export default function AwardsPage() {
+  return <Suspense><AwardsPageContent /></Suspense>;
 }

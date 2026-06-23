@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+export const dynamic = 'force-dynamic';
+
+import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { redirect, useSearchParams } from 'next/navigation';
 import EventForm from '@/components/forms/events/EventForm';
@@ -23,7 +25,7 @@ interface DenOption {
   rankLevel: string;
 }
 
-export default function CreateEventPage() {
+function CreateEventPageContent() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
   const [activityTypes, setActivityTypes] = useState<ActivityType[]>([]);
@@ -124,4 +126,8 @@ export default function CreateEventPage() {
       />
     </div>
   );
+}
+
+export default function CreateEventPage() {
+  return <Suspense><CreateEventPageContent /></Suspense>;
 }

@@ -27,9 +27,9 @@ export interface ListTasksResponse {
  * Use in tests with vi.mocked() to set return values
  */
 export const mockAdminTasksService = {
-  listTasks: vi.fn<[ListTasksParams?], Promise<ListTasksResponse>>(),
-  completeTask: vi.fn<[string], Promise<void>>(),
-  uncompleteTask: vi.fn<[string], Promise<void>>(),
+  listTasks: vi.fn<(params?: ListTasksParams) => Promise<ListTasksResponse>>(),
+  completeTask: vi.fn<(id: string) => Promise<void>>(),
+  uncompleteTask: vi.fn<(id: string) => Promise<void>>(),
 };
 
 /**
