@@ -2,6 +2,16 @@
 /dist
 /node_modules
 /build
+prisma.config.js
+prisma.config.d.ts
+prisma.config.js.map
+prisma/seed.js
+prisma/seed.d.ts
+prisma/seed.js.map
+scripts/**/*.js
+scripts/**/*.d.ts
+scripts/**/*.js.map
+prisma/turso-init.sql
 
 # Logs
 logs
