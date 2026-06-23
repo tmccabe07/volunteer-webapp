@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect } from 'react';
+export const dynamic = 'force-dynamic';
+
+import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import ReconciliationQueue from '@/components/advancement/ReconciliationQueue';
 
-export default function ReconciliationDashboardPage() {
+function ReconciliationDashboardPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoading } = useAuth();
@@ -46,4 +48,8 @@ export default function ReconciliationDashboardPage() {
       <ReconciliationQueue initialDenId={denId} />
     </div>
   );
+}
+
+export default function ReconciliationDashboardPage() {
+  return <Suspense><ReconciliationDashboardPageContent /></Suspense>;
 }

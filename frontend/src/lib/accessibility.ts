@@ -93,7 +93,7 @@ export function generateId(prefix: string = 'a11y'): string {
  * Hook to generate a stable ID
  */
 export function useId(prefix?: string): string {
-  const idRef = useRef<string>();
+  const idRef = useRef<string>('');
   
   if (!idRef.current) {
     idRef.current = generateId(prefix);

@@ -1,6 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+export const dynamic = 'force-dynamic';
+
+import { useCallback, useEffect, useMemo, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { awardService, type InventoryItem, type InventoryResponse } from '@/services/awardService';
@@ -19,7 +21,7 @@ import {
   SelectItem,
 } from '@/components/ui/select';
 
-export default function InventoryPage() {
+function InventoryPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoading } = useAuth();
@@ -201,4 +203,8 @@ export default function InventoryPage() {
       />
     </div>
   );
+}
+
+export default function InventoryPage() {
+  return <Suspense><InventoryPageContent /></Suspense>;
 }

@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+export const dynamic = 'force-dynamic';
+
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
@@ -66,7 +68,7 @@ const SCOPE_OPTIONS = [
   { value: 'DEN', label: 'Den-Scoped' },
 ];
 
-export default function EventsPage() {
+function EventsPageContent() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
   
@@ -460,4 +462,8 @@ export default function EventsPage() {
       )}
     </div>
   );
+}
+
+export default function EventsPage() {
+  return <Suspense><EventsPageContent /></Suspense>;
 }

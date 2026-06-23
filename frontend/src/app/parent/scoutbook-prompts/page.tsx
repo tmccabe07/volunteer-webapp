@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect } from 'react';
+export const dynamic = 'force-dynamic';
+
+import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ParentPromptsList from '@/components/parent/ParentPromptsList';
 import { useAuth } from '@/lib/auth-context';
 import type { PromptCategory } from '@/services/hoursPromptService';
 
-export default function ParentScoutbookPromptsPage() {
+function ParentScoutbookPromptsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoading } = useAuth();
@@ -60,4 +62,8 @@ export default function ParentScoutbookPromptsPage() {
       <ParentPromptsList childScoutId={childScoutId} denId={denId} category={category} />
     </div>
   );
+}
+
+export default function ParentScoutbookPromptsPage() {
+  return <Suspense><ParentScoutbookPromptsPageContent /></Suspense>;
 }

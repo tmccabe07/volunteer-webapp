@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useSearchParams } from 'next/navigation';
 import { ResetPasswordForm } from '@/components/forms/auth/ResetPasswordForm';
 import { Suspense } from 'react';
@@ -33,10 +35,14 @@ function ResetPasswordConfirmContent() {
   );
 }
 
-export default function ResetPasswordConfirmPage() {
+function ResetPasswordConfirmPageContent() {
   return (
     <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
       <ResetPasswordConfirmContent />
     </Suspense>
   );
+}
+
+export default function ResetPasswordConfirmPage() {
+  return <Suspense><ResetPasswordConfirmPageContent /></Suspense>;
 }
