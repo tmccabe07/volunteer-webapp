@@ -34,6 +34,20 @@ import {
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const THROTTLE_DISABLED = process.env.DISABLE_THROTTLE === 'true';
 
+function cookieOptions(maxAge: number) {
+  return {
+    httpOnly: true,
+    secure: IS_PRODUCTION,
+    sameSite: 'lax' as const,
+    maxAge,
+    ...(process.env.COOKIE_DOMAIN ? { domain: process.env.COOKIE_DOMAIN } : {}),
+  };
+}
+
+function clearCookieOptions() {
+  return process.env.COOKIE_DOMAIN ? { domain: process.env.COOKIE_DOMAIN } : {};
+}
+
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -64,19 +78,8 @@ export class AuthController {
       );
 
       // Set HttpOnly cookies
-      res.cookie('access_token', accessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 15 * 60 * 1000 // 15 minutes
-      });
-
-      res.cookie('refresh_token', refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-      });
+      res.cookie('access_token', accessToken, cookieOptions(15 * 60 * 1000));
+      res.cookie('refresh_token', refreshToken, cookieOptions(7 * 24 * 60 * 60 * 1000));
 
       return {
         user: volunteer,
@@ -137,19 +140,8 @@ export class AuthController {
         ? 30 * 24 * 60 * 60 * 1000 // 30 days
         : 7 * 24 * 60 * 60 * 1000; // 7 days
 
-      res.cookie('access_token', accessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 15 * 60 * 1000 // 15 minutes
-      });
-
-      res.cookie('refresh_token', refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: refreshMaxAge
-      });
+      res.cookie('access_token', accessToken, cookieOptions(15 * 60 * 1000));
+      res.cookie('refresh_token', refreshToken, cookieOptions(refreshMaxAge));
 
       return {
         user: volunteer,
@@ -175,9 +167,8 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   logout(@Res({ passthrough: true }) res: Response) {
-    // Clear cookies
-    res.clearCookie('access_token');
-    res.clearCookie('refresh_token');
+    res.clearCookie('access_token', clearCookieOptions());
+    res.clearCookie('refresh_token', clearCookieOptions());
   }
 
   /**
@@ -211,19 +202,8 @@ export class AuthController {
       const newRefreshToken = this.authService.generateRefreshToken(userId, false);
 
       // Set new cookies
-      res.cookie('access_token', newAccessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 15 * 60 * 1000 // 15 minutes
-      });
-
-      res.cookie('refresh_token', newRefreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-      });
+      res.cookie('access_token', newAccessToken, cookieOptions(15 * 60 * 1000));
+      res.cookie('refresh_token', newRefreshToken, cookieOptions(7 * 24 * 60 * 60 * 1000));
 
       return {
         accessToken: newAccessToken,
@@ -255,15 +235,8 @@ export class AuthController {
       // Validate request body
       const validatedData = requestResetSchema.parse(body);
 
-      // Create reset request
-      const token = await this.passwordResetService.createResetRequest(validatedData.email);
-
-      // TODO: Send email with reset link
-      // For now, log token in development (REMOVE IN PRODUCTION)
-      if (process.env.NODE_ENV === 'development' && token) {
-        console.log(`Password reset token for ${validatedData.email}: ${token}`);
-        console.log(`Reset link: ${process.env.FRONTEND_URL}/auth/reset-password?token=${token}`);
-      }
+      // Create reset request and send email
+      await this.passwordResetService.createResetRequest(validatedData.email);
 
       // Always return success to prevent email enumeration
       return {

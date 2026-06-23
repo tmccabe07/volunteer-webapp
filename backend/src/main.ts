@@ -29,6 +29,9 @@ async function bootstrap() {
   app.use(helmet());
 
   // CORS: Allow requests from Next.js frontend
+  if (process.env.NODE_ENV === 'production' && !process.env.FRONTEND_URL) {
+    throw new Error('FRONTEND_URL environment variable is required in production');
+  }
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   app.enableCors({
     origin: frontendUrl,

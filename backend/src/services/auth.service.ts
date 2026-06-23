@@ -107,8 +107,11 @@ export class AuthService {
   }
 
   constructor() {
-    this.JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-    this.JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-change-in-production';
+    if (process.env.NODE_ENV === 'production' && (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET)) {
+      throw new Error('JWT_SECRET and JWT_REFRESH_SECRET environment variables are required in production');
+    }
+    this.JWT_SECRET = process.env.JWT_SECRET || 'dev-only-insecure-secret';
+    this.JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'dev-only-insecure-refresh-secret';
   }
 
   /**
