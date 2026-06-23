@@ -95,13 +95,8 @@ export default function InventoryPage() {
           denOptions = res.data;
         } catch {
           // Fallback keeps selector functional if list endpoint is scoped by role.
-          const profile = user;
-          denOptions = mapProfileRolesToDens(profile.roles);
-
-          if (denOptions.length === 0) {
-            const myProfile = await volunteerApi.getMyProfile();
-            denOptions = mapProfileRolesToDens(myProfile.roles);
-          }
+          const myProfile = await volunteerApi.getMyProfile();
+          denOptions = mapProfileRolesToDens(myProfile.roles);
         }
 
         setDens(denOptions);
