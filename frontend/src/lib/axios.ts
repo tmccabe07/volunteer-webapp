@@ -118,23 +118,17 @@ apiClient.interceptors.response.use(
       }
     }
 
-    // Handle 403 Forbidden errors
+    // Handle 403 Forbidden errors - refresh once in case tier changed and token is stale,
+    // but do NOT do a hard page redirect here. Background calls (e.g. notification polling)
+    // returning 403 should not hijack navigation. Let individual pages/hooks redirect.
     if (error.response?.status === 403 && originalRequest && !originalRequest._forbiddenRetry) {
       originalRequest._forbiddenRetry = true;
 
       try {
-        // Refresh once in case user tier changed after login and access token is stale
         await apiClient.post('/auth/refresh');
         return apiClient(originalRequest);
       } catch {
-        // Fall through to unauthorized redirect below
-      }
-    }
-
-    if (error.response?.status === 403) {
-      // Insufficient permissions - redirect to unauthorized page
-      if (typeof window !== 'undefined') {
-        window.location.href = '/unauthorized';
+        // Fall through and reject — caller handles the 403
       }
     }
 

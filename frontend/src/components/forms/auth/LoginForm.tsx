@@ -45,7 +45,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
       if (onSuccess) {
         onSuccess();
       } else {
-        router.push('/');
+        router.push('/dashboard');
       }
     } catch (error: any) {
       if (error.response) {
