@@ -25,6 +25,9 @@ function isLoopbackIp(ip?: string): boolean {
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Trust Render's proxy so X-Forwarded-For is used for rate limiting and req.ip
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+
   // Security: Helmet middleware for HTTP headers
   app.use(helmet());
 
