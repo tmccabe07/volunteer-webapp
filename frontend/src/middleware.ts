@@ -72,7 +72,13 @@ function verifyToken(token: string): number | null {
       return null;
     }
     
-    return payload.tier || null;
+    const tierMap: Record<string, number> = {
+      PARENT: 1,
+      LEADER: 2,
+      DEN_CHIEF: 2,
+      ADMIN: 3,
+    };
+    return tierMap[payload.authTier] ?? null;
   } catch {
     return null;
   }
