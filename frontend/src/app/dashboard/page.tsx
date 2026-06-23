@@ -564,6 +564,11 @@ export default function DashboardPage() {
                   Leaderboard
                 </Button>
               </Link>
+              <Link href="/help">
+                <Button className="w-full" variant="plainoutline">
+                  Help &amp; Guides
+                </Button>
+              </Link>
             </div>
           </Card>
         </div>

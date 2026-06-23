@@ -16,8 +16,13 @@ import { PrismaLibSql } from '@prisma/adapter-libsql';
  */
 const prismaClientSingleton = () => {
   // Initialize Prisma with libSQL adapter for SQLite support (Prisma 7)
+  const dbUrl = process.env.DATABASE_URL || (process.env.NODE_ENV === 'production' ? null : 'file:./dev.db');
+  if (!dbUrl) {
+    throw new Error('DATABASE_URL environment variable is required in production');
+  }
   const adapter = new PrismaLibSql({
-    url: process.env.DATABASE_URL || 'file:./dev.db',
+    url: dbUrl,
+    ...(process.env.TURSO_AUTH_TOKEN ? { authToken: process.env.TURSO_AUTH_TOKEN } : {}),
   });
 
   const prisma = new PrismaClient({

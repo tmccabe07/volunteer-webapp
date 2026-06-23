@@ -16,7 +16,7 @@ import configService from '@/services/config.service';
 import { BadgeTier } from '@/components/shared/points/BadgeTier';
 import { NotificationDropdown } from '@/components/shared/notifications/NotificationDropdown';
 import { Button } from '@/components/ui/button';
-import { LogOut } from 'lucide-react';
+import { HelpCircle, LogOut } from 'lucide-react';
 
 interface PackConfig {
   packNumber: string;
@@ -163,6 +163,13 @@ export function Header() {
             <div className="text-sm text-muted-foreground">
               {user.name}
             </div>
+
+            {/* Help */}
+            <Link href="/help" title="Help & Guides">
+              <Button variant="ghost" size="icon">
+                <HelpCircle className="h-5 w-5 text-muted-foreground" />
+              </Button>
+            </Link>
 
             {/* Logout button */}
             <Button
