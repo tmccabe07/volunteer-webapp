@@ -27,14 +27,14 @@ const publicPaths = [
  * Tier 3 (ADMIN): Site administrators
  */
 const tierPaths: Record<number, string[]> = {
-  1: ['/dashboard', '/events', '/tasks', '/leaderboard', '/profile', '/notifications', '/points', '/my-cub-scouts', '/parent', '/my-dens'],
+  1: ['/', '/dashboard', '/events', '/tasks', '/leaderboard', '/profile', '/notifications', '/points', '/my-cub-scouts', '/parent', '/my-dens'],
   2: [
-    '/dashboard', '/events', '/tasks', '/leaderboard', '/profile', '/notifications', '/points',
+    '/', '/dashboard', '/events', '/tasks', '/leaderboard', '/profile', '/notifications', '/points',
     '/my-cub-scouts', '/parent', '/my-dens', '/reports', '/volunteers', '/admin-tasks',
     '/dens', '/cubs',
   ],
   3: [
-    '/dashboard', '/events', '/tasks', '/leaderboard', '/profile', '/notifications', '/points',
+    '/', '/dashboard', '/events', '/tasks', '/leaderboard', '/profile', '/notifications', '/points',
     '/my-cub-scouts', '/parent', '/my-dens', '/reports', '/volunteers', '/admin-tasks',
     '/dens', '/cubs', '/admin', '/advancement', '/awards',
   ],
